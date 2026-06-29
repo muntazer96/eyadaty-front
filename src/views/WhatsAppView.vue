@@ -1,17 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import {
-  CheckCircle2,
-  Copy,
-  LogOut,
-  MessageCircle,
-  PlugZap,
-  QrCode,
-  RefreshCw,
-  Send,
-  ShieldCheck,
-} from '@lucide/vue'
-import { useNotificationsStore } from '../stores/notifications'
+import { useNotifications } from '../composables/useNotifications'
 
 type BridgeStatus = {
   ready?: boolean
@@ -22,518 +11,356 @@ type BridgeStatus = {
 }
 
 const storageKey = 'clinic_whatsapp_bridge_settings'
-const notifications = useNotificationsStore()
+const { success: showSuccess, error: showError } = useNotifications()
 
-const loading = ref(false)
-const sending = ref(false)
+const loading  = ref(false)
+const sending  = ref(false)
 const endpoint = ref(defaultBridgeEndpoint())
-const token = ref('clinic-whatsapp-secret')
-const phone = ref('')
-const message = ref('رمز التحقق الخاص بحجزك هو: 123456')
-const status = ref<BridgeStatus | null>(null)
+const token    = ref('clinic-whatsapp-secret')
+const phone    = ref('')
+const message  = ref('رمز التحقق الخاص بحجزك هو: 123456')
+const status   = ref<BridgeStatus | null>(null)
 const lastError = ref('')
 
 const normalizedEndpoint = computed(() => endpoint.value.trim().replace(/\/+$/, ''))
-const isReady = computed(() => status.value?.ready === true || status.value?.authenticated === true)
-const qrImage = computed(() => status.value?.qrDataUrl ?? '')
+const isReady  = computed(() => status.value?.ready === true || status.value?.authenticated === true)
+const qrImage  = computed(() => status.value?.qrDataUrl ?? '')
 
 const appsettingsSnippet = computed(() =>
-  JSON.stringify(
-    {
-      WhatsAppMessages: {
-        Enabled: true,
-        Provider: 'CustomHttp',
-        Endpoint: `${normalizedEndpoint.value}/send-message`,
-        Token: token.value,
-        PhoneFieldName: 'phone',
-        MessageFieldName: 'message',
-      },
+  JSON.stringify({
+    WhatsAppMessages: {
+      Enabled: true,
+      Provider: 'CustomHttp',
+      Endpoint: `${normalizedEndpoint.value}/send-message`,
+      Token: token.value,
+      PhoneFieldName: 'phone',
+      MessageFieldName: 'message',
     },
-    null,
-    2,
-  ),
+  }, null, 2)
 )
 
 function defaultBridgeEndpoint() {
   const protocol = window.location.protocol || 'http:'
   const host = window.location.hostname || '127.0.0.1'
-  //return `${protocol}//${host}:3001`
   return `${protocol}//${host}/whatsapp-bridge`
 }
 
 function headers(): Record<string, string> {
   const result: Record<string, string> = { 'Content-Type': 'application/json' }
-
-  if (token.value.trim()) {
-    result.Authorization = `Bearer ${token.value.trim()}`
-  }
-
+  if (token.value.trim()) result.Authorization = `Bearer ${token.value.trim()}`
   return result
 }
 
 function saveSettings() {
-  localStorage.setItem(
-    storageKey,
-    JSON.stringify({
-      endpoint: endpoint.value,
-      token: token.value,
-    }),
-  )
-
-  notifications.show('تم حفظ إعدادات الواتساب')
+  localStorage.setItem(storageKey, JSON.stringify({ endpoint: endpoint.value, token: token.value }))
+  showSuccess('تم حفظ إعدادات الواتساب')
 }
 
 function loadSettings() {
   const raw = localStorage.getItem(storageKey)
   if (!raw) return
-
   try {
     const saved = JSON.parse(raw) as { endpoint?: string; token?: string }
     endpoint.value = saved.endpoint || endpoint.value
-    token.value = saved.token || token.value
-  } catch {
-    localStorage.removeItem(storageKey)
-  }
+    token.value    = saved.token    || token.value
+  } catch { localStorage.removeItem(storageKey) }
 }
 
 async function checkStatus() {
   loading.value = true
   lastError.value = ''
-
   try {
-    const response = await fetch(`${normalizedEndpoint.value}/status`, {
-      headers: headers(),
-    })
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-
-    status.value = await response.json()
-  } catch (error) {
+    const r = await fetch(`${normalizedEndpoint.value}/status`, { headers: headers() })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    status.value = await r.json()
+  } catch (e) {
     status.value = null
-    lastError.value = error instanceof Error ? error.message : 'Connection failed'
-    notifications.show('تعذر الاتصال بخدمة الواتساب', 'error')
-  } finally {
-    loading.value = false
-  }
+    lastError.value = e instanceof Error ? e.message : 'Connection failed'
+    showError('تعذر الاتصال بخدمة الواتساب')
+  } finally { loading.value = false }
 }
 
 async function logoutWhatsapp() {
   loading.value = true
   lastError.value = ''
-
   try {
-    const response = await fetch(`${normalizedEndpoint.value}/logout`, {
-      method: 'POST',
-      headers: headers(),
-    })
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-
+    const r = await fetch(`${normalizedEndpoint.value}/logout`, { method: 'POST', headers: headers() })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
     status.value = null
-    notifications.show('تم تسجيل الخروج من واتساب')
+    showSuccess('تم تسجيل الخروج من واتساب')
     await checkStatus()
-  } catch (error) {
-    lastError.value = error instanceof Error ? error.message : 'Logout failed'
-    notifications.show('فشل تسجيل الخروج من واتساب', 'error')
-  } finally {
-    loading.value = false
-  }
+  } catch (e) {
+    lastError.value = e instanceof Error ? e.message : 'Logout failed'
+    showError('فشل تسجيل الخروج من واتساب')
+  } finally { loading.value = false }
 }
 
 async function sendTest() {
   sending.value = true
   lastError.value = ''
-
   try {
-    const response = await fetch(`${normalizedEndpoint.value}/send-message`, {
+    const r = await fetch(`${normalizedEndpoint.value}/send-message`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({
-        phone: phone.value,
-        message: message.value,
-      }),
+      body: JSON.stringify({ phone: phone.value, message: message.value }),
     })
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-
-    notifications.show('تم إرسال رسالة الاختبار')
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    showSuccess('تم إرسال رسالة الاختبار')
     await checkStatus()
-  } catch (error) {
-    lastError.value = error instanceof Error ? error.message : 'Send failed'
-    notifications.show('فشل إرسال رسالة الاختبار', 'error')
-  } finally {
-    sending.value = false
-  }
+  } catch (e) {
+    lastError.value = e instanceof Error ? e.message : 'Send failed'
+    showError('فشل إرسال رسالة الاختبار')
+  } finally { sending.value = false }
 }
 
 async function copySnippet() {
   await navigator.clipboard.writeText(appsettingsSnippet.value)
-  notifications.show('تم نسخ إعدادات الباك')
+  showSuccess('تم نسخ إعدادات الباك')
 }
 
-onMounted(() => {
-  loadSettings()
-  checkStatus()
-})
+onMounted(() => { loadSettings(); checkStatus() })
 </script>
 
 <template>
   <div class="whatsapp-page">
-    <section class="whatsapp-head">
-      <div class="head-title">
-        <span class="section-kicker">Super Admin</span>
-        <h2>ربط WhatsApp OTP</h2>
-      </div>
 
-      <div class="head-actions">
-        <div class="status-chip" :class="{ live: isReady }">
-          <CheckCircle2 v-if="isReady" :size="18" />
-          <PlugZap v-else :size="18" />
+    <!-- Header -->
+    <div class="page-top">
+      <div>
+        <p class="page-kicker">Super Admin</p>
+        <h1 class="page-title">ربط WhatsApp OTP</h1>
+      </div>
+      <div class="page-actions">
+        <!-- Status Badge -->
+        <div class="status-badge" :class="{ 'status-badge--live': isReady }">
+          <v-icon :icon="isReady ? 'mdi-check-circle' : 'mdi-lightning-bolt'" size="18" />
           <span>{{ isReady ? 'Connected' : 'Waiting QR' }}</span>
         </div>
-
-        <button
+        <!-- Logout Button -->
+        <v-btn
           v-if="isReady"
-          class="logout-button"
-          type="button"
-          :disabled="loading"
+          color="error"
+          variant="outlined"
+          prepend-icon="mdi-logout"
+          :loading="loading"
           @click="logoutWhatsapp"
         >
-          <LogOut :size="16" />
-          <span>تسجيل خروج</span>
-        </button>
+          تسجيل خروج
+        </v-btn>
       </div>
-    </section>
+    </div>
 
-    <section class="whatsapp-grid">
-      <article class="panel-card settings-card">
-        <header>
-          <ShieldCheck :size="18" />
+    <!-- Main Grid -->
+    <div class="wa-grid">
+
+      <!-- Settings Card -->
+      <div class="wa-card">
+        <div class="wa-card-header">
+          <v-icon icon="mdi-shield-check" color="primary" size="20" />
           <h3>إعدادات الخدمة</h3>
-        </header>
-
-        <form class="whatsapp-form" @submit.prevent="checkStatus">
-          <label>
-            رابط الخدمة
-            <input v-model="endpoint" dir="ltr" placeholder="http://127.0.0.1:3001" />
-          </label>
-
-          <label>
-            Token
-            <input v-model="token" dir="ltr" placeholder="secret-token" />
-          </label>
-
-          <div class="form-actions">
-            <button class="secondary-button" type="button" @click="saveSettings">
-              حفظ
-            </button>
-
-            <button class="compact-primary" type="submit" :disabled="loading">
-              <RefreshCw :size="16" :class="{ spin: loading }" />
-              فحص
-            </button>
+        </div>
+        <div class="wa-form">
+          <div class="form-field">
+            <label class="form-label">رابط الخدمة</label>
+            <input v-model="endpoint" class="form-input ltr" placeholder="http://127.0.0.1:3001" dir="ltr" />
           </div>
-        </form>
-      </article>
+          <div class="form-field">
+            <label class="form-label">Token</label>
+            <input v-model="token" class="form-input ltr" placeholder="secret-token" dir="ltr" />
+          </div>
+          <div class="form-actions">
+            <v-btn variant="outlined" color="primary" @click="saveSettings">حفظ</v-btn>
+            <v-btn color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="checkStatus">فحص</v-btn>
+          </div>
+        </div>
+      </div>
 
-      <article class="panel-card qr-card">
-        <header>
-          <QrCode :size="18" />
-          <h3>QR</h3>
-        </header>
+      <!-- QR Card -->
+      <div class="wa-card wa-card--qr">
+        <div class="wa-card-header">
+          <v-icon icon="mdi-qrcode" color="primary" size="20" />
+          <h3>QR Code</h3>
+        </div>
 
+        <!-- QR Image -->
         <div v-if="qrImage && !isReady" class="qr-box">
           <img :src="qrImage" alt="WhatsApp QR" />
         </div>
 
-        <div v-else class="qr-placeholder">
-          <MessageCircle :size="42" />
-          <strong>{{ isReady ? 'الحساب مربوط' : 'بانتظار QR' }}</strong>
-          <span>
-            {{ status?.phone || status?.message || 'شغل خدمة WhatsApp_Bridge ثم اضغط فحص' }}
-          </span>
+        <!-- Connected State -->
+        <div v-else-if="isReady" class="qr-connected">
+          <v-icon icon="mdi-whatsapp" color="success" size="48" />
+          <strong>الحساب مربوط</strong>
+          <span>{{ status?.phone || 'WhatsApp متصل بنجاح' }}</span>
         </div>
-      </article>
-    </section>
 
-    <section class="whatsapp-grid">
-      <article class="panel-card">
-        <header>
-          <Send :size="18" />
+        <!-- Waiting State -->
+        <div v-else class="qr-waiting">
+          <v-icon icon="mdi-message-processing" color="var(--color-text-muted)" size="48" />
+          <strong>بانتظار QR</strong>
+          <span>{{ status?.message || 'شغّل خدمة WhatsApp_Bridge ثم اضغط فحص' }}</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Second Grid -->
+    <div class="wa-grid">
+
+      <!-- Test Message Card -->
+      <div class="wa-card">
+        <div class="wa-card-header">
+          <v-icon icon="mdi-send" color="primary" size="20" />
           <h3>رسالة اختبار</h3>
-        </header>
-
-        <form class="whatsapp-form" @submit.prevent="sendTest">
-          <label>
-            رقم الهاتف
-            <input v-model="phone" dir="ltr" placeholder="07701234567" />
-          </label>
-
-          <label>
-            الرسالة
-            <textarea v-model="message" rows="4"></textarea>
-          </label>
-
-          <button class="compact-primary" type="submit" :disabled="sending || !phone.trim()">
-            <Send :size="16" />
+        </div>
+        <div class="wa-form">
+          <div class="form-field">
+            <label class="form-label">رقم الهاتف</label>
+            <input v-model="phone" class="form-input ltr" placeholder="07701234567" dir="ltr" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">الرسالة</label>
+            <textarea v-model="message" class="form-textarea" rows="4" />
+          </div>
+          <v-btn
+            color="primary"
+            prepend-icon="mdi-send"
+            :loading="sending"
+            :disabled="!phone.trim()"
+            @click="sendTest"
+          >
             إرسال
-          </button>
-        </form>
-      </article>
+          </v-btn>
+        </div>
+      </div>
 
-      <article class="panel-card">
-        <header>
-          <Copy :size="18" />
+      <!-- Backend Config Card -->
+      <div class="wa-card">
+        <div class="wa-card-header">
+          <v-icon icon="mdi-code-json" color="primary" size="20" />
           <h3>إعدادات الباك</h3>
-        </header>
-
-        <pre dir="ltr">{{ appsettingsSnippet }}</pre>
-
-        <button class="secondary-button copy-button" type="button" @click="copySnippet">
-          <Copy :size="16" />
+        </div>
+        <pre class="code-block" dir="ltr">{{ appsettingsSnippet }}</pre>
+        <v-btn variant="outlined" color="primary" prepend-icon="mdi-content-copy" @click="copySnippet">
           نسخ
-        </button>
-      </article>
-    </section>
+        </v-btn>
+      </div>
 
-    <section v-if="lastError" class="whatsapp-error">
+    </div>
+
+    <!-- Error Banner -->
+    <v-alert v-if="lastError" type="error" variant="tonal" icon="mdi-alert-circle">
       {{ lastError }}
-    </section>
+    </v-alert>
+
   </div>
 </template>
 
 <style scoped>
-.whatsapp-page {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
+.whatsapp-page { display: flex; flex-direction: column; gap: var(--spacing-lg); }
 
-.whatsapp-head {
-  direction: rtl;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: var(--shadow);
-}
+/* Page Top */
+.page-top { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-lg); flex-wrap: wrap; }
+.page-kicker { margin: 0 0 4px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted); }
+.page-title { margin: 0; font-size: 28px; font-weight: 800; color: var(--color-text); }
+.page-actions { display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap; }
 
-.head-title {
-  text-align: right;
-}
-
-.whatsapp-head h2 {
-  margin: 6px 0 0;
-  color: var(--ink);
-  font-size: 25px;
-}
-
-.head-actions {
-  direction: ltr;
-  margin-right: auto;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  flex-wrap: nowrap;
-}
-
-.status-chip {
-  height: 42px;
+/* Status Badge */
+.status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 16px;
-  border-radius: 12px;
-  color: #9a6400;
-  background: #fff4d8;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.status-chip.live {
-  color: var(--primary);
-  background: var(--primary-soft);
-}
-
-.logout-button {
-  height: 42px;
-  min-width: 132px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 0 16px;
-  border: 1px solid #fecaca;
-  border-radius: 12px;
-  background: #fff;
-  color: #dc2626;
+  gap: var(--spacing-sm);
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+  font-weight: 700;
   font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all 0.2s ease;
+}
+.status-badge--live {
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
-.logout-button svg {
-  flex-shrink: 0;
-}
+/* Grid */
+.wa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); align-items: start; }
 
-.logout-button:hover {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  transform: translateY(-1px);
+/* Card */
+.wa-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
 }
+.wa-card--qr { min-height: 320px; display: flex; flex-direction: column; }
 
-.logout-button:active {
-  transform: translateY(0);
-}
-
-.logout-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.whatsapp-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  align-items: start;
-}
-
-.panel-card header {
+.wa-card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--primary);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
 }
+.wa-card-header h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--color-text); }
 
-.panel-card header h3 {
-  margin: 0;
-}
-
-.whatsapp-form {
-  display: grid;
-  gap: 13px;
-  margin-top: 14px;
-}
-
-.whatsapp-form label {
-  display: grid;
-  gap: 7px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.whatsapp-form input,
-.whatsapp-form textarea {
+/* Form */
+.wa-form { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+.form-field { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 13px; font-weight: 600; color: var(--color-text); }
+.form-input, .form-textarea {
+  padding: 10px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family-primary);
+  font-size: 14px;
+  outline: none;
   width: 100%;
-  padding: 11px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--ink);
-  outline: 0;
+  transition: border-color 0.2s;
 }
+.form-input:focus, .form-textarea:focus { border-color: var(--color-primary); }
+.form-textarea { resize: vertical; }
+.ltr { direction: ltr; }
+.form-actions { display: flex; gap: var(--spacing-md); justify-content: flex-end; }
 
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
+/* QR States */
+.qr-box { display: flex; align-items: center; justify-content: center; padding: var(--spacing-xl); border: 2px dashed var(--color-primary-light); border-radius: var(--radius-lg); background: var(--color-primary-soft); flex: 1; }
+.qr-box img { width: min(100%, 260px); aspect-ratio: 1; object-fit: contain; }
 
-.qr-card {
-  min-height: 320px;
-}
-
-.qr-box {
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  border: 1px dashed #91c7bf;
-  border-radius: 8px;
-  background: #f7fcfb;
-}
-
-.qr-box img {
-  width: min(100%, 260px);
-  aspect-ratio: 1;
-  object-fit: contain;
-}
-
-.qr-placeholder {
-  min-height: 230px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 9px;
-  color: var(--muted);
-  border: 1px dashed var(--line);
-  border-radius: 8px;
-  background: #fbfdfc;
+.qr-connected, .qr-waiting {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--spacing-md); flex: 1;
+  padding: var(--spacing-2xl);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
   text-align: center;
 }
+.qr-connected { border-color: var(--color-success); background: var(--color-success-light); }
+.qr-connected strong { font-size: 18px; font-weight: 700; color: var(--color-success); }
+.qr-connected span, .qr-waiting span { font-size: 13px; color: var(--color-text-muted); line-height: 1.5; }
+.qr-waiting strong { font-size: 16px; font-weight: 700; color: var(--color-text); }
 
-.qr-placeholder strong {
-  color: var(--ink);
-}
-
-pre {
+/* Code Block */
+.code-block {
   overflow: auto;
-  margin: 14px 0;
-  padding: 14px;
-  border-radius: 8px;
-  background: #102a27;
-  color: #e6fffa;
+  margin: 0 0 var(--spacing-lg) 0;
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  background: #0d2420;
+  color: #9de8d8;
   font-size: 12px;
   line-height: 1.7;
+  direction: ltr;
+  text-align: left;
 }
 
-.copy-button {
-  margin-right: auto;
-}
-
-.whatsapp-error {
-  padding: 11px 13px;
-  border: 1px solid #ffd6d6;
-  border-radius: 8px;
-  color: #a33c3c;
-  background: #fff0f0;
-  font-weight: 800;
-}
-
-.spin {
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
+/* Responsive */
 @media (max-width: 860px) {
-  .whatsapp-head {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .head-actions {
-    margin-right: 0;
-    align-self: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .whatsapp-grid {
-    grid-template-columns: 1fr;
-  }
+  .wa-grid { grid-template-columns: 1fr; }
+  .page-top { flex-direction: column; align-items: flex-start; }
 }
 </style>

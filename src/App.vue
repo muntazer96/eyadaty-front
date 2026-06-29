@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { RouterView } from 'vue-router'
-import AppModal from './components/AppModal.vue'
-import AppToast from './components/AppToast.vue'
+// import AppModal from './components1/AppModal.vue'
+// import AppToast from './components1/AppToast.vue'
 import api from './services/api'
 import type { ApiResponse, AppVersionCheck } from './types/api'
 import { adminAppVersion, adminBuildNumber } from './utils/appVersion'

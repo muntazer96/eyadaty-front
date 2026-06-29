@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { pinia } from '../stores'
-import { useAuthStore } from '../stores/auth'
+import { pinia } from '../stores/index.ts'
+import { useAuthStore } from '../stores/auth.ts'
 import AdminLayout from '../layouts/AdminLayout.vue'
 import AnalyticsView from '../views/AnalyticsView.vue'
 import DownloadAppView from '../views/DownloadApp.vue'
@@ -13,13 +13,11 @@ import DashboardView from '../views/DashboardView.vue'
 import DoctorDetailsView from '../views/DoctorDetailsView.vue'
 import DoctorsView from '../views/DoctorsView.vue'
 import ExceptionsView from '../views/ExceptionsView.vue'
-import GuestBookingView from '../views/GuestBookingView.vue'
 import NotificationsView from '../views/NotificationsView.vue'
 import OffersView from '../views/OffersView.vue'
 import PasswordResetView from '../views/PasswordResetView.vue'
 import ProfileView from '../views/ProfileView.vue'
-import PublicDirectoryView from '../views/PublicDirectoryView.vue'
-import PublicDoctorView from '../views/PublicDoctorView.vue'
+
 import ReviewsView from '../views/ReviewsView.vue'
 import SubscriptionsView from '../views/SubscriptionsView.vue'
 import UsersView from '../views/UsersView.vue'
@@ -31,9 +29,7 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
     { path: '/password-reset', name: 'password-reset', component: PasswordResetView },
     { path: '/download', name: 'download-app', component: DownloadAppView },
-    { path: '/directory', name: 'public-directory', component: PublicDirectoryView },
-    { path: '/directory/:doctorId', name: 'public-doctor', component: PublicDoctorView },
-    { path: '/guest-booking', name: 'guest-booking', component: GuestBookingView },
+
     {
       path: '/',
       component: AdminLayout,

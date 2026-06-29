@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { CalendarCheck, Check, CheckCheck, PhoneCall, Plus, RefreshCw, Search, X } from '@lucide/vue'
-import AppModal from '../components/AppModal.vue'
-import AppPagination from '../components/AppPagination.vue'
-import LongPressButton from '../components/LongPressButton.vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
-import { useNotificationsStore } from '../stores/notifications'
+import { useNotifications } from '../composables/useNotifications'
 import type { ApiResponse, AppointmentItem, ClinicItem, DoctorItem, PageResult, QueueAvailabilityItem } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
+import PageHeader from '../components/common/Pageheader.vue'
+import EmptyState from '../components/common/Emptystate.vue'
 
 interface AppointmentRow {
   id: number
@@ -29,25 +27,34 @@ interface AppointmentRow {
 }
 
 const auth = useAuthStore()
-const notifications = useNotificationsStore()
+const { success: showSuccess, error: showError } = useNotifications()
+
 const isDoctor = computed(() => auth.hasAnyRole(['DoctorUser']))
-const isAdmin = computed(() => auth.hasAnyRole(['SuperAdmin']) && !isDoctor.value)
-const appointments = ref<AppointmentRow[]>([])
-const clinics = ref<ClinicItem[]>([])
-const doctors = ref<DoctorItem[]>([])
-const loading = ref(false)
-const saving = ref(false)
-const manualOpen = ref(false)
+const isAdmin  = computed(() => auth.hasAnyRole(['SuperAdmin']) && !isDoctor.value)
+
+const appointments     = ref<AppointmentRow[]>([])
+const clinics          = ref<ClinicItem[]>([])
+const doctors          = ref<DoctorItem[]>([])
+const loading          = ref(false)
+const saving           = ref(false)
+const manualOpen       = ref(false)
+const cancelDialog     = ref(false)
 const cancelAppointment = ref<AppointmentRow>()
-const page = ref(1)
-const doctorPage = ref(1)
-const doctorPageSize = 10
-const totalPages = ref(1)
-const totalItems = ref(0)
+const page             = ref(1)
+const doctorPage       = ref(1)
+const doctorPageSize   = 10
+const totalPages       = ref(1)
+const totalItems       = ref(0)
 const queueAvailability = ref<QueueAvailabilityItem>()
-const queueLoading = ref(false)
-const filters = reactive({ doctorId: '', clinicId: '', fromDate: today(), toDate: today(), status: '' })
-const manualForm = reactive({ clinicId: '', appointmentDate: today(), patientName: '', patientPhoneNumber: '', notes: '' })
+const queueLoading     = ref(false)
+
+const filters = reactive({
+  doctorId: '', clinicId: '', fromDate: today(), toDate: today(), status: '',
+})
+const manualForm = reactive({
+  clinicId: '', appointmentDate: today(), patientName: '', patientPhoneNumber: '', notes: '',
+})
+
 const statusOptions = [
   { value: '', label: 'كل الحالات' },
   { value: '0', label: 'قيد الانتظار' },
@@ -61,55 +68,62 @@ const canCreateManual = computed(() => {
   if (!queueAvailability.value) return true
   return queueAvailability.value.isAvailable && queueAvailability.value.remainingAppointments > 0
 })
-const doctorTotalPages = computed(() => Math.max(1, Math.ceil(appointments.value.length / doctorPageSize)))
+
+const doctorTotalPages = computed(() =>
+  Math.max(1, Math.ceil(appointments.value.length / doctorPageSize))
+)
+
 const visibleAppointments = computed(() => {
   if (isAdmin.value) return appointments.value
-  return appointments.value.slice((doctorPage.value - 1) * doctorPageSize, doctorPage.value * doctorPageSize)
+  return appointments.value.slice(
+    (doctorPage.value - 1) * doctorPageSize,
+    doctorPage.value * doctorPageSize,
+  )
 })
 
-function today() {
-  return new Date().toLocaleDateString('en-CA')
-}
+// Helpers
+function today() { return new Date().toLocaleDateString('en-CA') }
 
 function normalizeStatus(status: unknown) {
   if (typeof status === 'number') return status
   if (typeof status !== 'string') return 0
-  const normalized = status.toLowerCase()
-  if (normalized === 'confirmed') return 1
-  if (normalized === 'cancelled' || normalized === 'canceled') return 2
-  if (normalized === 'completed') return 3
+  const s = status.toLowerCase()
+  if (s === 'confirmed') return 1
+  if (s === 'cancelled' || s === 'canceled') return 2
+  if (s === 'completed') return 3
   return 0
 }
 
 function normalizePaymentStatus(status: unknown) {
   if (typeof status === 'number') return status
   if (typeof status !== 'string') return 0
-  const normalized = status.toLowerCase()
-  if (normalized === 'completed' || normalized === 'paid') return 1
-  if (normalized === 'failed') return 2
+  const s = status.toLowerCase()
+  if (s === 'completed' || s === 'paid') return 1
+  if (s === 'failed') return 2
   return 0
 }
 
 function statusMeta(status: number) {
   return [
-    { label: 'قيد الانتظار', className: 'status-warning' },
-    { label: 'مؤكد', className: 'status-success' },
-    { label: 'ملغي', className: 'status-danger' },
-    { label: 'مكتمل', className: 'status-neutral' },
-  ][status] ?? { label: 'غير معروف', className: 'status-neutral' }
+    { label: 'قيد الانتظار', color: 'warning' },
+    { label: 'مؤكد',         color: 'success' },
+    { label: 'ملغي',          color: 'error'   },
+    { label: 'مكتمل',        color: 'default'  },
+  ][status] ?? { label: 'غير معروف', color: 'default' }
 }
 
 function paymentMeta(status?: number) {
   return [
-    { label: 'قيد الانتظار', className: 'status-neutral' },
-    { label: 'مدفوع', className: 'status-success' },
-    { label: 'فشل الدفع', className: 'status-danger' },
-  ][status ?? 0] ?? { label: 'غير معروف', className: 'status-neutral' }
+    { label: 'قيد الانتظار', color: 'default'  },
+    { label: 'مدفوع',        color: 'success'  },
+    { label: 'فشل الدفع',   color: 'error'    },
+  ][status ?? 0] ?? { label: 'غير معروف', color: 'default' }
 }
 
-function bookingSourceMeta(appointment: AppointmentRow) {
-  if (appointment.isGuestBooking) return { label: 'زائر', className: 'status-warning' }
-  return { label: 'حساب مسجل', className: 'status-success' }
+function bookingSourceMeta(a: AppointmentRow) {
+  return a.isGuestBooking
+    ? { label: 'زائر',         color: 'warning' }
+    : { label: 'حساب مسجل',   color: 'success' }
 }
 
 function isGuestBooking(item: any) {
@@ -124,31 +138,23 @@ function formatDate(value: string) {
 
 function mapDoctorAppointment(item: AppointmentItem): AppointmentRow {
   return {
-    id: item.id,
-    code: item.code,
-    patientName: item.patientName,
-    patientPhoneNumber: item.patientPhoneNumber,
-    appointmentDate: item.appointmentDate,
-    queueNumber: item.queueNumber,
-    status: normalizeStatus(item.status),
-    isPhoneConfirmed: item.isPhoneConfirmed,
+    id: item.id, code: item.code,
+    patientName: item.patientName, patientPhoneNumber: item.patientPhoneNumber,
+    appointmentDate: item.appointmentDate, queueNumber: item.queueNumber,
+    status: normalizeStatus(item.status), isPhoneConfirmed: item.isPhoneConfirmed,
     isGuestBooking: isGuestBooking(item),
     bookingSource: item.bookingSource ?? (isGuestBooking(item) ? 'Guest' : 'Registered'),
-    clinicId: item.clinicId,
-    clinicName: item.clinicName,
+    clinicId: item.clinicId, clinicName: item.clinicName,
   }
 }
 
 function mapAdminAppointment(item: any): AppointmentRow {
   return {
-    id: item.id,
-    code: item.code,
+    id: item.id, code: item.code,
     patientName: item.user?.name ?? item.guestName ?? item.name ?? 'مراجع',
     patientPhoneNumber: item.user?.phoneNumber ?? item.guestPhoneNumber ?? item.phoneNumber,
-    appointmentDate: item.appointmentDate,
-    queueNumber: item.queueNumber,
-    status: normalizeStatus(item.status),
-    isPhoneConfirmed: item.isPhoneConfirmed,
+    appointmentDate: item.appointmentDate, queueNumber: item.queueNumber,
+    status: normalizeStatus(item.status), isPhoneConfirmed: item.isPhoneConfirmed,
     isGuestBooking: isGuestBooking(item),
     bookingSource: item.bookingSource ?? (isGuestBooking(item) ? 'Guest' : 'Registered'),
     clinicId: item.clinic?.id ?? item.clinicId,
@@ -159,27 +165,26 @@ function mapAdminAppointment(item: any): AppointmentRow {
   }
 }
 
+// API calls
 async function loadClinics() {
-  console.log('[AppointmentsView] loadClinics isAdmin=', isAdmin.value)
   if (isAdmin.value) return
   try {
-    const response = await api.get<ApiResponse<ClinicItem[]>>('/Clinic/my')
-    clinics.value = response.data.data
-  } catch (error: any) {
-    if (error.response?.status === 404) clinics.value = []
-    else notifications.show(getErrorMessage(error), 'error')
+    const r = await api.get<ApiResponse<ClinicItem[]>>('/Clinic/my')
+    clinics.value = r.data.data
+  } catch (e: any) {
+    if (e.response?.status === 404) clinics.value = []
+    else showError(getErrorMessage(e))
   }
 }
 
 async function loadDoctors() {
-  console.log('[AppointmentsView] loadDoctors called isAdmin=', isAdmin.value)
   if (!isAdmin.value) return
   try {
-    const response = await api.get<ApiResponse<PageResult<DoctorItem>>>('/Doctor', { params: { page: 1, pageSize: 100 } })
-    doctors.value = response.data.data.items
-  } catch (error: any) {
-    if (error.response?.status === 404) doctors.value = []
-    else notifications.show(getErrorMessage(error), 'error')
+    const r = await api.get<ApiResponse<PageResult<DoctorItem>>>('/Doctor', { params: { page: 1, pageSize: 100 } })
+    doctors.value = r.data.data.items
+  } catch (e: any) {
+    if (e.response?.status === 404) doctors.value = []
+    else showError(getErrorMessage(e))
   }
 }
 
@@ -188,34 +193,32 @@ async function loadAdminClinics(doctorId: string) {
   clinics.value = []
   if (!doctorId) return
   try {
-    const response = await api.get<ApiResponse<ClinicItem[]>>(`/Clinic/doctor/${doctorId}/admin`)
-    clinics.value = response.data.data
-  } catch (error: any) {
-    if (error.response?.status !== 404) notifications.show(getErrorMessage(error), 'error')
+    const r = await api.get<ApiResponse<ClinicItem[]>>(`/Clinic/doctor/${doctorId}/admin`)
+    clinics.value = r.data.data
+  } catch (e: any) {
+    if (e.response?.status !== 404) showError(getErrorMessage(e))
   }
 }
 
 async function loadAppointments() {
   loading.value = true
-  console.log('[AppointmentsView] loadAppointments isAdmin=', isAdmin.value)
   try {
     if (isAdmin.value) {
-      const response = await api.get<ApiResponse<PageResult<any>>>('/Appointment/GetListAsync', {
+      const r = await api.get<ApiResponse<PageResult<any>>>('/Appointment/GetListAsync', {
         params: {
           doctorId: filters.doctorId || undefined,
           clinicId: filters.clinicId || undefined,
           fromDate: filters.fromDate || undefined,
           toDate: filters.toDate || undefined,
           status: filters.status === '' ? undefined : filters.status,
-          page: page.value,
-          pageSize: 10,
+          page: page.value, pageSize: 10,
         },
       })
-      appointments.value = response.data.data.items.map(mapAdminAppointment)
-      totalPages.value = response.data.data.totalPages
-      totalItems.value = response.data.data.totalItems
+      appointments.value = r.data.data.items.map(mapAdminAppointment)
+      totalPages.value = r.data.data.totalPages
+      totalItems.value = r.data.data.totalItems
     } else {
-      const response = await api.get<ApiResponse<AppointmentItem[]>>('/Appointment/doctor/my', {
+      const r = await api.get<ApiResponse<AppointmentItem[]>>('/Appointment/doctor/my', {
         params: {
           clinicId: filters.clinicId || undefined,
           fromDate: filters.fromDate || undefined,
@@ -223,20 +226,16 @@ async function loadAppointments() {
           status: filters.status === '' ? undefined : filters.status,
         },
       })
-      appointments.value = response.data.data.map(mapDoctorAppointment)
+      appointments.value = r.data.data.map(mapDoctorAppointment)
       totalPages.value = 1
       totalItems.value = appointments.value.length
       if (doctorPage.value > doctorTotalPages.value) doctorPage.value = doctorTotalPages.value
     }
-  } catch (error: any) {
-    if (error.response?.status === 404) {
-      appointments.value = []
-      totalPages.value = 1
-      totalItems.value = 0
-    } else notifications.show(getErrorMessage(error), 'error')
-  } finally {
-    loading.value = false
-  }
+  } catch (e: any) {
+    if (e.response?.status === 404) {
+      appointments.value = []; totalPages.value = 1; totalItems.value = 0
+    } else showError(getErrorMessage(e))
+  } finally { loading.value = false }
 }
 
 async function loadQueueAvailability() {
@@ -244,35 +243,29 @@ async function loadQueueAvailability() {
   if (!manualForm.clinicId || !manualForm.appointmentDate) return
   queueLoading.value = true
   try {
-    const response = await api.get<ApiResponse<QueueAvailabilityItem[]>>(`/Appointment/queue-availability/${manualForm.clinicId}`, {
-      params: { fromDate: manualForm.appointmentDate, days: 1 },
-    })
-    queueAvailability.value = response.data.data[0]
-  } catch (error) {
-    notifications.show(getErrorMessage(error), 'error')
-  } finally {
-    queueLoading.value = false
-  }
+    const r = await api.get<ApiResponse<QueueAvailabilityItem[]>>(
+      `/Appointment/queue-availability/${manualForm.clinicId}`,
+      { params: { fromDate: manualForm.appointmentDate, days: 1 } },
+    )
+    queueAvailability.value = r.data.data[0]
+  } catch (e) { showError(getErrorMessage(e)) }
+  finally { queueLoading.value = false }
 }
 
-async function toggleStatus(appointment: AppointmentRow) {
+async function toggleStatus(a: AppointmentRow) {
   try {
-    const response = await api.post<ApiResponse<object>>('/Appointment/toggle-status', null, { params: { appointmentId: appointment.id } })
-    notifications.show(response.data.message)
+    const r = await api.post<ApiResponse<object>>('/Appointment/toggle-status', null, { params: { appointmentId: a.id } })
+    showSuccess(r.data.message)
     await loadAppointments()
-  } catch (error) {
-    notifications.show(getErrorMessage(error), 'error')
-  }
+  } catch (e) { showError(getErrorMessage(e)) }
 }
 
-async function rejectPending(appointment: AppointmentRow) {
+async function rejectPending(a: AppointmentRow) {
   try {
-    const response = await api.post<ApiResponse<object>>('/Appointment/reject-pending', null, { params: { appointmentId: appointment.id } })
-    notifications.show(response.data.message)
+    const r = await api.post<ApiResponse<object>>('/Appointment/reject-pending', null, { params: { appointmentId: a.id } })
+    showSuccess(r.data.message)
     await loadAppointments()
-  } catch (error) {
-    notifications.show(getErrorMessage(error), 'error')
-  }
+  } catch (e) { showError(getErrorMessage(e)) }
 }
 
 async function confirmCancel() {
@@ -280,25 +273,21 @@ async function confirmCancel() {
   if (cancelAppointment.value.status === 0) await rejectPending(cancelAppointment.value)
   else await toggleStatus(cancelAppointment.value)
   cancelAppointment.value = undefined
+  cancelDialog.value = false
 }
 
-async function complete(appointment: AppointmentRow) {
+async function complete(a: AppointmentRow) {
   try {
-    const response = await api.post<ApiResponse<object>>('/Appointment/complete', null, { params: { appointmentId: appointment.id } })
-    notifications.show(response.data.message)
+    const r = await api.post<ApiResponse<object>>('/Appointment/complete', null, { params: { appointmentId: a.id } })
+    showSuccess(r.data.message)
     await loadAppointments()
-  } catch (error) {
-    notifications.show(getErrorMessage(error), 'error')
-  }
+  } catch (e) { showError(getErrorMessage(e)) }
 }
 
 function openManualBooking() {
   Object.assign(manualForm, {
     clinicId: clinics.value[0]?.id ? String(clinics.value[0].id) : '',
-    appointmentDate: today(),
-    patientName: '',
-    patientPhoneNumber: '',
-    notes: '',
+    appointmentDate: today(), patientName: '', patientPhoneNumber: '', notes: '',
   })
   manualOpen.value = true
   loadQueueAvailability()
@@ -307,95 +296,132 @@ function openManualBooking() {
 async function createManualBooking() {
   saving.value = true
   try {
-    const response = await api.post<ApiResponse<object>>('/Appointment/manual', {
+    const r = await api.post<ApiResponse<object>>('/Appointment/manual', {
       clinicId: Number(manualForm.clinicId),
       appointmentDate: manualForm.appointmentDate,
       patientName: manualForm.patientName,
       patientPhoneNumber: manualForm.patientPhoneNumber,
       notes: manualForm.notes || null,
     })
-    notifications.show(response.data.message)
+    showSuccess(r.data.message)
     manualOpen.value = false
     await loadAppointments()
-  } catch (error) {
-    notifications.show(getErrorMessage(error), 'error')
-  } finally {
-    saving.value = false
-  }
+  } catch (e) { showError(getErrorMessage(e)) }
+  finally { saving.value = false }
 }
 
-function applyFilters() {
-  page.value = 1
-  doctorPage.value = 1
-  loadAppointments()
+function applyFilters() { page.value = 1; doctorPage.value = 1; loadAppointments() }
+
+function changePage(n: number) {
+  if (isAdmin.value) { page.value = n; loadAppointments() }
+  else doctorPage.value = n
 }
 
-function changePage(newPage: number) {
-  if (isAdmin.value) {
-    page.value = newPage
-    loadAppointments()
-  } else {
-    doctorPage.value = newPage
-  }
-}
-
-watch(() => filters.doctorId, (doctorId) => {
-  if (isAdmin.value) loadAdminClinics(doctorId)
-})
+watch(() => filters.doctorId, (id) => { if (isAdmin.value) loadAdminClinics(id) })
 watch(() => [manualForm.clinicId, manualForm.appointmentDate], loadQueueAvailability)
 
-onMounted(async () => {
-  console.log('[AppointmentsView] isAdmin:', isAdmin.value, 'isDoctor:', isDoctor.value, 'roles:', auth.roles)
-  try {
-    await Promise.all([loadClinics(), loadDoctors()])
-    await loadAppointments()
-  } catch (error) {
-    notifications.show(getErrorMessage(error), 'error')
-  }
-})
+onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointments))
 </script>
 
 <template>
-  <div>
-    <div class="page-heading">
-      <div>
-        <span class="section-kicker">متابعة المراجعين</span>
-        <h2>{{ isAdmin ? 'كل الحجوزات' : 'الحجوزات اليومية' }}</h2>
-        <p>{{ isAdmin ? 'اعرض حجوزات النظام حسب الطبيب والعيادة والتاريخ والحالة.' : 'اعرض حجوزات عياداتك حسب التاريخ والحالة وحدّث مسار كل حجز.' }}</p>
+  <div class="appointments-page">
+
+    <!-- Header -->
+    <PageHeader
+      :title="isAdmin ? 'كل الحجوزات' : 'الحجوزات اليومية'"
+      subtitle="متابعة المراجعين"
+    >
+      <template #actions>
+        <v-btn
+          variant="outlined"
+          color="primary"
+          prepend-icon="mdi-refresh"
+          :loading="loading"
+          @click="loadAppointments"
+        >
+          تحديث
+        </v-btn>
+        <v-btn
+          v-if="!isAdmin"
+          color="primary"
+          prepend-icon="mdi-plus"
+          :disabled="!clinics.length"
+          @click="openManualBooking"
+        >
+          حجز يدوي
+        </v-btn>
+      </template>
+    </PageHeader>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+      <!-- Doctor (Admin) -->
+      <div v-if="isAdmin" class="filter-field">
+        <label class="filter-label">الطبيب</label>
+        <select v-model="filters.doctorId" class="filter-select">
+          <option value="">كل الأطباء</option>
+          <option v-for="d in doctors" :key="d.id" :value="d.id">{{ d.name }}</option>
+        </select>
       </div>
-      <div v-if="isAdmin" class="heading-actions">
-        <button class="secondary-button" type="button" :disabled="loading" @click="loadAppointments"><RefreshCw :size="17" /> تحديث</button>
+
+      <!-- Clinic -->
+      <div class="filter-field">
+        <label class="filter-label">العيادة</label>
+        <select v-model="filters.clinicId" class="filter-select" :disabled="isAdmin && !filters.doctorId">
+          <option value="">{{ isAdmin ? 'كل عيادات الطبيب' : 'كل العيادات' }}</option>
+          <option v-for="c in clinics" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
       </div>
+
+      <!-- From Date -->
+      <div class="filter-field">
+        <label class="filter-label">من</label>
+        <input v-model="filters.fromDate" type="date" class="filter-input" />
+      </div>
+
+      <!-- To Date -->
+      <div class="filter-field">
+        <label class="filter-label">إلى</label>
+        <input v-model="filters.toDate" type="date" class="filter-input" />
+      </div>
+
+      <!-- Status -->
+      <div class="filter-field">
+        <label class="filter-label">الحالة</label>
+        <select v-model="filters.status" class="filter-select">
+          <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+        </select>
+      </div>
+
+      <!-- Search Button -->
+      <v-btn color="primary" prepend-icon="mdi-magnify" class="filter-btn" @click="applyFilters">
+        بحث
+      </v-btn>
     </div>
 
-    <form class="filter-card appointment-filters" :class="{ 'admin-appointment-filters': isAdmin }" @submit.prevent="applyFilters">
-      <select v-if="isAdmin" v-model="filters.doctorId">
-        <option value="">كل الأطباء</option>
-        <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">{{ doctor.name }}</option>
-      </select>
-      <select v-model="filters.clinicId" :disabled="isAdmin && !filters.doctorId">
-        <option value="">{{ isAdmin ? 'كل عيادات الطبيب' : 'كل العيادات' }}</option>
-        <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">{{ clinic.name }}</option>
-      </select>
-      <input v-model="filters.fromDate" type="date" aria-label="من تاريخ" />
-      <input v-model="filters.toDate" type="date" aria-label="إلى تاريخ" />
-      <select v-model="filters.status">
-        <option v-for="status in statusOptions" :key="status.value" :value="status.value">{{ status.label }}</option>
-      </select>
-      <div class="appointment-filter-actions">
-        <button class="compact-primary" type="submit"><Search :size="16" /> بحث</button>
-        <button v-if="!isAdmin" class="secondary-button" type="button" :disabled="loading" @click="loadAppointments"><RefreshCw :size="17" /> تحديث</button>
-        <button v-if="!isAdmin" class="compact-primary" type="button" :disabled="!clinics.length" @click="openManualBooking"><Plus :size="17" /> حجز يدوي</button>
-      </div>
-    </form>
-
-    <section class="table-card">
+    <!-- Table -->
+    <v-card elevation="0" class="table-card">
       <div class="table-toolbar">
-        <CalendarCheck :size="19" />
+        <v-icon icon="mdi-calendar-check" color="primary" size="20" />
         <strong>قائمة الحجوزات</strong>
-        <span class="records-count">{{ totalItems }} حجز</span>
+        <v-chip size="small" color="primary" variant="tonal">{{ totalItems }} حجز</v-chip>
       </div>
-      <div class="table-scroll">
+
+      <!-- Loading -->
+      <div v-if="loading" class="table-loading">
+        <v-skeleton-loader v-for="i in 5" :key="i" type="table-row" />
+      </div>
+
+      <!-- Empty -->
+      <EmptyState
+        v-else-if="!appointments.length"
+        icon="mdi-calendar-blank"
+        title="لا توجد حجوزات"
+        description="لا توجد حجوزات مطابقة للفلاتر المحددة"
+      />
+
+      <!-- Table -->
+      <div v-else class="table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -412,64 +438,489 @@ onMounted(async () => {
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading"><td class="table-message" :colspan="isAdmin ? 9 : 8">جارِ تحميل الحجوزات...</td></tr>
-            <tr v-else-if="!appointments.length"><td class="table-message" :colspan="isAdmin ? 9 : 8">لا توجد حجوزات مطابقة للفلاتر المحددة.</td></tr>
-            <tr v-for="appointment in visibleAppointments" v-else :key="appointment.id">
-              <td><strong>#{{ appointment.queueNumber }}</strong><small class="block-muted">{{ appointment.code }}</small></td>
-              <td><strong>{{ appointment.patientName || 'مراجع' }}</strong><small class="block-muted">{{ appointment.patientPhoneNumber || '-' }}</small></td>
-              <td><span class="status-badge" :class="bookingSourceMeta(appointment).className">{{ bookingSourceMeta(appointment).label }}</span></td>
-              <td v-if="isAdmin">{{ appointment.doctorName || '-' }}</td>
-              <td>{{ appointment.clinicName }}</td>
-              <td>{{ formatDate(appointment.appointmentDate) }}</td>
-              <td><span class="status-badge" :class="appointment.isPhoneConfirmed ? 'status-success' : 'status-warning'">{{ appointment.isPhoneConfirmed ? 'مؤكد' : 'بانتظار OTP' }}</span></td>
-              <td><span class="status-badge" :class="statusMeta(appointment.status).className">{{ statusMeta(appointment.status).label }}</span></td>
-              <td v-if="isAdmin"><span class="status-badge" :class="paymentMeta(appointment.paymentStatus).className">{{ paymentMeta(appointment.paymentStatus).label }}</span></td>
+            <tr v-for="a in visibleAppointments" :key="a.id">
+              <!-- Queue # -->
+              <td>
+                <strong class="queue-number">#{{ a.queueNumber }}</strong>
+                <p class="row-sub">{{ a.code }}</p>
+              </td>
+
+              <!-- Patient -->
+              <td>
+                <strong>{{ a.patientName || 'مراجع' }}</strong>
+                <p class="row-sub">{{ a.patientPhoneNumber || '-' }}</p>
+              </td>
+
+              <!-- Booking Source -->
+              <td>
+                <v-chip
+                  size="small"
+                  :color="bookingSourceMeta(a).color"
+                  variant="tonal"
+                >
+                  {{ bookingSourceMeta(a).label }}
+                </v-chip>
+              </td>
+
+              <!-- Doctor (Admin) -->
+              <td v-if="isAdmin">{{ a.doctorName || '-' }}</td>
+
+              <!-- Clinic -->
+              <td>{{ a.clinicName }}</td>
+
+              <!-- Date -->
+              <td>{{ formatDate(a.appointmentDate) }}</td>
+
+              <!-- Phone Confirmed -->
+              <td>
+                <v-chip
+                  size="small"
+                  :color="a.isPhoneConfirmed ? 'success' : 'warning'"
+                  variant="tonal"
+                >
+                  {{ a.isPhoneConfirmed ? 'مؤكد' : 'بانتظار OTP' }}
+                </v-chip>
+              </td>
+
+              <!-- Status -->
+              <td>
+                <v-chip
+                  size="small"
+                  :color="statusMeta(a.status).color"
+                  variant="tonal"
+                >
+                  {{ statusMeta(a.status).label }}
+                </v-chip>
+              </td>
+
+              <!-- Payment (Admin) -->
+              <td v-if="isAdmin">
+                <v-chip
+                  size="small"
+                  :color="paymentMeta(a.paymentStatus).color"
+                  variant="tonal"
+                >
+                  {{ paymentMeta(a.paymentStatus).label }}
+                </v-chip>
+              </td>
+
+              <!-- Actions (Doctor) -->
               <td v-if="!isAdmin">
                 <div class="row-actions">
-                  <button v-if="appointment.status === 0" type="button" title="تأكيد الحجز" @click="toggleStatus(appointment)"><Check :size="16" /></button>
-                  <a v-if="appointment.patientPhoneNumber" class="row-link" :href="`tel:${appointment.patientPhoneNumber}`" title="اتصال بالمريض"><PhoneCall :size="16" /></a>
-                  <LongPressButton v-if="appointment.status === 0 || appointment.status === 1" button-class="danger-action" title="اضغط مطولاً لإلغاء الحجز" @confirm="cancelAppointment = appointment"><X :size="16" /></LongPressButton>
-                  <button v-if="appointment.status === 1" type="button" title="إكمال الحجز" @click="complete(appointment)"><CheckCheck :size="16" /></button>
+                  <!-- Confirm -->
+                  <v-btn
+                    v-if="a.status === 0"
+                    icon
+                    size="small"
+                    variant="tonal"
+                    color="success"
+                    title="تأكيد الحجز"
+                    @click="toggleStatus(a)"
+                  >
+                    <v-icon icon="mdi-check" size="16" />
+                  </v-btn>
+
+                  <!-- Call -->
+                  <v-btn
+                    v-if="a.patientPhoneNumber"
+                    icon
+                    size="small"
+                    variant="tonal"
+                    color="info"
+                    :href="`tel:${a.patientPhoneNumber}`"
+                    tag="a"
+                    title="اتصال بالمريض"
+                  >
+                    <v-icon icon="mdi-phone" size="16" />
+                  </v-btn>
+
+                  <!-- Cancel -->
+                  <v-btn
+                    v-if="a.status === 0 || a.status === 1"
+                    icon
+                    size="small"
+                    variant="tonal"
+                    color="error"
+                    title="إلغاء الحجز"
+                    @click="cancelAppointment = a; cancelDialog = true"
+                  >
+                    <v-icon icon="mdi-close" size="16" />
+                  </v-btn>
+
+                  <!-- Complete -->
+                  <v-btn
+                    v-if="a.status === 1"
+                    icon
+                    size="small"
+                    variant="tonal"
+                    color="primary"
+                    title="إكمال الحجز"
+                    @click="complete(a)"
+                  >
+                    <v-icon icon="mdi-check-all" size="16" />
+                  </v-btn>
                 </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <AppPagination :page="isAdmin ? page : doctorPage" :total-pages="isAdmin ? totalPages : doctorTotalPages" @change="changePage" />
-    </section>
 
-    <AppModal v-if="manualOpen" title="إضافة حجز يدوي" @close="manualOpen = false">
-      <form class="modal-form" @submit.prevent="createManualBooking">
-        <p class="modal-copy">أدخل بيانات المراجع القادم عبر الهاتف أو الاستقبال. يضاف الحجز مؤكداً مباشرة بدون OTP.</p>
-        <label><span>العيادة</span><select v-model="manualForm.clinicId" required><option disabled value="">اختر العيادة</option><option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">{{ clinic.name }}</option></select></label>
-        <label><span>تاريخ الحجز</span><input v-model="manualForm.appointmentDate" type="date" :min="today()" required /></label>
-        <div v-if="queueAvailability" class="queue-box" :class="{ unavailable: !canCreateManual }">
-          <strong>{{ queueAvailability.isAvailable ? 'الأدوار المتاحة' : 'اليوم غير متاح للحجز' }}</strong>
-          <span v-if="queueAvailability.isAvailable">{{ queueAvailability.remainingAppointments }} متبقي من {{ queueAvailability.maxAppointments }}</span>
-          <span v-else>{{ queueAvailability.closureReason || 'لا يوجد دوام لهذا اليوم.' }}</span>
-        </div>
-        <div v-else-if="queueLoading" class="queue-box">جارِ فحص توفر الأدوار...</div>
-        <label><span>اسم المراجع</span><input v-model="manualForm.patientName" required maxlength="200" /></label>
-        <label><span>رقم الهاتف</span><input v-model="manualForm.patientPhoneNumber" required maxlength="30" placeholder="07XXXXXXXXX" /></label>
-        <label><span>ملاحظات</span><textarea v-model="manualForm.notes" rows="3" maxlength="1000" /></label>
-        <div class="modal-actions"><button class="secondary-button" type="button" @click="manualOpen = false">تراجع</button><button class="compact-primary" type="submit" :disabled="saving || queueLoading || !canCreateManual">{{ saving ? 'جارِ الحفظ...' : 'تثبيت الحجز' }}</button></div>
-      </form>
-    </AppModal>
+      <!-- Pagination -->
+      <div v-if="(isAdmin ? totalPages : doctorTotalPages) > 1" class="pagination-bar">
+        <v-pagination
+          :model-value="isAdmin ? page : doctorPage"
+          :length="isAdmin ? totalPages : doctorTotalPages"
+          :total-visible="5"
+          density="compact"
+          color="primary"
+          @update:model-value="changePage"
+        />
+      </div>
+    </v-card>
 
-    <AppModal v-if="cancelAppointment" title="تأكيد إلغاء الحجز" @close="cancelAppointment = undefined">
-      <p class="modal-copy">سيتم إلغاء حجز <strong>{{ cancelAppointment.patientName || 'المراجع' }}</strong> ذي الدور <strong>#{{ cancelAppointment.queueNumber }}</strong>. هل تريد المتابعة؟</p>
-      <div class="modal-actions"><button class="secondary-button" type="button" @click="cancelAppointment = undefined">تراجع</button><LongPressButton button-class="danger-button" title="اضغط مطولاً لتأكيد الإلغاء" @confirm="confirmCancel">تأكيد الإلغاء</LongPressButton></div>
-    </AppModal>
+    <!-- Manual Booking Dialog -->
+    <v-dialog v-model="manualOpen" max-width="500">
+      <v-card>
+        <v-card-title class="dialog-title">
+          <v-icon icon="mdi-calendar-plus" color="primary" size="22" />
+          إضافة حجز يدوي
+        </v-card-title>
+        <v-divider />
+
+        <v-card-text class="dialog-body">
+          <p class="dialog-desc">
+            أدخل بيانات المراجع القادم عبر الهاتف أو الاستقبال. يضاف الحجز مؤكداً مباشرة بدون OTP.
+          </p>
+
+          <div class="form-fields">
+            <!-- Clinic -->
+            <div class="form-field">
+              <label class="form-label">العيادة</label>
+              <select v-model="manualForm.clinicId" class="form-select" required>
+                <option disabled value="">اختر العيادة</option>
+                <option v-for="c in clinics" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </select>
+            </div>
+
+            <!-- Date -->
+            <div class="form-field">
+              <label class="form-label">تاريخ الحجز</label>
+              <input v-model="manualForm.appointmentDate" type="date" class="form-input" :min="today()" required />
+            </div>
+
+            <!-- Queue Availability -->
+            <div v-if="queueLoading" class="queue-box">
+              <v-progress-circular size="16" width="2" indeterminate color="primary" />
+              جارِ فحص توفر الأدوار...
+            </div>
+            <div
+              v-else-if="queueAvailability"
+              class="queue-box"
+              :class="{ 'queue-unavailable': !queueAvailability.isAvailable }"
+            >
+              <v-icon
+                :icon="queueAvailability.isAvailable ? 'mdi-check-circle' : 'mdi-alert-circle'"
+                :color="queueAvailability.isAvailable ? 'success' : 'error'"
+                size="18"
+              />
+              <div>
+                <strong>{{ queueAvailability.isAvailable ? 'الأدوار المتاحة' : 'اليوم غير متاح' }}</strong>
+                <p v-if="queueAvailability.isAvailable">
+                  {{ queueAvailability.remainingAppointments }} متبقي من {{ queueAvailability.maxAppointments }}
+                </p>
+                <p v-else>{{ queueAvailability.closureReason || 'لا يوجد دوام لهذا اليوم.' }}</p>
+              </div>
+            </div>
+
+            <!-- Patient Name -->
+            <div class="form-field">
+              <label class="form-label">اسم المراجع</label>
+              <input v-model="manualForm.patientName" class="form-input" required maxlength="200" />
+            </div>
+
+            <!-- Phone -->
+            <div class="form-field">
+              <label class="form-label">رقم الهاتف</label>
+              <input v-model="manualForm.patientPhoneNumber" class="form-input" required maxlength="30" placeholder="07XXXXXXXXX" />
+            </div>
+
+            <!-- Notes -->
+            <div class="form-field">
+              <label class="form-label">ملاحظات</label>
+              <textarea v-model="manualForm.notes" class="form-textarea" rows="3" maxlength="1000" />
+            </div>
+          </div>
+        </v-card-text>
+
+        <v-divider />
+        <v-card-actions class="dialog-actions">
+          <v-btn variant="outlined" @click="manualOpen = false">تراجع</v-btn>
+          <v-btn
+            color="primary"
+            :loading="saving"
+            :disabled="saving || queueLoading || !canCreateManual"
+            @click="createManualBooking"
+          >
+            تثبيت الحجز
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Cancel Confirm Dialog -->
+    <v-dialog v-model="cancelDialog" max-width="420">
+      <v-card>
+        <v-card-title class="dialog-title">
+          <v-icon icon="mdi-alert" color="error" size="22" />
+          تأكيد إلغاء الحجز
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="dialog-body">
+          <p>
+            سيتم إلغاء حجز
+            <strong>{{ cancelAppointment?.patientName || 'المراجع' }}</strong>
+            ذي الدور
+            <strong>#{{ cancelAppointment?.queueNumber }}</strong>.
+            هل تريد المتابعة؟
+          </p>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="dialog-actions">
+          <v-btn variant="outlined" @click="cancelDialog = false; cancelAppointment = undefined">تراجع</v-btn>
+          <v-btn color="error" @click="confirmCancel">تأكيد الإلغاء</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
   </div>
 </template>
 
 <style scoped>
-.admin-appointment-filters { grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) 150px 150px 140px auto; }
-.appointment-filter-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: end; }
-.appointment-filter-actions .compact-primary,
-.appointment-filter-actions .secondary-button { flex: 1; white-space: nowrap; justify-content: center; }
-.queue-box { display: grid; gap: 4px; padding: 11px; color: #167163; border: 1px solid #c8eadf; border-radius: 9px; background: #f0faf6; font-size: 13px; }
-.queue-box.unavailable { color: #a23d3d; border-color: #ffd6d6; background: #fff3f3; }
-@media (max-width: 760px) { .admin-appointment-filters { grid-template-columns: 1fr; } }
+.appointments-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Filters */
+.filters-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  padding: var(--spacing-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.filter-input,
+.filter-select {
+  height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family-primary);
+  font-size: 14px;
+  outline: none;
+  min-width: 140px;
+  transition: border-color 0.2s;
+}
+
+.filter-input:focus,
+.filter-select:focus { border-color: var(--color-primary); }
+
+.filter-btn { align-self: flex-end; }
+
+/* Table Card */
+.table-card {
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.table-toolbar strong {
+  flex: 1;
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.table-loading { padding: var(--spacing-lg); }
+
+.table-scroll { overflow-x: auto; }
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  padding: 12px 16px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: middle;
+  color: var(--color-text);
+}
+
+.data-table tbody tr:hover {
+  background: var(--color-background);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.queue-number {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.row-sub {
+  margin: 2px 0 0 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.row-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+/* Pagination */
+.pagination-bar {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Dialog */
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) !important;
+  font-size: 16px !important;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.dialog-body { padding: var(--spacing-lg) !important; }
+
+.dialog-desc {
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  padding: 10px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus { border-color: var(--color-primary); }
+
+.form-textarea { resize: vertical; min-height: 80px; }
+
+/* Queue Box */
+.queue-box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: var(--color-success-light);
+  color: var(--color-success);
+  font-size: 13px;
+}
+
+.queue-box strong { display: block; font-weight: 700; margin-bottom: 2px; }
+.queue-box p { margin: 0; opacity: 0.8; font-size: 12px; }
+
+.queue-unavailable {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.dialog-actions {
+  padding: var(--spacing-lg) !important;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filters-bar { flex-direction: column; }
+  .filter-input, .filter-select { min-width: 100%; }
+  .data-table th, .data-table td { padding: 10px 12px; }
+}
 </style>
