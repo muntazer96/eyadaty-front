@@ -259,15 +259,21 @@ export interface ReviewItem {
   }
   rating: number
   comment: string
-  appoinmentId?: number
+  appointmentId?: number
 }
 
-export interface DoctorReviews {
+export interface DoctorReviewsPageResult {
   doctorId: number
   isEnabled: boolean
   averageRating?: number
   reviewCount: number
-  reviews: ReviewItem[]
+  totalItems: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+  items: ReviewItem[]
+  /** @deprecated old format fallback */
+  reviews?: ReviewItem[]
 }
 
 export interface PublicDoctorListItem {

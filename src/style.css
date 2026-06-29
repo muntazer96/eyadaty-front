@@ -303,3 +303,9 @@ textarea:focus-visible {
     display: none;
   }
 }
+
+/* Fix Vuetify button hover icon color */
+.v-btn:hover .v-icon { color: inherit !important; }
+.v-btn--icon:hover .v-icon { color: inherit !important; }
+.v-btn__overlay { opacity: 0 !important; }
+.v-btn:hover > .v-btn__overlay { opacity: 0.08 !important; }

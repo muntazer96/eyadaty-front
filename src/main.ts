@@ -5,6 +5,7 @@ import { pinia } from './stores/index.ts'
 import vuetify from '../Vuetify.config.ts'
 import './style.css'
 import '@mdi/font/css/materialdesignicons.css'
+//import '../vuetify-fixes.css' 
 
 
 createApp(App)

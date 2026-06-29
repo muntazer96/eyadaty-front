@@ -1,34 +1,57 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
-import type { ApiResponse, DoctorReviews } from '../types/api'
+import type { ApiResponse, DoctorReviewsPageResult, ReviewItem } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
 
 const { error: showError } = useNotifications()
 
 const loading     = ref(false)
-const reviewsData = ref<DoctorReviews>()
+const data        = ref<DoctorReviewsPageResult>()
 const page        = ref(1)
-const pageSize    = 5
+const pageSize    = 10
 
-const reviews          = computed(() => reviewsData.value?.reviews ?? [])
-const totalPages       = computed(() => Math.max(1, Math.ceil(reviews.value.length / pageSize)))
-const paginatedReviews = computed(() => reviews.value.slice((page.value - 1) * pageSize, page.value * pageSize))
-const average          = computed(() => reviewsData.value?.averageRating?.toFixed(1) ?? '-')
+const reviews = computed<ReviewItem[]>(() => data.value?.items ?? data.value?.reviews ?? [])
+
+const totalItems = computed(() => {
+  const d = data.value
+  return d?.totalItems ?? d?.reviewCount ?? reviews.value.length
+})
+
+const totalPages = computed(() => {
+  const d = data.value
+  if (d?.totalPages) return d.totalPages
+  return Math.max(1, Math.ceil(totalItems.value / pageSize))
+})
+
+const average = computed(() => data.value?.averageRating?.toFixed(1) ?? '-')
 
 function isFilled(rating: number, star: number) { return star <= rating }
+
+const displayed = computed(() => {
+  if (data.value?.items) return reviews.value
+  return reviews.value.slice((page.value - 1) * pageSize, page.value * pageSize)
+})
 
 async function loadReviews() {
   loading.value = true
   try {
-    const r = await api.get<ApiResponse<DoctorReviews>>('/Review/doctor/my')
-    reviewsData.value = r.data.data
-    if (page.value > totalPages.value) page.value = totalPages.value
+    const r = await api.get<ApiResponse<DoctorReviewsPageResult>>('/Review/doctor/my', {
+      params: { page: page.value, pageSize },
+    })
+    data.value = r.data.data
   } catch (e) { showError(getErrorMessage(e)) }
   finally { loading.value = false }
 }
+
+watch(page, () => {
+  if (!data.value?.items) {
+    data.value = undefined
+    loadReviews()
+  }
+})
 
 onMounted(loadReviews)
 </script>
@@ -48,18 +71,18 @@ onMounted(loadReviews)
     </div>
 
     <!-- Loading -->
-    <template v-if="loading && !reviewsData">
+    <template v-if="loading && !data">
       <div class="summary-grid">
         <v-skeleton-loader v-for="i in 2" :key="i" type="card" height="120" />
       </div>
       <v-skeleton-loader v-for="i in 3" :key="i" type="list-item-two-line" class="mb-2" />
     </template>
 
-    <template v-else-if="reviewsData">
+    <template v-else-if="data">
 
       <!-- Feature Disabled Alert -->
       <v-alert
-        v-if="!reviewsData.isEnabled"
+        v-if="!data.isEnabled"
         type="warning"
         variant="tonal"
         icon="mdi-shield-alert"
@@ -101,7 +124,7 @@ onMounted(loadReviews)
           </div>
           <div class="summary-info">
             <p class="summary-label">عدد التقييمات</p>
-            <strong class="summary-value">{{ reviewsData.reviewCount }}</strong>
+            <strong class="summary-value">{{ totalItems }}</strong>
             <span class="summary-sub">تقييم موثّق بحجز مكتمل</span>
           </div>
         </div>
@@ -117,7 +140,7 @@ onMounted(loadReviews)
 
       <!-- Reviews List -->
       <div v-else class="reviews-list">
-        <div v-for="review in paginatedReviews" :key="review.id" class="review-card">
+        <div v-for="review in displayed" :key="review.id" class="review-card">
           <!-- Header -->
           <div class="review-card-header">
             <div class="reviewer-info">
@@ -126,7 +149,7 @@ onMounted(loadReviews)
               </div>
               <div>
                 <strong class="reviewer-name">{{ review.user.name || 'مراجع' }}</strong>
-                <p v-if="review.appoinmentId" class="reviewer-sub">حجز رقم #{{ review.appoinmentId }}</p>
+                <p v-if="review.appointmentId" class="reviewer-sub">حجز رقم #{{ review.appointmentId }}</p>
               </div>
             </div>
 
