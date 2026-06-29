@@ -115,60 +115,53 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-gradient-to-br from-[#f6f9f8] via-[#eef8f5] to-[#e4f4f0] flex items-center justify-center p-4 sm:p-6">
-    <div class="w-full max-w-2xl">
+  <main class="download-page">
+    <div class="dl-container">
       <!-- Loading State -->
-      <div v-if="loading" class="flex flex-col items-center justify-center py-20 text-[var(--muted)] animate-[fadeInUp_0.4s_ease_both]">
-        <LoaderCircle :size="36" class="spin-icon mb-3" />
-        <span class="text-sm font-bold">جاري تحميل معلومات التطبيق...</span>
+      <div v-if="loading" class="dl-centered-stack dl-spinner-box">
+        <LoaderCircle :size="36" class="spin-icon" />
+        <span class="dl-text-muted dl-bold">جاري تحميل معلومات التطبيق...</span>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error && !latestRelease" class="flex flex-col items-center justify-center py-20 text-center animate-[fadeInUp_0.4s_ease_both]">
-        <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-red-50 text-red-500 mb-4">
+      <div v-else-if="error && !latestRelease" class="dl-centered-stack dl-spinner-box">
+        <div class="dl-icon-box dl-icon-box--error">
           <X :size="32" />
         </div>
-        <p class="text-sm text-[var(--muted)] max-w-xs">{{ error }}</p>
+        <p class="dl-text-muted dl-text-small">{{ error }}</p>
       </div>
 
       <!-- Main Card -->
-      <div v-else class="relative bg-white/80 backdrop-blur-xl border border-[var(--line)] rounded-3xl shadow-[var(--shadow)] p-6 sm:p-10 animate-[fadeInUp_0.5s_ease_both]">
+      <div v-else class="dl-card">
         <!-- Device Badge -->
-        <div v-if="detected" class="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-4 py-1.5 bg-[var(--primary)] text-white text-xs font-bold rounded-full shadow-lg whitespace-nowrap">
+        <div v-if="detected" class="dl-badge">
           <component :is="deviceIconComponent" :size="14" />
           {{ deviceLabel }}
         </div>
 
         <!-- Brand -->
-        <div class="flex flex-col items-center text-center pt-2">
-          <div class="flex items-center justify-center w-20 h-20 rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)] mb-5 shadow-sm">
+        <div class="dl-brand">
+          <div class="dl-logo-circle">
             <HeartPulse :size="40" />
           </div>
-
-          <h1 class="text-3xl sm:text-4xl font-extrabold text-[var(--ink)] mb-2">
-            {{ appName }}
-          </h1>
-          <p class="text-[var(--muted)] text-base sm:text-lg font-medium mb-1">
-            {{ appTagline }}
-          </p>
-          <p class="text-[var(--muted)] text-sm max-w-md leading-relaxed">
-            {{ appDescription }}
-          </p>
+          <h1 class="dl-title">{{ appName }}</h1>
+          <p class="dl-tagline">{{ appTagline }}</p>
+          <p class="dl-description">{{ appDescription }}</p>
 
           <!-- Version Info -->
-          <div v-if="latestRelease" class="mt-4 inline-flex items-center gap-3 px-4 py-2 rounded-full bg-[var(--primary-soft)] border border-[var(--primary)]/20">
-            <span class="text-xs font-bold text-[var(--primary)]">الإصدار {{ latestRelease.versionName }}</span>
-            <span class="w-px h-3 bg-[var(--primary)]/20"></span>
-            <span class="text-xs text-[var(--muted)]">{{ latestRelease.fileSize }}</span>
-            <span class="w-px h-3 bg-[var(--primary)]/20"></span>
-            <span class="text-xs text-[var(--muted)]">{{ latestRelease.downloadCount }} تحميل</span>
+          <div v-if="latestRelease" class="dl-version-badge">
+            <span class="dl-version-text">الإصدار {{ latestRelease.versionName }}</span>
+            <span class="dl-divider-vert"></span>
+            <span class="dl-text-muted">{{ latestRelease.fileSize }}</span>
+            <span class="dl-divider-vert"></span>
+            <span class="dl-text-muted">{{ latestRelease.downloadCount }} تحميل</span>
           </div>
         </div>
 
         <!-- Main Download Button (Android / iOS) -->
-        <div v-if="device !== 'desktop'" class="mt-8 text-center animate-[fadeInUp_0.5s_ease_0.2s_both]">
+        <div v-if="device !== 'desktop'" class="dl-section-center">
           <button
-            class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-4 bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white text-lg font-bold rounded-2xl shadow-lg shadow-[var(--primary)]/20 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            class="dl-btn-primary dl-btn-lg"
             :disabled="!downloadUrl"
             @click="handleDownload"
           >
@@ -177,9 +170,9 @@ onMounted(async () => {
           </button>
 
           <Transition name="ios-msg">
-            <div v-if="showIosMessage" class="mt-4 flex items-center justify-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl animate-[fadeInUp_0.3s_ease_both]">
+            <div v-if="showIosMessage" class="dl-msg-ios">
               <span>إصدار آيفون قريباً جداً — تابعنا للحصول على الإشعار!</span>
-              <button class="flex-shrink-0 p-1 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer" @click="showIosMessage = false">
+              <button class="dl-btn-close" @click="showIosMessage = false">
                 <X :size="16" />
               </button>
             </div>
@@ -187,13 +180,11 @@ onMounted(async () => {
         </div>
 
         <!-- Desktop: Both Options -->
-        <div v-else class="mt-8 space-y-3 animate-[fadeInUp_0.5s_ease_0.2s_both]">
-          <p class="text-center text-sm text-[var(--muted)] mb-4">
-            اختر النظام الذي تريد تحميل التطبيق له:
-          </p>
+        <div v-else class="dl-section-center">
+          <p class="dl-prompt">اختر النظام الذي تريد تحميل التطبيق له:</p>
 
           <button
-            class="w-full flex items-center justify-center gap-3 px-6 py-4 bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white font-bold rounded-2xl shadow-lg shadow-[var(--primary)]/20 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl active:scale-[0.99] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            class="dl-btn-primary dl-btn-block"
             :disabled="!downloadUrl"
             @click="downloadAndroid"
           >
@@ -202,21 +193,21 @@ onMounted(async () => {
           </button>
 
           <button
-            class="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white hover:bg-gray-50 text-[var(--ink)] font-bold border-2 border-[var(--line)] rounded-2xl transition-all duration-300 hover:border-[var(--primary)]/30 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+            class="dl-btn-outline dl-btn-block"
             @click="downloadIos"
           >
             <Apple :size="20" />
             <span v-if="iosAppStoreUrl">تحميل من App Store</span>
-            <span v-else class="flex items-center gap-2">
+            <span v-else class="dl-inline-group">
               إصدار آيفون — قريباً
-              <span class="px-2 py-0.5 text-[11px] bg-amber-100 text-amber-700 rounded-full font-bold">قريباً</span>
+              <span class="dl-chip-soon">قريباً</span>
             </span>
           </button>
 
           <Transition name="ios-msg">
-            <div v-if="showIosMessage" class="flex items-center justify-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl animate-[fadeInUp_0.3s_ease_both]">
+            <div v-if="showIosMessage" class="dl-msg-ios">
               <span>إصدار آيفون قريباً جداً — تابعنا للحصول على الإشعار!</span>
-              <button class="flex-shrink-0 p-1 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer" @click="showIosMessage = false">
+              <button class="dl-btn-close" @click="showIosMessage = false">
                 <X :size="16" />
               </button>
             </div>
@@ -224,57 +215,47 @@ onMounted(async () => {
         </div>
 
         <!-- Release Notes -->
-        <div v-if="latestRelease?.releaseNotes.length" class="mt-8">
-          <div class="flex items-center gap-3 my-6">
-            <span class="flex-1 h-px bg-[var(--line)]"></span>
-            <span class="text-xs text-[var(--muted)] font-bold">ملاحظات الإصدار {{ latestRelease.versionName }}</span>
-            <span class="flex-1 h-px bg-[var(--line)]"></span>
+        <div v-if="latestRelease?.releaseNotes.length" class="dl-section">
+          <div class="dl-divider-line">
+            <span class="dl-divider-label">ملاحظات الإصدار {{ latestRelease.versionName }}</span>
           </div>
-          <ul class="space-y-2">
-            <li v-for="(note, i) in latestRelease.releaseNotes" :key="i"
-              class="flex items-start gap-2.5 text-sm text-[var(--ink)] leading-relaxed animate-[fadeInUp_0.3s_ease_both]"
-              :style="{ animationDelay: `${i * 0.06}s` }"
-            >
-              <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--primary)] flex-shrink-0"></span>
+          <ul class="dl-list">
+            <li v-for="(note, i) in latestRelease.releaseNotes" :key="i" class="dl-list-item" :style="{ animationDelay: `${i * 0.06}s` }">
+              <span class="dl-bullet"></span>
               {{ note }}
             </li>
           </ul>
         </div>
 
         <!-- Divider -->
-        <div class="flex items-center gap-3 my-8">
-          <span class="flex-1 h-px bg-[var(--line)]"></span>
-          <span class="text-xs text-[var(--muted)] font-bold">مميزات التطبيق</span>
-          <span class="flex-1 h-px bg-[var(--line)]"></span>
+        <div class="dl-divider-line">
+          <span class="dl-divider-label">مميزات التطبيق</span>
         </div>
 
         <!-- Features Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="dl-grid-4">
           <div v-for="(feature, i) in ['حجز مواعيد', 'ملفات طبية', 'تواصل مباشر', 'تذكيرات ذكية']" :key="i"
-            class="text-center p-3 rounded-xl bg-[var(--primary-soft)]/50 border border-[var(--line)]/50 transition-all duration-300 hover:bg-[var(--primary-soft)] hover:border-[var(--primary)]/20 hover:-translate-y-0.5"
+            class="dl-feature-card"
             :style="{ animationDelay: `${0.3 + i * 0.1}s` }"
           >
-            <div class="flex items-center justify-center w-10 h-10 mx-auto mb-2 rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]">
+            <div class="dl-feature-icon">
               <TabletSmartphone :size="18" />
             </div>
-            <span class="text-xs font-bold text-[var(--ink)]">{{ feature }}</span>
+            <span class="dl-feature-label">{{ feature }}</span>
           </div>
         </div>
 
         <!-- Screenshots Placeholder -->
-        <div class="mt-8">
-          <button
-            class="w-full flex items-center justify-between gap-3 px-5 py-3 rounded-xl bg-white border border-[var(--line)] transition-all duration-300 hover:border-[var(--primary)]/30 hover:bg-[var(--primary-soft)]/30 cursor-pointer"
-            @click="showScreenshots = !showScreenshots"
-          >
-            <span class="text-sm font-bold text-[var(--ink)]">لقطات من التطبيق</span>
-            <span class="text-[var(--muted)] text-xs transition-transform duration-300" :class="showScreenshots ? 'rotate-180' : ''">▼</span>
+        <div class="dl-section">
+          <button class="dl-trigger" @click="showScreenshots = !showScreenshots">
+            <span>لقطات من التطبيق</span>
+            <span class="dl-arrow" :class="{ 'dl-arrow--open': showScreenshots }">▼</span>
           </button>
 
           <Transition name="screenshots">
-            <div v-if="showScreenshots" class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div v-if="showScreenshots" class="dl-grid-4">
               <div v-for="i in 4" :key="i"
-                class="aspect-[9/16] rounded-2xl bg-gradient-to-br from-[var(--primary-soft)] to-gray-100 border border-[var(--line)] flex items-center justify-center text-[var(--muted)] text-xs font-bold animate-[fadeInUp_0.4s_ease_both]"
+                class="dl-screenshot-placeholder"
                 :style="{ animationDelay: `${i * 0.08}s` }"
               >
                 لقطة شاشة {{ i }}
@@ -284,10 +265,8 @@ onMounted(async () => {
         </div>
 
         <!-- Footer -->
-        <div class="mt-8 text-center">
-          <p class="text-xs text-[var(--muted)]">
-            جميع الحقوق محفوظة &copy; {{ new Date().getFullYear() }} — {{ appName }}
-          </p>
+        <div class="dl-footer">
+          <p>جميع الحقوق محفوظة &copy; {{ new Date().getFullYear() }} — {{ appName }}</p>
         </div>
       </div>
     </div>
@@ -295,12 +274,513 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* ── Layout ── */
+.download-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f6f9f8 0%, #eef8f5 50%, #e4f4f0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+@media (min-width: 640px) {
+  .download-page { padding: 24px; }
+}
+
+.dl-container {
+  width: 100%;
+  max-width: 672px;
+}
+
+.dl-centered-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dl-spinner-box {
+  padding: 80px 0;
+  text-align: center;
+}
+
+.dl-bold { font-weight: 700; }
+.dl-text-muted { color: var(--color-text-muted); }
+.dl-text-small { font-size: 14px; }
+.dl-inline-group { display: inline-flex; align-items: center; gap: 8px; }
+
+/* ── Card ── */
+.dl-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+  padding: 24px;
+  animation: fadeInUp 0.5s ease both;
+}
+
+@media (min-width: 640px) {
+  .dl-card { padding: 40px; }
+}
+
+/* ── Device Badge ── */
+.dl-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+}
+
+/* ── Brand ── */
+.dl-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 8px;
+}
+
+.dl-logo-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.dl-title {
+  margin: 0 0 8px;
+  font-size: clamp(30px, 5vw, 36px);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.dl-tagline {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 640px) {
+  .dl-tagline { font-size: 18px; }
+}
+
+.dl-description {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  max-width: 448px;
+  line-height: 1.625;
+}
+
+/* ── Version Badge ── */
+.dl-version-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  border: 1px solid rgba(19, 121, 107, 0.2);
+}
+
+.dl-version-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.dl-divider-vert {
+  width: 1px;
+  height: 12px;
+  background: rgba(19, 121, 107, 0.2);
+}
+
+/* ── Primary Button ── */
+.dl-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: none;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-family: var(--font-family-primary);
+  font-weight: 700;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(19, 121, 107, 0.2);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.dl-btn-primary:hover {
+  background: var(--color-primary-dark);
+  color: #ffffff;
+  transform: scale(1.02);
+  box-shadow: 0 12px 32px rgba(19, 121, 107, 0.3);
+}
+
+.dl-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.dl-btn-primary:focus-visible {
+  outline: 3px solid rgba(19, 121, 107, 0.3);
+  outline-offset: 2px;
+}
+
+.dl-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.dl-btn-primary:disabled:hover {
+  transform: none;
+}
+
+.dl-btn-primary svg {
+  color: #ffffff !important;
+  flex-shrink: 0;
+}
+
+.dl-btn-lg {
+  width: 100%;
+  padding: 16px 40px;
+  font-size: 18px;
+}
+
+@media (min-width: 640px) {
+  .dl-btn-lg { width: auto; }
+}
+
+.dl-btn-block {
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 16px;
+}
+
+/* ── Outline Button ── */
+.dl-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #ffffff;
+  color: var(--color-text);
+  font-family: var(--font-family-primary);
+  font-weight: 700;
+  font-size: 16px;
+  border: 2px solid var(--color-border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  user-select: none;
+}
+
+.dl-btn-outline:hover {
+  background: var(--color-background);
+  border-color: var(--color-primary);
+  transform: scale(1.01);
+}
+
+.dl-btn-outline:active {
+  transform: scale(0.99);
+}
+
+.dl-btn-outline:focus-visible {
+  outline: 3px solid rgba(19, 121, 107, 0.3);
+  outline-offset: 2px;
+}
+
+.dl-btn-outline svg {
+  flex-shrink: 0;
+}
+
+.dl-btn-outline:hover svg {
+  color: var(--color-primary);
+}
+
+.dl-chip-soon {
+  padding: 2px 8px;
+  font-size: 11px;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+/* ── Sections ── */
+.dl-section-center {
+  margin-top: 32px;
+  text-align: center;
+  animation: fadeInUp 0.5s ease 0.2s both;
+}
+
+.dl-section-center > * + * {
+  margin-top: 12px;
+}
+
+.dl-section {
+  margin-top: 32px;
+}
+
+.dl-prompt {
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin: 0 0 16px;
+}
+
+.dl-msg-ios {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--color-warning-light);
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 14px;
+  border-radius: 12px;
+  animation: fadeInUp 0.3s ease both;
+}
+
+.dl-btn-close {
+  flex-shrink: 0;
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.dl-btn-close:hover {
+  background: rgba(251, 191, 36, 0.3);
+}
+
+/* ── Divider ── */
+.dl-divider-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.dl-divider-line::before,
+.dl-divider-line::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.dl-divider-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Release Notes List ── */
+.dl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dl-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--color-text);
+  line-height: 1.625;
+  animation: fadeInUp 0.3s ease both;
+}
+
+.dl-bullet {
+  margin-top: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* ── Features Grid ── */
+.dl-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .dl-grid-4 { grid-template-columns: repeat(4, 1fr); }
+}
+
+.dl-feature-card {
+  text-align: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(228, 244, 240, 0.5);
+  border: 1px solid rgba(226, 235, 233, 0.5);
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+
+.dl-feature-card:hover {
+  background: var(--color-primary-soft);
+  border-color: rgba(19, 121, 107, 0.2);
+  transform: translateY(-2px);
+}
+
+.dl-feature-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 8px;
+  border-radius: 12px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.dl-feature-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* ── Screenshot Toggle ── */
+.dl-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #ffffff;
+  cursor: pointer;
+  font-family: var(--font-family-primary);
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.dl-trigger:hover {
+  border-color: var(--color-primary);
+  background: rgba(228, 244, 240, 0.3);
+}
+
+.dl-trigger:focus-visible {
+  outline: 3px solid rgba(19, 121, 107, 0.3);
+  outline-offset: 2px;
+}
+
+.dl-trigger span:first-child {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.dl-arrow {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  transition: transform 0.3s ease;
+}
+
+.dl-arrow--open {
+  transform: rotate(180deg);
+}
+
+.dl-screenshot-placeholder {
+  aspect-ratio: 9/16;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--color-primary-soft), #f3f4f6);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  animation: fadeInUp 0.4s ease both;
+}
+
+/* ── Footer ── */
+.dl-footer {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.dl-footer p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+/* ── Helpers ── */
 .spin-icon {
   animation: spin 1s linear infinite;
+  margin-bottom: 12px;
 }
+
+.dl-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+}
+
+.dl-icon-box--error {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Transitions ── */
 .ios-msg-enter-active,
 .ios-msg-leave-active {
   transition: all 0.25s ease;
