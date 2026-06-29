@@ -12,8 +12,9 @@ const api = axios.create({
 
     //baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://192.174.0.120:81/api',
 
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://167.86.119.12/api',
+    //baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://167.86.119.12/api',
 
+    baseURL: import.meta.env.VITE_API_BASE_URL ?? 'https://eyadaty.techumbrella.net/api',
 
   timeout: 15000,
 })
