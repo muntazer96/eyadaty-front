@@ -449,6 +449,8 @@ function goBack() {
       </div>
 
       <div class="dr-footer-link">
+        <RouterLink to="/download">تحميل التطبيق</RouterLink>
+        <span class="dr-footer-sep">|</span>
         لديك طلب موجود؟
         <RouterLink to="/doctor-request/status">متابعة حالة الطلب</RouterLink>
       </div>
@@ -1047,6 +1049,11 @@ function goBack() {
 
 .dr-footer-link a:hover {
   text-decoration: underline;
+}
+
+.dr-footer-sep {
+  color: var(--color-border);
+  margin: 0 8px;
 }
 
 /* Transitions */
