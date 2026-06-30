@@ -59,14 +59,21 @@ watch(isPermanentSidebar, (isPermanent) => {
     />
 
     <v-main class="main-content">
-      <v-container fluid class="pa-6">
+      <v-container fluid class="content-container pa-6">
         <RouterView />
       </v-container>
 
       <footer class="app-footer">
         <div class="footer-content">
-          <p class="footer-text">© 2024 عيادتي. جميع الحقوق محفوظة</p>
-          <p class="footer-version">النسخة: 1.0.0</p>
+          <div class="footer-brand">
+            <span class="footer-text">برمجة وتطوير</span>
+            <img src="../assets/godev_logo.png" alt="GoDev" class="godev-logo" />
+          </div>
+
+          <a class="footer-phone" href="tel:07701234567" dir="ltr">
+            <v-icon icon="mdi-phone" size="15" />
+            0770 123 4567
+          </a>
         </div>
       </footer>
     </v-main>
@@ -80,31 +87,60 @@ watch(isPermanentSidebar, (isPermanent) => {
 
 .main-content {
   background-color: var(--color-background);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-container {
+  flex: 1 0 auto;
 }
 
 .app-footer {
   margin-top: auto;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xl);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-surface);
-  text-align: center;
 }
 
 .footer-content {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   gap: var(--spacing-lg);
   flex-wrap: wrap;
+  width: 100%;
 }
 
-.footer-text,
-.footer-version {
-  margin: 0;
-  padding: 0;
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.footer-text {
   font-size: 12px;
   color: var(--color-text-muted);
+  font-weight: 700;
   line-height: 1.4;
+}
+
+.godev-logo {
+  width: 58px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+}
+
+.footer-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 @media (max-width: 600px) {
@@ -117,8 +153,9 @@ watch(isPermanentSidebar, (isPermanent) => {
   }
 
   .footer-content {
-    flex-direction: column;
+    justify-content: center;
     gap: var(--spacing-md);
+    text-align: center;
   }
 }
 </style>
