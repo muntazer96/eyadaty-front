@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
@@ -15,12 +15,42 @@ const doctor   = ref<DoctorItem>()
 const clinics  = ref<ClinicItem[]>([])
 const loading  = ref(false)
 const doctorId = Number(route.params.doctorId)
+const doctorImage = ref('')
+let doctorImageBlobUrl = ''
 
-const apiOrigin   = computed(() => new URL(api.defaults.baseURL ?? 'https://localhost:7136/api').origin)
-const doctorImage = computed(() => doctor.value?.imageName ? `${apiOrigin.value}/DoctorImage/${doctor.value.imageName}` : '')
+function cleanupDoctorImage() {
+  if (doctorImageBlobUrl) {
+    URL.revokeObjectURL(doctorImageBlobUrl)
+    doctorImageBlobUrl = ''
+  }
+  doctorImage.value = ''
+}
+
+async function loadDoctorImage(path?: string): Promise<string> {
+  if (!path) return ''
+  const fileName = path.replace('/DoctorImage/', '')
+  const normalizedFileName = (() => {
+    try {
+      return decodeURIComponent(fileName)
+    } catch {
+      return fileName
+    }
+  })()
+
+  try {
+    const res = await api.get(`/Files/doctor-image/${encodeURIComponent(normalizedFileName)}`, {
+      responseType: 'blob',
+    })
+    doctorImageBlobUrl = URL.createObjectURL(res.data)
+    return doctorImageBlobUrl
+  } catch {
+    return ''
+  }
+}
 
 async function loadDetails() {
   loading.value = true
+  cleanupDoctorImage()
   try {
     const [doctorRes, clinicRes] = await Promise.all([
       api.get<ApiResponse<PageResult<DoctorItem>>>('/Doctor', { params: { id: doctorId, page: 1, pageSize: 1 } }),
@@ -28,6 +58,7 @@ async function loadDetails() {
     ])
     doctor.value  = doctorRes.data.data.items[0]
     clinics.value = clinicRes.data.data
+    doctorImage.value = await loadDoctorImage(doctor.value?.imageName)
     if (!doctor.value) showError('لم يتم العثور على ملف الطبيب.')
   } catch (e) {
     showError(getErrorMessage(e))
@@ -37,6 +68,7 @@ async function loadDetails() {
 }
 
 onMounted(loadDetails)
+onUnmounted(cleanupDoctorImage)
 </script>
 
 <template>

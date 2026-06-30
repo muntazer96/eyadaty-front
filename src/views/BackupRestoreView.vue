@@ -294,12 +294,17 @@ onMounted(fetchData)
 
           <div v-if="!useLatest" class="form-field">
             <label class="form-label">اختر النسخة الاحتياطية</label>
-            <select v-model="selectedBackupId" class="form-select">
-              <option value="" disabled>-- اختر نسخة --</option>
-              <option v-for="b in completedBackups" :key="b.id" :value="b.id">
-                {{ b.fileName }} — {{ new Date(b.completedAt ?? b.createdAt).toLocaleDateString('ar-IQ') }} — {{ formatSize(b.sizeBytes) }}
-              </option>
-            </select>
+            <v-autocomplete
+              v-model="selectedBackupId"
+              :items="completedBackups.map(b => ({ value: b.id, label: `${b.fileName} - ${new Date(b.completedAt ?? b.createdAt).toLocaleDateString('ar-IQ')} - ${formatSize(b.sizeBytes)}` }))"
+              item-title="label"
+              item-value="value"
+              class="form-select"
+              density="compact"
+              variant="outlined"
+              hide-details
+              placeholder="اختر نسخة"
+            />
           </div>
 
           <div v-if="!useLatest && !completedBackups.length" class="no-backups-notice">
@@ -390,7 +395,7 @@ onMounted(fetchData)
                     size="small"
                     variant="tonal"
                     color="primary"
-                    title="تحميل"
+                    aria-label="تحميل"
                     :disabled="b.status !== 'Completed'"
                     @click="downloadBackup(b.id)"
                   >
@@ -401,7 +406,7 @@ onMounted(fetchData)
                     size="small"
                     variant="tonal"
                     color="error"
-                    title="حذف"
+                    aria-label="حذف"
                     :disabled="b.status === 'Queued' || b.status === 'Running'"
                     @click="confirmDelete(b.id)"
                   >

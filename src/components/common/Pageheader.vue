@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChevronLeft } from '@lucide/vue'
 
 export interface Breadcrumb {
   label: string
@@ -27,9 +25,7 @@ defineSlots<{
   title(): any
 }>()
 
-const route = useRoute()
-
-const pageTitle = computed(() => route.meta.title as string | undefined)
+useRoute()
 </script>
 
 <template>

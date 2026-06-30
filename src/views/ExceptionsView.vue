@@ -156,10 +156,18 @@ onMounted(async () => {
     <div class="filters-bar">
       <div class="filter-field">
         <label class="filter-label">العيادة</label>
-        <select v-model="clinicId" class="filter-select" @change="applyFilters">
-          <option value="" disabled>اختر العيادة</option>
-          <option v-for="c in clinics" :key="c.id" :value="c.id">{{ c.name }}</option>
-        </select>
+        <v-autocomplete
+          v-model="clinicId"
+          :items="clinics.map(c => ({ value: c.id, label: c.name }))"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+          placeholder="اختر العيادة"
+          @update:model-value="applyFilters"
+        />
       </div>
       <div class="filter-field">
         <label class="filter-label">من تاريخ</label>
@@ -549,6 +557,6 @@ onMounted(async () => {
 .move-date-field { background: white; padding: var(--spacing-md); border-radius: var(--radius-md); }
 
 /* Responsive */
-@media (max-width: 900px) { .exceptions-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .exceptions-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .exceptions-grid { grid-template-columns: 1fr; } .filters-bar { flex-direction: column; } .form-row { grid-template-columns: 1fr; } }
 </style>

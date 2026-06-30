@@ -300,7 +300,7 @@ onMounted(fetchReleases)
                     size="small"
                     variant="tonal"
                     :color="r.isActive ? 'warning' : 'success'"
-                    :title="r.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
+                    :aria-label="r.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
                     @click="toggleActive(r.id)"
                   >
                     <v-icon :icon="r.isActive ? 'mdi-close-circle' : 'mdi-check-circle'" size="16" />
@@ -310,7 +310,7 @@ onMounted(fetchReleases)
                     size="small"
                     variant="tonal"
                     color="error"
-                    title="حذف"
+                    aria-label="حذف"
                     @click="confirmDelete(r.id)"
                   >
                     <v-icon icon="mdi-delete" size="16" />

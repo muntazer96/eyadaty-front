@@ -637,7 +637,7 @@ onMounted(() => Promise.all([loadSummary(), loadCurrentSubscription()]))
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .stats-grid {
     grid-template-columns: 1fr;
   }

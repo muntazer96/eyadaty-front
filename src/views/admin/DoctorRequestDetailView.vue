@@ -523,7 +523,7 @@ onMounted(fetchData)
   justify-content: flex-end;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .info-grid {
     grid-template-columns: 1fr;
   }

@@ -34,9 +34,10 @@ const fileInput       = ref<HTMLInputElement>()
 let localPreviewUrl   = ''
 
 const filters = reactive({ name: '', specialization: '', iraqiProvince: '' })
+const defaultProvinceValue = provinces[0]?.value ?? 0
 const form    = reactive({
   id: 0, name: '', normalizedName: '', specializationId: '',
-  description: '', iraqiProvince: '0', birthDay: '', phoneNumber: '',
+  description: '', iraqiProvince: defaultProvinceValue, birthDay: '', phoneNumber: '',
   location: '', imageName: undefined as File | undefined,
 })
 
@@ -74,12 +75,12 @@ function resetForm(doctor?: DoctorItem) {
   Object.assign(form, doctor ? {
     id: doctor.id, name: doctor.name, normalizedName: doctor.normalizedName,
     specializationId: String(doctor.specialization.id),
-    description: doctor.description, iraqiProvince: String(doctor.iraqiProvince),
+    description: doctor.description, iraqiProvince: doctor.iraqiProvince,
     birthDay: doctor.birthDay, phoneNumber: doctor.phoneNumber,
     location: doctor.location, imageName: undefined,
   } : {
     id: 0, name: '', normalizedName: '', specializationId: '',
-    description: '', iraqiProvince: '0', birthDay: '', phoneNumber: '',
+    description: '', iraqiProvince: defaultProvinceValue, birthDay: '', phoneNumber: '',
     location: '', imageName: undefined,
   })
   clearImagePreview()
@@ -119,7 +120,7 @@ async function saveDoctor() {
     data.append('NormalizedName', form.normalizedName)
     data.append('SpecializationId', form.specializationId)
     data.append('Description', form.description)
-    data.append('IraqiProvince', form.iraqiProvince)
+    data.append('IraqiProvince', String(form.iraqiProvince))
     data.append('BirthDay', form.birthDay)
     data.append('PhoneNumber', form.phoneNumber)
     data.append('Location', form.location)
@@ -241,17 +242,29 @@ onBeforeUnmount(clearImagePreview)
       </div>
       <div class="filter-field">
         <label class="filter-label">الاختصاص</label>
-        <select v-model="filters.specialization" class="filter-select">
-          <option value="">كل الاختصاصات</option>
-          <option v-for="s in specializations" :key="s.id" :value="s.id">{{ s.name }}</option>
-        </select>
+        <v-autocomplete
+          v-model="filters.specialization"
+          :items="[{ value: '', label: 'كل الاختصاصات' }, ...specializations.map(s => ({ value: s.id, label: s.name }))]"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
       </div>
       <div class="filter-field">
         <label class="filter-label">المحافظة</label>
-        <select v-model="filters.iraqiProvince" class="filter-select">
-          <option value="">كل المحافظات</option>
-          <option v-for="p in provinces" :key="p.value" :value="p.value">{{ p.name }}</option>
-        </select>
+        <v-autocomplete
+          v-model="filters.iraqiProvince"
+          :items="[{ value: '', label: 'كل المحافظات' }, ...provinces.map(p => ({ value: p.value, label: p.name }))]"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
       </div>
       <v-btn color="primary" prepend-icon="mdi-magnify" class="filter-btn" @click="applyFilters">تطبيق</v-btn>
     </div>
@@ -334,16 +347,16 @@ onBeforeUnmount(clearImagePreview)
               <!-- Actions -->
               <td>
                 <div class="row-actions">
-                  <v-btn icon size="small" variant="text" color="info" title="عرض صفحة الطبيب" @click="router.push(`/doctors/${doctor.id}`)">
+                  <v-btn icon size="small" variant="text" color="info" aria-label="عرض صفحة الطبيب" @click="router.push(`/doctors/${doctor.id}`)">
                     <v-icon icon="mdi-file-document" size="16" />
                   </v-btn>
-                  <v-btn icon size="small" variant="text" color="primary" title="تعديل الطبيب" @click="resetForm(doctor)">
+                  <v-btn icon size="small" variant="text" color="primary" aria-label="تعديل الطبيب" @click="resetForm(doctor)">
                     <v-icon icon="mdi-pencil" size="16" />
                   </v-btn>
                   <v-btn
                     v-if="doctor.userId"
                     icon size="small" variant="text" color="warning"
-                    title="فصل الحساب"
+                    aria-label="فصل الحساب"
                     @click="askUnlink(doctor)"
                   >
                     <v-icon icon="mdi-link-off" size="16" />
@@ -351,12 +364,12 @@ onBeforeUnmount(clearImagePreview)
                   <v-btn
                     v-else
                     icon size="small" variant="text" color="success"
-                    title="ربط حساب"
+                    aria-label="ربط حساب"
                     @click="openLinkAccount(doctor)"
                   >
                     <v-icon icon="mdi-link" size="16" />
                   </v-btn>
-                  <v-btn icon size="small" variant="text" color="error" title="حذف الطبيب" @click="askDelete(doctor)">
+                  <v-btn icon size="small" variant="text" color="error" aria-label="حذف الطبيب" @click="askDelete(doctor)">
                     <v-icon icon="mdi-delete" size="16" />
                   </v-btn>
                 </div>
@@ -393,16 +406,30 @@ onBeforeUnmount(clearImagePreview)
             </div>
             <div class="form-field">
               <label class="form-label">الاختصاص <span class="required">*</span></label>
-              <select v-model="form.specializationId" class="form-select" required>
-                <option disabled value="">اختر الاختصاص</option>
-                <option v-for="s in specializations" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="form.specializationId"
+                :items="specializations.map(s => ({ value: s.id, label: s.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+                placeholder="اختر الاختصاص"
+              />
             </div>
             <div class="form-field">
               <label class="form-label">المحافظة <span class="required">*</span></label>
-              <select v-model="form.iraqiProvince" class="form-select" required>
-                <option v-for="p in provinces" :key="p.value" :value="p.value">{{ p.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="form.iraqiProvince"
+                :items="provinces.map(p => ({ value: p.value, label: p.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
             </div>
             <div class="form-field">
               <label class="form-label">تاريخ الميلاد <span class="required">*</span></label>

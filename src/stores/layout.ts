@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 export const useLayoutStore = defineStore('layout', () => {
   // State
-  const sidebarOpen = ref<boolean>(true)
+  const sidebarOpen = ref<boolean>(false)
   const sidebarRail = ref<boolean>(false)
   const showNotifications = ref<boolean>(false)
   const sidebarWidth = ref<number>(280)

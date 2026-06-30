@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends Record<string, any>">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 interface Props {
   modelValue?: boolean

@@ -78,6 +78,12 @@ function onSearchInput() {
   }, 400)
 }
 
+function clearSearch() {
+  search.value = ''
+  page.value = 1
+  fetchData()
+}
+
 onMounted(fetchData)
 </script>
 
@@ -88,17 +94,24 @@ onMounted(fetchData)
     <!-- Filters -->
     <v-card elevation="0" class="filters-card">
       <div class="filters-row">
-        <v-text-field
-          v-model="search"
-          density="compact"
-          variant="outlined"
-          placeholder="بحث بالاسم أو رقم الهاتف أو الكود..."
-          prepend-inner-icon="mdi-magnify"
-          hide-details
-          clearable
-          @input="onSearchInput"
-          @click:clear="search = ''; page = 1; fetchData()"
-        />
+        <div class="request-search">
+          <v-icon icon="mdi-magnify" size="20" class="request-search-icon" />
+          <input
+            v-model="search"
+            class="request-search-input"
+            placeholder="بحث بالاسم أو رقم الهاتف أو الكود..."
+            @input="onSearchInput"
+          />
+          <button
+            v-if="search"
+            type="button"
+            class="request-search-clear"
+            aria-label="مسح البحث"
+            @click="clearSearch"
+          >
+            <v-icon icon="mdi-close" size="16" />
+          </button>
+        </div>
         <v-select
           v-model="statusFilter"
           :items="statusOptions"
@@ -111,6 +124,7 @@ onMounted(fetchData)
           @update:model-value="page = 1; fetchData()"
         />
         <v-btn
+          class="refresh-button"
           variant="outlined"
           color="primary"
           prepend-icon="mdi-refresh"
@@ -205,18 +219,85 @@ onMounted(fetchData)
 }
 
 .filters-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 180px minmax(0, 1fr);
+  grid-template-areas: "refresh status search";
   gap: var(--spacing-md);
   align-items: center;
+  direction: ltr;
 }
 
-.filters-row :deep(.v-text-field) {
-  flex: 1;
+.request-search {
+  grid-area: search;
+  position: relative;
+  min-width: 0;
+  direction: rtl;
+}
+
+.request-search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  z-index: 1;
+  color: var(--color-text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.request-search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 40px 0 38px;
+  border: 1px solid rgba(0, 0, 0, 0.38);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.request-search-input:hover {
+  border-color: rgba(0, 0, 0, 0.72);
+}
+
+.request-search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.request-search-clear {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  transform: translateY(-50%);
+}
+
+.request-search-clear:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 .status-select {
+  grid-area: status;
   width: 180px;
-  flex-shrink: 0;
+  direction: rtl;
+}
+
+.refresh-button {
+  grid-area: refresh;
+  justify-self: start;
+  white-space: nowrap;
 }
 
 .table-card {
@@ -304,12 +385,22 @@ onMounted(fetchData)
   color: var(--color-text-muted);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .filters-row {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "search"
+      "status"
+      "refresh";
   }
   .status-select {
     width: 100%;
+  }
+  .request-search {
+    width: 100%;
+  }
+  .refresh-button {
+    justify-self: stretch;
   }
 }
 </style>

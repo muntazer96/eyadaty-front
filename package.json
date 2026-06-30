@@ -15,7 +15,6 @@
     "vue-tsc": "^3.3.3"
   },
   "dependencies": {
-    "@lucide/vue": "^1.17.0",
     "@mdi/font": "^7.4.47",
     "@mdi/js": "^7.4.47",
     "axios": "^1.16.1",

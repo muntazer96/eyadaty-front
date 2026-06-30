@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Apple, Download, HeartPulse, LoaderCircle, Monitor, Smartphone, TabletSmartphone, X } from '@lucide/vue'
 import api from '../services/api'
 import type { ApiResponse, AppReleaseResponse } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
@@ -32,9 +31,9 @@ const deviceLabel = computed(() => {
 
 const deviceIconComponent = computed(() => {
   switch (device.value) {
-    case 'android': return Smartphone
-    case 'ios': return Apple
-    default: return Monitor
+    case 'android': return 'mdi-cellphone'
+    case 'ios': return 'mdi-apple'
+    default: return 'mdi-monitor'
   }
 })
 
@@ -119,14 +118,14 @@ onMounted(async () => {
     <div class="dl-container">
       <!-- Loading State -->
       <div v-if="loading" class="dl-centered-stack dl-spinner-box">
-        <LoaderCircle :size="36" class="spin-icon" />
+        <v-icon icon="mdi-loading" size="36" class="spin-icon" />
         <span class="dl-text-muted dl-bold">جاري تحميل معلومات التطبيق...</span>
       </div>
 
       <!-- Error State -->
       <div v-else-if="error && !latestRelease" class="dl-centered-stack dl-spinner-box">
         <div class="dl-icon-box dl-icon-box--error">
-          <X :size="32" />
+          <v-icon icon="mdi-close" size="32" />
         </div>
         <p class="dl-text-muted dl-text-small">{{ error }}</p>
       </div>
@@ -135,14 +134,14 @@ onMounted(async () => {
       <div v-else class="dl-card">
         <!-- Device Badge -->
         <div v-if="detected" class="dl-badge">
-          <component :is="deviceIconComponent" :size="14" />
+          <v-icon :icon="deviceIconComponent" size="14" />
           {{ deviceLabel }}
         </div>
 
         <!-- Brand -->
         <div class="dl-brand">
           <div class="dl-logo-circle">
-            <HeartPulse :size="40" />
+            <v-icon icon="mdi-heart-pulse" size="40" />
           </div>
           <h1 class="dl-title">{{ appName }}</h1>
           <p class="dl-tagline">{{ appTagline }}</p>
@@ -165,7 +164,7 @@ onMounted(async () => {
             :disabled="!downloadUrl"
             @click="handleDownload"
           >
-            <Download :size="22" />
+            <v-icon icon="mdi-download" size="22" />
             {{ downloadUrl ? 'تحميل التطبيق' : 'لا يوجد إصدار متاح' }}
           </button>
 
@@ -173,7 +172,7 @@ onMounted(async () => {
             <div v-if="showIosMessage" class="dl-msg-ios">
               <span>إصدار آيفون قريباً جداً — تابعنا للحصول على الإشعار!</span>
               <button class="dl-btn-close" @click="showIosMessage = false">
-                <X :size="16" />
+                <v-icon icon="mdi-close" size="16" />
               </button>
             </div>
           </Transition>
@@ -188,7 +187,7 @@ onMounted(async () => {
             :disabled="!downloadUrl"
             @click="downloadAndroid"
           >
-            <Smartphone :size="20" />
+            <v-icon icon="mdi-cellphone" size="20" />
             {{ downloadUrl ? 'تحميل نسخة أندرويد (APK)' : 'لا يوجد إصدار متاح' }}
           </button>
 
@@ -196,7 +195,7 @@ onMounted(async () => {
             class="dl-btn-outline dl-btn-block"
             @click="downloadIos"
           >
-            <Apple :size="20" />
+            <v-icon icon="mdi-apple" size="20" />
             <span v-if="iosAppStoreUrl">تحميل من App Store</span>
             <span v-else class="dl-inline-group">
               إصدار آيفون — قريباً
@@ -208,7 +207,7 @@ onMounted(async () => {
             <div v-if="showIosMessage" class="dl-msg-ios">
               <span>إصدار آيفون قريباً جداً — تابعنا للحصول على الإشعار!</span>
               <button class="dl-btn-close" @click="showIosMessage = false">
-                <X :size="16" />
+                <v-icon icon="mdi-close" size="16" />
               </button>
             </div>
           </Transition>
@@ -234,7 +233,7 @@ onMounted(async () => {
         <div class="dl-section-center">
           <p class="dl-prompt">يمكنك الآن تقديم طلب لتحويل حسابك إلى حساب طبيب والاستفادة من خدمات عيادتي</p>
           <RouterLink to="/doctor-request" class="dl-btn-primary dl-btn-block" style="text-decoration: none;">
-            <HeartPulse :size="20" />
+            <v-icon icon="mdi-heart-pulse" size="20" />
             تقديم طلب التحويل إلى طبيب
           </RouterLink>
           <RouterLink to="/doctor-request/status" class="dl-btn-outline dl-btn-block" style="text-decoration: none;">
@@ -254,7 +253,7 @@ onMounted(async () => {
             :style="{ animationDelay: `${0.3 + i * 0.1}s` }"
           >
             <div class="dl-feature-icon">
-              <TabletSmartphone :size="18" />
+              <v-icon icon="mdi-tablet-cellphone" size="18" />
             </div>
             <span class="dl-feature-label">{{ feature }}</span>
           </div>

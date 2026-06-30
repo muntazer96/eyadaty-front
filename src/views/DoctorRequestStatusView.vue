@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Search, ArrowRight, HeartPulse, Phone, Hash, Calendar, MapPin, Stethoscope, User } from '@lucide/vue'
 import { getRequestStatus } from '../services/doctorRequestService'
 import { getErrorMessage } from '../utils/errors'
 import type { DoctorRequestDetails } from '../types/api'
@@ -71,7 +70,7 @@ async function handleSearch() {
         <!-- Header band -->
         <div class="sr-header">
           <div class="sr-logo">
-            <HeartPulse :size="28" />
+            <v-icon icon="mdi-heart-pulse" size="28" />
           </div>
           <h1 class="sr-title">متابعة حالة الطلب</h1>
           <p class="sr-subtitle">أدخل رقم الهاتف وكود المتابعة لعرض حالة طلبك</p>
@@ -83,7 +82,7 @@ async function handleSearch() {
             <div class="sr-field">
               <label class="sr-label-top">رقم الهاتف</label>
               <div class="sr-input-group">
-                <Phone :size="17" class="sr-input-icon" />
+                <v-icon icon="mdi-phone" size="17" class="sr-input-icon" />
                 <input
                   v-model="phone"
                   type="tel"
@@ -100,7 +99,7 @@ async function handleSearch() {
               <label class="sr-label-top">كود المتابعة</label>
               <div class="sr-input-row">
                 <div class="sr-input-group">
-                  <Hash :size="17" class="sr-input-icon" />
+                  <v-icon icon="mdi-pound" size="17" class="sr-input-icon" />
                   <input
                     v-model="code"
                     type="text"
@@ -117,7 +116,7 @@ async function handleSearch() {
                   @click="handleSearch"
                 >
                   <span v-if="loading" class="sr-spinner"></span>
-                  <Search v-else :size="18" />
+                  <v-icon v-else icon="mdi-magnify" size="18" />
                 </button>
               </div>
             </div>
@@ -146,23 +145,23 @@ async function handleSearch() {
 
             <div class="sr-details">
               <div class="sr-row">
-                <span class="sr-row-label"><User :size="15" /> الاسم الكامل</span>
+                <span class="sr-row-label"><v-icon icon="mdi-account" size="15" /> الاسم الكامل</span>
                 <span class="sr-value">{{ result.fullName }}</span>
               </div>
               <div class="sr-row">
-                <span class="sr-row-label"><Phone :size="15" /> رقم الهاتف</span>
+                <span class="sr-row-label"><v-icon icon="mdi-phone" size="15" /> رقم الهاتف</span>
                 <span class="sr-value" dir="ltr">{{ result.phoneNumber }}</span>
               </div>
               <div class="sr-row">
-                <span class="sr-row-label"><Stethoscope :size="15" /> التخصص</span>
+                <span class="sr-row-label"><v-icon icon="mdi-stethoscope" size="15" /> التخصص</span>
                 <span class="sr-value">{{ result.specializationName }}</span>
               </div>
               <div class="sr-row">
-                <span class="sr-row-label"><MapPin :size="15" /> المحافظة</span>
+                <span class="sr-row-label"><v-icon icon="mdi-map-marker" size="15" /> المحافظة</span>
                 <span class="sr-value">{{ result.province }}</span>
               </div>
               <div class="sr-row">
-                <span class="sr-row-label"><Calendar :size="15" /> تاريخ الإرسال</span>
+                <span class="sr-row-label"><v-icon icon="mdi-calendar" size="15" /> تاريخ الإرسال</span>
                 <span class="sr-value">{{ new Date(result.createdAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }) }}</span>
               </div>
               <div v-if="result.rejectedReason" class="sr-row sr-row--alert">
@@ -174,7 +173,7 @@ async function handleSearch() {
           </Transition>
 
           <RouterLink to="/doctor-request" class="sr-back-link">
-            <ArrowRight :size="16" /> تقديم طلب جديد
+            <v-icon icon="mdi-arrow-right" size="16" /> تقديم طلب جديد
           </RouterLink>
           
         </div>
@@ -225,6 +224,7 @@ async function handleSearch() {
   z-index: 1;
   width: 100%;
   max-width: 480px;
+  min-width: 0;
   margin-top: 32px;
 }
 
@@ -315,6 +315,7 @@ async function handleSearch() {
 .sr-input-row {
   display: flex;
   gap: 8px;
+  min-width: 0;
 }
 
 .sr-input-group {
@@ -322,6 +323,7 @@ async function handleSearch() {
   display: flex;
   align-items: center;
   flex: 1;
+  min-width: 0;
 }
 
 .sr-input-icon {
@@ -404,6 +406,7 @@ async function handleSearch() {
   font-size: 13px;
   text-align: center;
   margin-bottom: 16px;
+  overflow-wrap: anywhere;
 }
 
 .sr-error-dot {
@@ -495,6 +498,7 @@ async function handleSearch() {
   padding: 11px 0;
   border-bottom: 1px solid var(--color-border-light);
   gap: 12px;
+  min-width: 0;
 }
 
 .sr-row:last-child {
@@ -519,6 +523,8 @@ async function handleSearch() {
   font-weight: 700;
   color: var(--color-text);
   text-align: left;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sr-value--error {
@@ -566,9 +572,29 @@ async function handleSearch() {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .sr-page { padding: 24px 12px; }
   .sr-header { padding: 28px 22px 22px; }
   .sr-body { padding: 22px 20px 26px; }
+}
+
+@media (max-width: 380px) {
+  .sr-page { padding: 14px 8px; }
+  .sr-container { margin-top: 8px; }
+  .sr-card { border-radius: 20px; }
+  .sr-header { padding: 22px 16px 18px; }
+  .sr-body { padding: 18px 14px 22px; }
+  .sr-title { font-size: 18px; }
+  .sr-subtitle { font-size: 12.5px; }
+  .sr-input-row { flex-direction: column; }
+  .sr-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+  .sr-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .sr-value { text-align: right; }
 }
 </style>

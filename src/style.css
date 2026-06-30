@@ -88,6 +88,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+.v-application {
+  overflow-x: clip;
+}
+
 button,
 input,
 select,
@@ -124,6 +135,246 @@ textarea:focus-visible {
 
 .v-field__input {
   font-family: var(--font-family-primary);
+}
+
+/* Unified system fields: keep Vuetify as the source of truth for selects/autocomplete,
+   and make native inputs visually match Vuetify outlined fields. */
+.v-application :is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input,
+  .date-input
+).v-input {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.v-application :is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input,
+  .date-input
+).v-input .v-field {
+  border-radius: 4px !important;
+  background: var(--color-surface) !important;
+  font-family: var(--font-family-primary) !important;
+}
+
+.v-application :is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input,
+  .date-input
+).v-input input,
+.v-application .v-field__input input {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.v-application :is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+).v-input .v-field__input {
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.v-application :is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+).v-input .v-field__input > input {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.v-application :is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+).v-input .v-field__append-inner,
+.v-application :is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+).v-input .v-field__prepend-inner {
+  padding-top: 0 !important;
+  align-items: center !important;
+}
+
+/* Final guard for migrated dropdowns: page-scoped legacy `.form-select` /
+   `.filter-select` styles must not wrap Vuetify fields in a second box. */
+:where(.v-select, .v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) {
+  width: 100% !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+:where(.v-select, .v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) .v-field {
+  min-height: 40px !important;
+  border-radius: 4px !important;
+  background: var(--color-surface) !important;
+}
+
+:where(.v-select, .v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) :is(input, .v-field__input, .v-field__field) {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.v-application :is(
+  input.form-input,
+  input.filter-input,
+  input.search-input,
+  input.dr-input,
+  input.sr-input,
+  input.time-input,
+  input.number-input
+) {
+  min-height: 40px !important;
+  border: 1px solid rgba(0, 0, 0, 0.38) !important;
+  border-radius: 4px !important;
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  font-family: var(--font-family-primary) !important;
+  font-size: 14px !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.v-application :is(input.form-input, input.filter-input, input.time-input) {
+  padding: 0 12px !important;
+}
+
+.v-application input.search-input {
+  padding: 0 12px 0 36px !important;
+}
+
+.v-application :is(input.dr-input, input.sr-input) {
+  padding: 0 42px 0 14px !important;
+}
+
+.v-application input.number-input {
+  padding: 0 8px !important;
+}
+
+.v-application textarea.form-textarea {
+  min-height: 90px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(0, 0, 0, 0.38) !important;
+  border-radius: 4px !important;
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  font-family: var(--font-family-primary) !important;
+  font-size: 14px !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  resize: vertical;
+}
+
+.v-application :is(
+  input.form-input,
+  input.filter-input,
+  input.search-input,
+  input.dr-input,
+  input.sr-input,
+  input.time-input,
+  input.number-input,
+  textarea.form-textarea
+):hover {
+  border-color: rgba(0, 0, 0, 0.72) !important;
+}
+
+.v-application :is(
+  input.form-input,
+  input.filter-input,
+  input.search-input,
+  input.dr-input,
+  input.sr-input,
+  input.time-input,
+  input.number-input,
+  textarea.form-textarea
+):focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: inset 0 0 0 1px var(--color-primary) !important;
+}
+
+.v-application :is(
+  input.form-input,
+  input.filter-input,
+  input.search-input,
+  input.dr-input,
+  input.sr-input,
+  input.time-input,
+  input.number-input,
+  textarea.form-textarea
+):disabled {
+  background: var(--color-background) !important;
+  color: var(--color-text-muted) !important;
+  cursor: not-allowed !important;
 }
 
 /* Custom utility classes */
@@ -284,6 +535,9 @@ textarea:focus-visible {
 
 @media (max-width: 960px) {
   /* Mobile adjustments */
+  .v-navigation-drawer:not(.v-navigation-drawer--active) {
+    pointer-events: none;
+  }
 }
 
 @media (max-width: 600px) {
@@ -309,3 +563,48 @@ textarea:focus-visible {
 .v-btn--icon:hover .v-icon { color: inherit !important; }
 .v-btn__overlay { opacity: 0 !important; }
 .v-btn:hover > .v-btn__overlay { opacity: 0.08 !important; }
+
+/* Vuetify hover/active contrast fixes */
+.v-overlay-container .v-list {
+  font-family: var(--font-family-primary) !important;
+  color: var(--color-text) !important;
+}
+
+.v-overlay-container .v-list-item {
+  color: var(--color-text) !important;
+}
+
+.v-overlay-container .v-list-item .v-list-item__overlay {
+  opacity: 0 !important;
+}
+
+.v-overlay-container .v-list-item:hover,
+.v-overlay-container .v-list-item--active,
+.v-overlay-container .v-list-item[aria-selected='true'] {
+  background: var(--color-primary-soft) !important;
+  color: var(--color-primary) !important;
+}
+
+.v-overlay-container .v-list-item:hover .v-list-item-title,
+.v-overlay-container .v-list-item:hover .v-list-item-subtitle,
+.v-overlay-container .v-list-item:hover .v-icon,
+.v-overlay-container .v-list-item--active .v-list-item-title,
+.v-overlay-container .v-list-item--active .v-list-item-subtitle,
+.v-overlay-container .v-list-item--active .v-icon,
+.v-overlay-container .v-list-item[aria-selected='true'] .v-list-item-title,
+.v-overlay-container .v-list-item[aria-selected='true'] .v-list-item-subtitle,
+.v-overlay-container .v-list-item[aria-selected='true'] .v-icon {
+  color: var(--color-primary) !important;
+}
+
+.v-overlay-container .v-list-item:focus-visible {
+  outline: 2px solid rgba(19, 121, 107, 0.28) !important;
+  outline-offset: -2px;
+}
+
+.v-btn:hover .v-btn__content,
+.v-btn:hover .v-btn__prepend,
+.v-btn:hover .v-btn__append,
+.v-btn:hover .v-icon {
+  opacity: 1 !important;
+}

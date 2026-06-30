@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import api from '../../services/api'
 import type { ApiResponse, DoctorNotificationItem } from '../../types/api'
-import { getErrorMessage } from '../../utils/errors'
 
 interface Props {
   title?: string
@@ -79,11 +78,6 @@ function handleLogout() {
 function handleSettings() {
   userMenuOpen.value = false
   router.push('/profile')
-}
-
-function openNotifMenu() {
-  notifMenuOpen.value = true
-  loadNotifications()
 }
 
 onMounted(loadNotifications)

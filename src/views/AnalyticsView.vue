@@ -20,6 +20,10 @@ const summary = ref<AnalyticsSummary | null>(null)
 const doctors = ref<DoctorItem[]>([])
 const selectedDoctorId = ref('')
 const activeTab = ref<TabKey>('overview')
+const doctorOptions = computed(() => [
+  { value: '', label: 'كل النظام' },
+  ...doctors.value.map((doctor) => ({ value: doctor.id, label: doctor.name })),
+])
 
 const today = new Date()
 const fromDate = ref(toInputDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30)))
@@ -205,14 +209,17 @@ onMounted(() => Promise.all([loadDoctors(), loadAnalytics()]))
       <!-- Doctor Select (Admin only) -->
       <div v-if="isAdmin" class="filter-field">
         <label class="filter-label">الطبيب</label>
-        <select
+        <v-autocomplete
           v-model="selectedDoctorId"
-          class="filter-select"
-          @change="loadAnalytics"
-        >
-          <option value="">كل النظام</option>
-          <option v-for="d in doctors" :key="d.id" :value="d.id">{{ d.name }}</option>
-        </select>
+          :items="doctorOptions"
+          item-title="label"
+          item-value="value"
+          class="doctor-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+          @update:model-value="loadAnalytics"
+        />
       </div>
 
       <!-- From Date -->
@@ -501,8 +508,7 @@ onMounted(() => Promise.all([loadDoctors(), loadAnalytics()]))
   color: var(--color-text-muted);
 }
 
-.filter-input,
-.filter-select {
+.filter-input {
   height: 40px;
   padding: 0 12px;
   border: 1.5px solid var(--color-border);
@@ -516,10 +522,11 @@ onMounted(() => Promise.all([loadDoctors(), loadAnalytics()]))
 }
 
 .filter-input { min-width: 150px; }
-.filter-select { min-width: 220px; }
+.doctor-select {
+  min-width: 220px;
+}
 
-.filter-input:focus,
-.filter-select:focus {
+.filter-input:focus {
   border-color: var(--color-primary);
 }
 
@@ -836,15 +843,15 @@ onMounted(() => Promise.all([loadDoctors(), loadAnalytics()]))
   .kpi-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 768px) {
   .analytics-grid { grid-template-columns: 1fr; }
   .panel-full { grid-column: 1; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 600px) {
   .kpi-grid { grid-template-columns: 1fr; }
   .filters-bar { flex-direction: column; }
-  .filter-input, .filter-select { width: 100%; }
+  .filter-input, .doctor-select { width: 100%; }
 }
 </style>

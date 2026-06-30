@@ -359,7 +359,7 @@ onMounted(() => { loadSettings(); checkStatus() })
 }
 
 /* Responsive */
-@media (max-width: 860px) {
+@media (max-width: 768px) {
   .wa-grid { grid-template-columns: 1fr; }
   .page-top { flex-direction: column; align-items: flex-start; }
 }

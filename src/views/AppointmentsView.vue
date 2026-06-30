@@ -41,8 +41,7 @@ const manualOpen       = ref(false)
 const cancelDialog     = ref(false)
 const cancelAppointment = ref<AppointmentRow>()
 const page             = ref(1)
-const doctorPage       = ref(1)
-const doctorPageSize   = 10
+const pageSize         = 10
 const totalPages       = ref(1)
 const totalItems       = ref(0)
 const queueAvailability = ref<QueueAvailabilityItem>()
@@ -69,16 +68,8 @@ const canCreateManual = computed(() => {
   return queueAvailability.value.isAvailable && queueAvailability.value.remainingAppointments > 0
 })
 
-const doctorTotalPages = computed(() =>
-  Math.max(1, Math.ceil(appointments.value.length / doctorPageSize))
-)
-
 const visibleAppointments = computed(() => {
-  if (isAdmin.value) return appointments.value
-  return appointments.value.slice(
-    (doctorPage.value - 1) * doctorPageSize,
-    doctorPage.value * doctorPageSize,
-  )
+  return appointments.value
 })
 
 // Helpers
@@ -165,6 +156,10 @@ function mapAdminAppointment(item: any): AppointmentRow {
   }
 }
 
+function unwrapPageResult<T>(payload: ApiResponse<PageResult<T>> | PageResult<T>): PageResult<T> {
+  return 'items' in payload ? payload : payload.data
+}
+
 // API calls
 async function loadClinics() {
   if (isAdmin.value) return
@@ -211,25 +206,28 @@ async function loadAppointments() {
           fromDate: filters.fromDate || undefined,
           toDate: filters.toDate || undefined,
           status: filters.status === '' ? undefined : filters.status,
-          page: page.value, pageSize: 10,
+          page: page.value, pageSize,
         },
       })
-      appointments.value = r.data.data.items.map(mapAdminAppointment)
-      totalPages.value = r.data.data.totalPages
-      totalItems.value = r.data.data.totalItems
+      const pageData = unwrapPageResult(r.data)
+      appointments.value = pageData.items.map(mapAdminAppointment)
+      totalPages.value = pageData.totalPages
+      totalItems.value = pageData.totalItems
     } else {
-      const r = await api.get<ApiResponse<AppointmentItem[]>>('/Appointment/doctor/my', {
+      const r = await api.get<ApiResponse<PageResult<AppointmentItem>> | PageResult<AppointmentItem>>('/Appointment/doctor/my', {
         params: {
           clinicId: filters.clinicId || undefined,
           fromDate: filters.fromDate || undefined,
           toDate: filters.toDate || undefined,
           status: filters.status === '' ? undefined : filters.status,
+          page: page.value,
+          pageSize,
         },
       })
-      appointments.value = r.data.data.map(mapDoctorAppointment)
-      totalPages.value = 1
-      totalItems.value = appointments.value.length
-      if (doctorPage.value > doctorTotalPages.value) doctorPage.value = doctorTotalPages.value
+      const pageData = unwrapPageResult(r.data)
+      appointments.value = pageData.items.map(mapDoctorAppointment)
+      totalPages.value = pageData.totalPages
+      totalItems.value = pageData.totalItems
     }
   } catch (e: any) {
     if (e.response?.status === 404) {
@@ -310,11 +308,11 @@ async function createManualBooking() {
   finally { saving.value = false }
 }
 
-function applyFilters() { page.value = 1; doctorPage.value = 1; loadAppointments() }
+function applyFilters() { page.value = 1; loadAppointments() }
 
 function changePage(n: number) {
-  if (isAdmin.value) { page.value = n; loadAppointments() }
-  else doctorPage.value = n
+  page.value = n
+  loadAppointments()
 }
 
 watch(() => filters.doctorId, (id) => { if (isAdmin.value) loadAdminClinics(id) })
@@ -358,19 +356,32 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
       <!-- Doctor (Admin) -->
       <div v-if="isAdmin" class="filter-field">
         <label class="filter-label">الطبيب</label>
-        <select v-model="filters.doctorId" class="filter-select">
-          <option value="">كل الأطباء</option>
-          <option v-for="d in doctors" :key="d.id" :value="d.id">{{ d.name }}</option>
-        </select>
+        <v-autocomplete
+          v-model="filters.doctorId"
+          :items="[{ value: '', label: 'كل الأطباء' }, ...doctors.map(d => ({ value: d.id, label: d.name }))]"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
       </div>
 
       <!-- Clinic -->
       <div class="filter-field">
         <label class="filter-label">العيادة</label>
-        <select v-model="filters.clinicId" class="filter-select" :disabled="isAdmin && !filters.doctorId">
-          <option value="">{{ isAdmin ? 'كل عيادات الطبيب' : 'كل العيادات' }}</option>
-          <option v-for="c in clinics" :key="c.id" :value="c.id">{{ c.name }}</option>
-        </select>
+        <v-autocomplete
+          v-model="filters.clinicId"
+          :items="[{ value: '', label: isAdmin ? 'كل عيادات الطبيب' : 'كل العيادات' }, ...clinics.map(c => ({ value: c.id, label: c.name }))]"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+          :disabled="isAdmin && !filters.doctorId"
+        />
       </div>
 
       <!-- From Date -->
@@ -388,9 +399,16 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
       <!-- Status -->
       <div class="filter-field">
         <label class="filter-label">الحالة</label>
-        <select v-model="filters.status" class="filter-select">
-          <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-        </select>
+        <v-autocomplete
+          v-model="filters.status"
+          :items="statusOptions"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
       </div>
 
       <!-- Search Button -->
@@ -514,7 +532,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
                     size="small"
                     variant="tonal"
                     color="success"
-                    title="تأكيد الحجز"
+                    aria-label="تأكيد الحجز"
                     @click="toggleStatus(a)"
                   >
                     <v-icon icon="mdi-check" size="16" />
@@ -529,7 +547,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
                     color="info"
                     :href="`tel:${a.patientPhoneNumber}`"
                     tag="a"
-                    title="اتصال بالمريض"
+                    aria-label="اتصال بالمريض"
                   >
                     <v-icon icon="mdi-phone" size="16" />
                   </v-btn>
@@ -541,7 +559,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
                     size="small"
                     variant="tonal"
                     color="error"
-                    title="إلغاء الحجز"
+                    aria-label="إلغاء الحجز"
                     @click="cancelAppointment = a; cancelDialog = true"
                   >
                     <v-icon icon="mdi-close" size="16" />
@@ -554,7 +572,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
                     size="small"
                     variant="tonal"
                     color="primary"
-                    title="إكمال الحجز"
+                    aria-label="إكمال الحجز"
                     @click="complete(a)"
                   >
                     <v-icon icon="mdi-check-all" size="16" />
@@ -567,10 +585,10 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
       </div>
 
       <!-- Pagination -->
-      <div v-if="(isAdmin ? totalPages : doctorTotalPages) > 1" class="pagination-bar">
+      <div v-if="totalPages > 1" class="pagination-bar">
         <v-pagination
-          :model-value="isAdmin ? page : doctorPage"
-          :length="isAdmin ? totalPages : doctorTotalPages"
+          v-model="page"
+          :length="totalPages"
           :total-visible="5"
           density="compact"
           color="primary"
@@ -597,10 +615,17 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
             <!-- Clinic -->
             <div class="form-field">
               <label class="form-label">العيادة</label>
-              <select v-model="manualForm.clinicId" class="form-select" required>
-                <option disabled value="">اختر العيادة</option>
-                <option v-for="c in clinics" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="manualForm.clinicId"
+                :items="clinics.map(c => ({ value: c.id, label: c.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+                placeholder="اختر العيادة"
+              />
             </div>
 
             <!-- Date -->

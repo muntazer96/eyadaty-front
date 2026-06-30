@@ -321,33 +321,64 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
       </div>
       <div v-if="isAdmin" class="filter-field">
         <label class="filter-label">الطبيب</label>
-        <select v-model="filters.doctorId" class="filter-select">
-          <option value="">كل الأطباء</option>
-          <option v-for="d in doctors" :key="d.id" :value="d.id">{{ d.name }}</option>
-        </select>
+        <v-autocomplete
+          v-model="filters.doctorId"
+          :items="[{ value: '', label: 'كل الأطباء' }, ...doctors.map(d => ({ value: d.id, label: d.name }))]"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
       </div>
       <div class="filter-field">
         <label class="filter-label">العيادة</label>
-        <select v-model="filters.clinicId" class="filter-select" :disabled="isAdmin && !filters.doctorId">
-          <option value="">كل العيادات</option>
-          <option v-for="c in clinics" :key="c.id" :value="c.id">{{ c.name }}</option>
-        </select>
+        <v-autocomplete
+          v-model="filters.clinicId"
+          :items="[{ value: '', label: 'كل العيادات' }, ...clinics.map(c => ({ value: c.id, label: c.name }))]"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+          :disabled="isAdmin && !filters.doctorId"
+        />
       </div>
       <div class="filter-field">
         <label class="filter-label">الحالة</label>
-        <select v-model="filters.isActive" class="filter-select">
-          <option value="">الكل</option>
-          <option value="true">فعال</option>
-          <option value="false">متوقف</option>
-        </select>
+        <v-autocomplete
+          v-model="filters.isActive"
+          :items="[
+            { value: '', label: 'الكل' },
+            { value: 'true', label: 'مفعلة' },
+            { value: 'false', label: 'متوقفة' },
+          ]"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
       </div>
       <div class="filter-field">
         <label class="filter-label">الظهور</label>
-        <select v-model="filters.currentlyVisible" class="filter-select">
-          <option value="">الكل</option>
-          <option value="true">ظاهر الآن</option>
-          <option value="false">غير ظاهر</option>
-        </select>
+        <v-autocomplete
+          v-model="filters.currentlyVisible"
+          :items="[
+            { value: '', label: 'الكل' },
+            { value: 'true', label: 'ظاهرة الآن' },
+            { value: 'false', label: 'غير ظاهرة' },
+          ]"
+          item-title="label"
+          item-value="value"
+          class="filter-select"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
       </div>
       <v-btn color="primary" prepend-icon="mdi-filter" class="filter-btn" @click="applyFilters">تطبيق</v-btn>
     </div>
@@ -470,10 +501,18 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
             <!-- Doctor (Admin) -->
             <div v-if="isAdmin" class="form-field form-field--full">
               <label class="form-label">الطبيب <span class="required">*</span></label>
-              <select v-model="form.doctorId" class="form-select" required @change="onFormDoctorChanged">
-                <option value="">اختر الطبيب</option>
-                <option v-for="d in doctors" :key="d.id" :value="d.id">{{ d.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="form.doctorId"
+                :items="doctors.map(d => ({ value: d.id, label: d.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+                placeholder="اختر الطبيب"
+                @update:model-value="onFormDoctorChanged"
+              />
             </div>
 
             <!-- Title -->
@@ -485,9 +524,16 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
             <!-- Offer Type -->
             <div class="form-field">
               <label class="form-label">نوع العرض</label>
-              <select v-model="form.offerType" class="form-select">
-                <option v-for="t in offerTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
-              </select>
+              <v-autocomplete
+                v-model="form.offerType"
+                :items="offerTypes"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
               <p class="field-hint">{{ selectedOfferType.hint }}</p>
             </div>
 
@@ -544,10 +590,17 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
             <!-- Clinic -->
             <div v-if="!form.appliesToAllClinics" class="form-field form-field--full">
               <label class="form-label">العيادة <span class="required">*</span></label>
-              <select v-model="form.clinicId" class="form-select" required>
-                <option value="">اختر العيادة</option>
-                <option v-for="c in clinics" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="form.clinicId"
+                :items="clinics.map(c => ({ value: c.id, label: c.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+                placeholder="اختر العيادة"
+              />
             </div>
 
             <!-- Description -->

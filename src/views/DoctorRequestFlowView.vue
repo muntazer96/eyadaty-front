@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { HeartPulse, ArrowLeft, ArrowRight, Phone, ShieldCheck, User, CheckCircle2, MapPin, Stethoscope, Cake, IdCard, UploadCloud, ImageIcon } from '@lucide/vue'
 import api from '../services/api'
 import { checkPhone, sendOtp, verifyOtp, submitDoctorRequest } from '../services/doctorRequestService'
 import { getErrorMessage } from '../utils/errors'
@@ -10,12 +9,6 @@ interface ProvinceItem {
   id: number
   name: string
   normalizedName: string
-}
-
-declare global {
-  interface Window {
-    grecaptcha: any
-  }
 }
 
 const steps = ['التحقق من رقم الهاتف', 'رمز التحقق', 'معلومات الطلب', 'تم الإرسال']
@@ -41,10 +34,15 @@ const requestResult = ref<DoctorRequestResponse | null>(null)
 const provinces = ref<ProvinceItem[]>([])
 const specializations = ref<SpecializationItem[]>([])
 
-const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined
-const useRecaptcha = ref(!!siteKey)
-const captchaVerified = ref(false)
-const recaptchaReady = ref(false)
+const captchaFirstNumber = ref(0)
+const captchaSecondNumber = ref(0)
+const captchaAnswer = ref('')
+const captchaNonce = ref('')
+const captchaExpectedAnswer = computed(() => captchaFirstNumber.value + captchaSecondNumber.value)
+const captchaVerified = computed(() =>
+  captchaAnswer.value.trim() !== '' &&
+  Number(captchaAnswer.value.trim()) === captchaExpectedAnswer.value
+)
 
 const isPhoneValid = computed(() => /^07\d{9}$/.test(phoneNumber.value) && captchaVerified.value)
 const isOtpValid = computed(() => /^\d{6}$/.test(otpCode.value))
@@ -67,42 +65,32 @@ onMounted(async () => {
     specializations.value = sRes.data.data ?? []
   } catch { }
 
-  if (useRecaptcha.value) {
-    await new Promise<void>((resolve) => {
-      if (typeof window.grecaptcha !== 'undefined' && window.grecaptcha.ready) {
-        window.grecaptcha.ready(resolve)
-        return
-      }
-      const check = setInterval(() => {
-        if (typeof window.grecaptcha !== 'undefined' && window.grecaptcha.ready) {
-          clearInterval(check)
-          window.grecaptcha.ready(resolve)
-        }
-      }, 200)
-    })
-    recaptchaReady.value = true
-    captchaVerified.value = true
-  }
+  resetCaptchaChallenge()
 })
 
-async function getCaptchaToken(): Promise<string> {
-  if (!useRecaptcha.value) return 'dev-skip-captcha'
-  if (!recaptchaReady.value || !siteKey) return ''
-  try {
-    const token = await window.grecaptcha.execute(siteKey, { action: 'doctor_request' })
-    return token
-  } catch {
-    return ''
-  }
+function getCaptchaNonce() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function resetCaptchaChallenge() {
+  captchaFirstNumber.value = Math.floor(Math.random() * 8) + 2
+  captchaSecondNumber.value = Math.floor(Math.random() * 8) + 2
+  captchaAnswer.value = ''
+  captchaNonce.value = getCaptchaNonce()
+}
+
+function getCaptchaToken(): string {
+  return `math-challenge:${captchaNonce.value}:${captchaFirstNumber.value}:${captchaSecondNumber.value}:${captchaAnswer.value.trim()}`
 }
 
 async function handleCheckPhone() {
   errorMsg.value = ''
   loading.value = true
   try {
-    const token = await getCaptchaToken()
-    if (!token) {
-      errorMsg.value = 'فشل التحقق من reCAPTCHA. يرجى تحديث الصفحة والمحاولة مرة أخرى.'
+    const token = getCaptchaToken()
+    if (!captchaVerified.value) {
+      errorMsg.value = 'يرجى حل التحقق السريع قبل المتابعة.'
       return
     }
     const res = await checkPhone(phoneNumber.value, token)
@@ -110,6 +98,7 @@ async function handleCheckPhone() {
     currentStep.value = 1
   } catch (e) {
     errorMsg.value = getErrorMessage(e)
+    resetCaptchaChallenge()
   } finally {
     loading.value = false
   }
@@ -198,7 +187,7 @@ function goBack() {
         <!-- Header band -->
         <div class="dr-header">
           <div class="dr-logo">
-            <HeartPulse :size="28" />
+            <v-icon icon="mdi-heart-pulse" size="28" />
           </div>
           <h1 class="dr-title">تقديم طلب التحويل إلى طبيب</h1>
           <p class="dr-subtitle">قم بتعبئة البيانات التالية لتحويل حسابك إلى حساب طبيب معتمد</p>
@@ -224,7 +213,7 @@ function goBack() {
                 }"
               >
                 <div class="dr-step-num">
-                  <CheckCircle2 v-if="currentStep > i" :size="14" />
+                  <v-icon v-if="currentStep > i" icon="mdi-check-circle" size="14" />
                   <span v-else>{{ i + 1 }}</span>
                 </div>
                 <span class="dr-step-label">{{ step }}</span>
@@ -246,7 +235,7 @@ function goBack() {
             <div class="dr-field">
               <label class="dr-label">رقم الهاتف</label>
               <div class="dr-input-group">
-                <Phone :size="18" class="dr-input-icon" />
+                <v-icon icon="mdi-phone" size="18" class="dr-input-icon" />
                 <input
                   v-model="phoneNumber"
                   type="tel"
@@ -259,13 +248,25 @@ function goBack() {
               <div class="dr-hint">أدخل رقم هاتفك المسجل في التطبيق</div>
             </div>
 
-            <label v-if="!useRecaptcha" class="dr-captcha">
-              <input v-model="captchaVerified" type="checkbox" class="dr-captcha-input" />
-              <span class="dr-captcha-box">
-                <CheckCircle2 v-if="captchaVerified" :size="14" />
-              </span>
-              <span class="dr-captcha-label">أنا لست روبوت</span>
-            </label>
+            <div class="dr-captcha">
+              <div class="dr-captcha-question">
+                <span class="dr-captcha-box" :class="{ 'dr-captcha-box--valid': captchaVerified }">
+                  <v-icon :icon="captchaVerified ? 'mdi-check-circle' : 'mdi-shield-check'" size="14" />
+                </span>
+                <span class="dr-captcha-label">
+                  تحقق سريع: كم ناتج {{ captchaFirstNumber }} + {{ captchaSecondNumber }}؟
+                </span>
+              </div>
+              <input
+                v-model="captchaAnswer"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                class="dr-input dr-captcha-answer"
+                placeholder="اكتب الناتج"
+                @keyup.enter="handleCheckPhone"
+              />
+            </div>
 
             <button
               class="dr-btn dr-btn-primary dr-btn-block"
@@ -276,7 +277,7 @@ function goBack() {
               <template v-if="loading">جاري التحقق...</template>
               <template v-else>
                 تحقق من الرقم
-                <ArrowLeft :size="18" />
+                <v-icon icon="mdi-arrow-left" size="18" />
               </template>
             </button>
           </div>
@@ -286,7 +287,7 @@ function goBack() {
             <div class="dr-field">
               <label class="dr-label">رمز التحقق</label>
               <div class="dr-input-group">
-                <ShieldCheck :size="18" class="dr-input-icon" />
+                <v-icon icon="mdi-shield-check" size="18" class="dr-input-icon" />
                 <input
                   v-model="otpCode"
                   type="text"
@@ -301,7 +302,7 @@ function goBack() {
             </div>
             <div class="dr-btn-row">
               <button class="dr-btn dr-btn-ghost" @click="goBack">
-                <ArrowRight :size="18" /> رجوع
+                <v-icon icon="mdi-arrow-right" size="18" /> رجوع
               </button>
               <button
                 class="dr-btn dr-btn-primary"
@@ -312,7 +313,7 @@ function goBack() {
                 <template v-if="loading">جاري التحقق...</template>
                 <template v-else>
                   تحقق
-                  <ArrowLeft :size="18" />
+                  <v-icon icon="mdi-arrow-left" size="18" />
                 </template>
               </button>
             </div>
@@ -324,45 +325,55 @@ function goBack() {
               <div class="dr-field">
                 <label class="dr-label">الاسم الكامل</label>
                 <div class="dr-input-group">
-                  <User :size="18" class="dr-input-icon" />
+                  <v-icon icon="mdi-account" size="18" class="dr-input-icon" />
                   <input v-model="fullName" type="text" class="dr-input" placeholder="الاسم الرباعي" />
                 </div>
               </div>
               <div class="dr-field">
                 <label class="dr-label">الاسم المعروف به</label>
                 <div class="dr-input-group">
-                  <User :size="18" class="dr-input-icon" />
+                  <v-icon icon="mdi-account" size="18" class="dr-input-icon" />
                   <input v-model="knownName" type="text" class="dr-input" placeholder="مثال: د. محمد" />
                 </div>
               </div>
               <div class="dr-field">
                 <label class="dr-label">المحافظة</label>
                 <div class="dr-input-group">
-                  <MapPin :size="18" class="dr-input-icon" />
-                  <select v-model="selectedProvince" class="dr-input dr-select">
-                    <option :value="null" disabled>-- اختر المحافظة --</option>
-                    <option v-for="p in provinces" :key="p.id" :value="p.id">
-                      {{ p.name }}
-                    </option>
-                  </select>
+                  <v-icon icon="mdi-map-marker" size="18" class="dr-input-icon" />
+                  <v-autocomplete
+                    v-model="selectedProvince"
+                    :items="provinces.map(p => ({ value: p.id, label: p.name }))"
+                    item-title="label"
+                    item-value="value"
+                    class="dr-input dr-select"
+                    density="compact"
+                    variant="plain"
+                    hide-details
+                    placeholder="اختر المحافظة"
+                  />
                 </div>
               </div>
               <div class="dr-field">
                 <label class="dr-label">التخصص</label>
                 <div class="dr-input-group">
-                  <Stethoscope :size="18" class="dr-input-icon" />
-                  <select v-model="selectedSpecialization" class="dr-input dr-select">
-                    <option :value="null" disabled>-- اختر التخصص --</option>
-                    <option v-for="s in specializations" :key="s.id" :value="s.id">
-                      {{ s.name }}
-                    </option>
-                  </select>
+                  <v-icon icon="mdi-stethoscope" size="18" class="dr-input-icon" />
+                  <v-autocomplete
+                    v-model="selectedSpecialization"
+                    :items="specializations.map(s => ({ value: s.id, label: s.name }))"
+                    item-title="label"
+                    item-value="value"
+                    class="dr-input dr-select"
+                    density="compact"
+                    variant="plain"
+                    hide-details
+                    placeholder="اختر التخصص"
+                  />
                 </div>
               </div>
               <div class="dr-field dr-field-full">
                 <label class="dr-label">تاريخ الميلاد</label>
                 <div class="dr-input-group">
-                  <Cake :size="18" class="dr-input-icon" />
+                  <v-icon icon="mdi-cake-variant" size="18" class="dr-input-icon" />
                   <input v-model="birthDay" type="date" class="dr-input" />
                 </div>
               </div>
@@ -372,13 +383,13 @@ function goBack() {
                 <label class="dr-upload" :class="{ 'dr-upload--filled': identityFront }">
                   <input type="file" accept="image/*" hidden @change="onFrontUpload" />
                   <template v-if="!frontPreview">
-                    <UploadCloud :size="22" class="dr-upload-icon" />
+                    <v-icon icon="mdi-cloud-upload" size="22" class="dr-upload-icon" />
                     <span class="dr-upload-text">اضغط لاختيار صورة الهوية (الوجه الأمامي)</span>
                   </template>
                   <div v-else class="dr-upload-filled">
                     <img :src="frontPreview" class="dr-preview" />
                     <span class="dr-upload-filename">
-                      <IdCard :size="14" /> {{ identityFront?.name }}
+                      <v-icon icon="mdi-card-account-details" size="14" /> {{ identityFront?.name }}
                     </span>
                   </div>
                 </label>
@@ -389,13 +400,13 @@ function goBack() {
                 <label class="dr-upload" :class="{ 'dr-upload--filled': identityBack }">
                   <input type="file" accept="image/*" hidden @change="onBackUpload" />
                   <template v-if="!backPreview">
-                    <ImageIcon :size="22" class="dr-upload-icon" />
+                    <v-icon icon="mdi-image" size="22" class="dr-upload-icon" />
                     <span class="dr-upload-text">اضغط لاختيار صورة الهوية (الوجه الخلفي)</span>
                   </template>
                   <div v-else class="dr-upload-filled">
                     <img :src="backPreview" class="dr-preview" />
                     <span class="dr-upload-filename">
-                      <IdCard :size="14" /> {{ identityBack?.name }}
+                      <v-icon icon="mdi-card-account-details" size="14" /> {{ identityBack?.name }}
                     </span>
                   </div>
                 </label>
@@ -404,7 +415,7 @@ function goBack() {
 
             <div class="dr-btn-row">
               <button class="dr-btn dr-btn-ghost" @click="goBack">
-                <ArrowRight :size="18" /> رجوع
+                <v-icon icon="mdi-arrow-right" size="18" /> رجوع
               </button>
               <button
                 class="dr-btn dr-btn-primary"
@@ -415,7 +426,7 @@ function goBack() {
                 <template v-if="loading">جاري الإرسال...</template>
                 <template v-else>
                   إرسال الطلب
-                  <ArrowLeft :size="18" />
+                  <v-icon icon="mdi-arrow-left" size="18" />
                 </template>
               </button>
             </div>
@@ -424,7 +435,7 @@ function goBack() {
           <!-- Step 3: Success -->
           <div v-else-if="currentStep === 3 && requestResult" class="dr-step-content dr-success" key="3">
             <div class="dr-success-icon">
-              <CheckCircle2 :size="44" />
+              <v-icon icon="mdi-check-circle" size="44" />
             </div>
             <h2 class="dr-success-title">تم إرسال الطلب بنجاح</h2>
             <p class="dr-success-code">
@@ -500,6 +511,7 @@ function goBack() {
   z-index: 1;
   width: 100%;
   max-width: 580px;
+  min-width: 0;
 }
 
 .dr-card {
@@ -603,6 +615,7 @@ function goBack() {
   font-size: 11px;
   color: var(--color-text-muted);
   flex: 1;
+  min-width: 0;
   text-align: center;
 }
 
@@ -667,6 +680,7 @@ function goBack() {
   border-radius: 14px;
   font-size: 13.5px;
   margin-bottom: 20px;
+  overflow-wrap: anywhere;
 }
 
 .dr-error-dot {
@@ -717,6 +731,7 @@ function goBack() {
   position: relative;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .dr-input-icon {
@@ -783,14 +798,13 @@ function goBack() {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   padding: 14px 16px;
   margin: 6px 0 4px;
   background: #fafafa;
   border: 1.5px solid var(--color-border);
   border-radius: 14px;
-  cursor: pointer;
-  user-select: none;
   transition: border-color 0.2s, background 0.2s;
 }
 
@@ -799,11 +813,11 @@ function goBack() {
   background: var(--color-primary-soft);
 }
 
-.dr-captcha-input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
+.dr-captcha-question {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .dr-captcha-box {
@@ -815,20 +829,31 @@ function goBack() {
   border: 2px solid var(--color-border);
   border-radius: 6px;
   background: #fff;
-  color: #fff;
+  color: var(--color-primary);
   flex-shrink: 0;
   transition: all 0.15s ease;
 }
 
-.dr-captcha-input:checked ~ .dr-captcha-box {
+.dr-captcha-box--valid {
   background: var(--color-primary);
   border-color: var(--color-primary);
+  color: #fff;
 }
 
 .dr-captcha-label {
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.dr-captcha-answer {
+  width: 120px;
+  min-height: 38px;
+  padding-block: 8px;
+  text-align: center;
+  direction: ltr;
 }
 
 /* Upload */
@@ -881,9 +906,11 @@ function goBack() {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--color-primary-dark);
+  overflow-wrap: anywhere;
 }
 
 .dr-preview {
@@ -910,6 +937,9 @@ function goBack() {
   cursor: pointer;
   transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
   user-select: none;
+  min-width: 0;
+  text-align: center;
+  line-height: 1.4;
 }
 
 .dr-btn:disabled {
@@ -1086,12 +1116,41 @@ function goBack() {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .dr-page { padding: 24px 12px; }
   .dr-header { padding: 28px 22px 22px; }
   .dr-body { padding: 22px 20px 26px; }
   .dr-form-grid { grid-template-columns: 1fr; }
+  .dr-captcha { flex-direction: column; align-items: stretch; }
+  .dr-captcha-answer { width: 100%; }
   .dr-btn-row { flex-direction: column; }
   .dr-btn-row-center { flex-direction: row; }
+}
+
+@media (max-width: 380px) {
+  .dr-page { padding: 14px 8px; }
+  .dr-card { border-radius: 20px; }
+  .dr-header { padding: 22px 16px 18px; }
+  .dr-body { padding: 18px 14px 22px; }
+  .dr-title { font-size: 18px; }
+  .dr-subtitle { font-size: 12.5px; }
+  .dr-steps { gap: 2px; }
+  .dr-step-num {
+    width: 24px;
+    height: 24px;
+    font-size: 10.5px;
+  }
+  .dr-btn,
+  .dr-btn-row-center .dr-btn {
+    width: 100%;
+    padding-inline: 14px;
+  }
+  .dr-btn-row-center { flex-direction: column; }
+  .dr-footer-link {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .dr-footer-sep { display: none; }
 }
 </style>

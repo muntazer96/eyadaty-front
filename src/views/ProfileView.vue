@@ -15,8 +15,10 @@ const loading         = ref(false)
 const saving          = ref(false)
 const editOpen        = ref(false)
 const imagePreview    = ref('')
+const doctorImage     = ref('')
 const fileInput       = ref<HTMLInputElement>()
 let localPreviewUrl   = ''
+let doctorImageBlobUrl = ''
 
 const form = reactive({
   name: '', normalizedName: '', specializationId: '',
@@ -24,11 +26,9 @@ const form = reactive({
   phoneNumber: '', location: '', imageName: undefined as File | undefined,
 })
 
-const apiOrigin    = computed(() => new URL(api.defaults.baseURL ?? 'https://localhost:7136/api').origin)
 const currentImage = computed(() => {
   if (imagePreview.value) return imagePreview.value
-  if (!profile.value?.imageName) return ''
-  return `${apiOrigin.value}/DoctorImage/${profile.value.imageName}`
+  return doctorImage.value
 })
 
 function provinceName(value: number | string) {
@@ -52,6 +52,36 @@ function clearLocalPreview() {
   imagePreview.value = ''
 }
 
+function clearDoctorImage() {
+  if (doctorImageBlobUrl) {
+    URL.revokeObjectURL(doctorImageBlobUrl)
+    doctorImageBlobUrl = ''
+  }
+  doctorImage.value = ''
+}
+
+async function loadDoctorImage(path?: string): Promise<string> {
+  if (!path) return ''
+  const fileName = path.replace('/DoctorImage/', '')
+  const normalizedFileName = (() => {
+    try {
+      return decodeURIComponent(fileName)
+    } catch {
+      return fileName
+    }
+  })()
+
+  try {
+    const res = await api.get(`/Files/doctor-image/${encodeURIComponent(normalizedFileName)}`, {
+      responseType: 'blob',
+    })
+    doctorImageBlobUrl = URL.createObjectURL(res.data)
+    return doctorImageBlobUrl
+  } catch {
+    return ''
+  }
+}
+
 function setImage(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -71,11 +101,13 @@ function setImage(event: Event) {
 
 async function loadProfile() {
   loading.value = true
+  clearDoctorImage()
   try {
     const r = await api.get<ApiResponse<DoctorItem>>('/Doctor/my')
     profile.value = r.data.data
     fillForm(r.data.data)
     clearLocalPreview()
+    doctorImage.value = await loadDoctorImage(r.data.data.imageName)
   } catch (e) { showError(getErrorMessage(e)) }
   finally { loading.value = false }
 }
@@ -122,7 +154,10 @@ async function saveProfile() {
 }
 
 onMounted(() => Promise.all([loadProfile(), loadSpecializations()]))
-onBeforeUnmount(clearLocalPreview)
+onBeforeUnmount(() => {
+  clearLocalPreview()
+  clearDoctorImage()
+})
 </script>
 
 <template>
@@ -296,17 +331,31 @@ onBeforeUnmount(clearLocalPreview)
             <!-- Specialization -->
             <div class="form-field">
               <label class="form-label">الاختصاص <span class="required">*</span></label>
-              <select v-model="form.specializationId" class="form-select" required>
-                <option disabled value="">اختر الاختصاص</option>
-                <option v-for="s in specializations" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="form.specializationId"
+                :items="specializations.map(s => ({ value: s.id, label: s.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+                placeholder="اختر الاختصاص"
+              />
             </div>
             <!-- Province -->
             <div class="form-field">
               <label class="form-label">المحافظة <span class="required">*</span></label>
-              <select v-model="form.iraqiProvince" class="form-select" required>
-                <option v-for="p in provinces" :key="p.value" :value="p.value">{{ p.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="form.iraqiProvince"
+                :items="provinces.map(p => ({ value: p.value, label: p.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
             </div>
             <!-- Phone -->
             <div class="form-field">

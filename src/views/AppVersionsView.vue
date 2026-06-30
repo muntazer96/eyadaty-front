@@ -757,7 +757,7 @@ onMounted(loadPolicies)
   .info-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 768px) {
   .versions-layout { grid-template-columns: 1fr; }
   .platforms-sidebar { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--spacing-sm); }
   .sidebar-title { grid-column: 1 / -1; }
@@ -765,7 +765,7 @@ onMounted(loadPolicies)
   .edit-grid { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 600px) {
   .info-grid { grid-template-columns: 1fr; }
 }
 </style>

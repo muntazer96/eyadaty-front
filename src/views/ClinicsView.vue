@@ -341,9 +341,16 @@ onMounted(() => Promise.all([loadClinics(), loadDays()]))
             <!-- Province -->
             <div class="form-field">
               <label class="form-label">المحافظة <span class="required">*</span></label>
-              <select v-model="form.iraqiProvince" class="form-select" required>
-                <option v-for="p in provinces" :key="p.value" :value="p.value">{{ p.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="form.iraqiProvince"
+                :items="provinces.map(p => ({ value: p.value, label: p.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
             </div>
 
             <!-- Phone -->
@@ -760,5 +767,5 @@ onMounted(() => Promise.all([loadClinics(), loadDays()]))
 
 /* Responsive */
 @media (max-width: 1100px) { .clinics-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 700px)  { .clinics-grid { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px)  { .clinics-grid { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } }
 </style>

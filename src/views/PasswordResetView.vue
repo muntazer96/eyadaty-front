@@ -1,26 +1,51 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
-import { HeartPulse, KeyRound } from '@lucide/vue'
-import api from '../services/api'
+import { useRouter } from 'vue-router'
+import api, { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
 import { getErrorMessage } from '../utils/errors'
 import type { ApiResponse } from '../types/api'
 import TextInput from '../components/forms/Textinput.vue'
 
-const route = useRoute()
+type ResetStep = 'phone' | 'otp' | 'password'
+
+interface PasswordResetOtpResult {
+  phoneNumber: string
+  resetToken: string
+}
+
+interface AuthTokenResult {
+  token?: string
+  refreshToken?: string
+}
+
 const router = useRouter()
 const { error: showError, success: showSuccess } = useNotifications()
 
 const loading = ref(false)
 const done = ref(false)
-const form = reactive({ newPassword: '', confirmPassword: '' })
+const step = ref<ResetStep>('phone')
+const resetToken = ref('')
 
-const userId = computed(() => String(route.query.userId ?? ''))
-const token = computed(() => String(route.query.token ?? ''))
+const form = reactive({
+  phoneNumber: '',
+  otpCode: '',
+  newPassword: '',
+  confirmPassword: '',
+})
 
-// Password strength calculation
+const stepIndex = computed(() => {
+  if (step.value === 'phone') return 1
+  if (step.value === 'otp') return 2
+  return 3
+})
+
+const normalizedPhone = computed(() => normalizeDigits(form.phoneNumber).trim())
+const normalizedOtp = computed(() => normalizeDigits(form.otpCode).trim())
+
+const isPhoneValid = computed(() => /^07\d{9}$/.test(normalizedPhone.value))
+const isOtpValid = computed(() => /^\d{6}$/.test(normalizedOtp.value))
+
 const passwordScore = computed(() => {
   let score = 0
   if (form.newPassword.length >= 6) score += 1
@@ -45,63 +70,68 @@ const strengthColor = computed(() => {
   return 'success'
 })
 
-const strengthPercentage = computed(() => {
-  return Math.max(passwordScore.value, 1) * 20
-})
+const strengthPercentage = computed(() => Math.max(passwordScore.value, 1) * 20)
 
 const passwordsMatch = computed(() => {
   if (!form.confirmPassword) return null
   return form.newPassword === form.confirmPassword
 })
 
-const canSubmit = computed(() => {
+const canSendOtp = computed(() => isPhoneValid.value && !loading.value)
+const canVerifyOtp = computed(() => isOtpValid.value && !loading.value)
+const canResetPassword = computed(() => {
   return (
-    form.newPassword &&
-    form.confirmPassword &&
+    Boolean(resetToken.value) &&
     form.newPassword.length >= 6 &&
-    passwordsMatch.value &&
+    form.confirmPassword.length >= 6 &&
+    passwordsMatch.value === true &&
     !loading.value
   )
 })
 
-// Validate inputs
-const getPasswordError = (): string => {
+function normalizeDigits(value: string) {
+  return value
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+}
+
+function phoneError() {
+  if (!form.phoneNumber) return ''
+  if (!isPhoneValid.value) return 'رقم الهاتف يجب أن يكون 11 رقماً ويبدأ بـ 07'
+  return ''
+}
+
+function otpError() {
+  if (!form.otpCode) return ''
+  if (!isOtpValid.value) return 'رمز التحقق يجب أن يتكون من 6 أرقام'
+  return ''
+}
+
+function passwordError() {
   if (!form.newPassword) return ''
   if (form.newPassword.length < 6) return 'كلمة المرور يجب أن لا تقل عن ستة أحرف'
   return ''
 }
 
-const getConfirmError = (): string => {
+function confirmPasswordError() {
   if (!form.confirmPassword) return ''
   if (form.newPassword !== form.confirmPassword) return 'تأكيد كلمة المرور غير مطابق'
   return ''
 }
 
-// Reset password
-async function resetPassword() {
-  if (!userId.value || !token.value) {
-    showError('رابط إعادة تعيين كلمة المرور غير مكتمل')
-    return
-  }
-
-  if (!canSubmit.value) {
-    showError('تأكد من صحة البيانات المدخلة')
+async function sendOtp() {
+  if (!canSendOtp.value) {
+    showError('أدخل رقم هاتف عراقي صحيح يبدأ بـ 07.')
     return
   }
 
   loading.value = true
   try {
-    const response = await axios.post<ApiResponse<string>>(
-      `${api.defaults.baseURL}/User/password/reset`,
-      {
-        userId: userId.value,
-        token: token.value,
-        newPassword: form.newPassword,
-      },
-      { timeout: 15000 }
-    )
-    done.value = true
-    showSuccess(response.data.message || 'تم تغيير كلمة المرور بنجاح')
+    const response = await api.post<ApiResponse<string>>('/User/password/forgot/send-otp', {
+      phoneNumber: normalizedPhone.value,
+    })
+    step.value = 'otp'
+    showSuccess(response.data.message || 'تم إرسال رمز التحقق إلى رقم الهاتف.')
   } catch (error) {
     showError(getErrorMessage(error))
   } finally {
@@ -109,161 +139,294 @@ async function resetPassword() {
   }
 }
 
-// Navigate to login
-const goToLogin = (): void => {
+async function verifyOtp() {
+  if (!canVerifyOtp.value) {
+    showError('أدخل رمز التحقق المكون من 6 أرقام.')
+    return
+  }
+
+  loading.value = true
+  try {
+    const response = await api.post<ApiResponse<PasswordResetOtpResult>>('/User/password/forgot/verify-otp', {
+      phoneNumber: normalizedPhone.value,
+      otpCode: normalizedOtp.value,
+    })
+
+    resetToken.value = response.data.data?.resetToken ?? ''
+    if (!resetToken.value) throw new Error('لم يرجع الخادم رمز إعادة تعيين صالحاً.')
+
+    step.value = 'password'
+    showSuccess(response.data.message || 'تم التحقق من الرمز بنجاح.')
+  } catch (error) {
+    showError(getErrorMessage(error))
+  } finally {
+    loading.value = false
+  }
+}
+
+async function resetPassword() {
+  if (!canResetPassword.value) {
+    showError('تأكد من إدخال كلمة مرور صحيحة ومطابقة للتأكيد.')
+    return
+  }
+
+  loading.value = true
+  try {
+    const response = await api.post<ApiResponse<AuthTokenResult>>('/User/password/reset', {
+      phoneNumber: normalizedPhone.value,
+      resetToken: resetToken.value,
+      newPassword: form.newPassword,
+    })
+
+    const token = response.data.data?.token
+    const refreshToken = response.data.data?.refreshToken
+    if (token) localStorage.setItem(ACCESS_TOKEN_KEY, token)
+    if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    if (token) {
+      window.dispatchEvent(new CustomEvent('clinic-auth-refreshed', { detail: { token, refreshToken } }))
+    }
+
+    done.value = true
+    showSuccess(response.data.message || 'تم تغيير كلمة المرور بنجاح.')
+  } catch (error) {
+    showError(getErrorMessage(error))
+  } finally {
+    loading.value = false
+  }
+}
+
+function goToLogin() {
   router.push('/login')
 }
 
-const handleKeyPress = (event: KeyboardEvent): void => {
-  if (event.key === 'Enter' && canSubmit.value) {
-    resetPassword()
-  }
+function goToDashboard() {
+  router.push('/')
+}
+
+function backToPhone() {
+  if (loading.value) return
+  step.value = 'phone'
+  form.otpCode = ''
+  resetToken.value = ''
+}
+
+function handleSubmit() {
+  if (step.value === 'phone') sendOtp()
+  else if (step.value === 'otp') verifyOtp()
+  else resetPassword()
 }
 </script>
 
 <template>
   <div class="reset-container">
-    <!-- Left Side - Branding (Desktop Only) -->
     <div class="reset-intro">
       <div class="intro-content">
         <div class="brand-intro">
-          <HeartPulse :size="40" class="brand-icon" />
-          <h1 class="brand-title">عيادتي</h1>
-          <p class="brand-subtitle">لوحة التحكم الطبية</p>
+          <v-icon icon="mdi-heart-pulse" size="40" class="brand-icon" />
+          <div>
+            <h1 class="brand-title">عيادتي</h1>
+            <p class="brand-subtitle">لوحة التحكم الطبية</p>
+          </div>
         </div>
 
         <div class="intro-description">
           <h2>استرجاع حسابك</h2>
-          <p>اتبع الخطوات البسيطة لإنشاء كلمة مرور جديدة وآمنة لحسابك.</p>
+          <p>أدخل رقم هاتفك، تحقق من رمز OTP، ثم أنشئ كلمة مرور جديدة لحسابك.</p>
         </div>
 
         <div class="intro-features">
           <div class="feature">
+            <v-icon icon="mdi-cellphone-key" class="feature-icon" />
+            <span>تحقق بالهاتف</span>
+          </div>
+          <div class="feature">
             <v-icon icon="mdi-shield-check" class="feature-icon" />
-            <span>آمن وموثوق</span>
+            <span>رمز مؤقت</span>
           </div>
           <div class="feature">
-            <v-icon icon="mdi-lock-check" class="feature-icon" />
-            <span>تشفير قوي</span>
-          </div>
-          <div class="feature">
-            <v-icon icon="mdi-clock-fast" class="feature-icon" />
-            <span>فوري وسريع</span>
+            <v-icon icon="mdi-lock-reset" class="feature-icon" />
+            <span>كلمة مرور جديدة</span>
           </div>
         </div>
-
-        <p class="intro-footer">© 2024 عيادتي - جميع الحقوق محفوظة</p>
       </div>
     </div>
 
-    <!-- Right Side - Reset Form -->
     <div class="reset-panel">
       <v-card class="reset-card" elevation="0">
-        <!-- Mobile Brand -->
         <div class="mobile-brand">
-          <HeartPulse :size="28" class="brand-icon-mobile" />
+          <v-icon icon="mdi-heart-pulse" size="28" class="brand-icon-mobile" />
           <h2>عيادتي</h2>
         </div>
 
-        <!-- Header -->
         <div class="reset-header">
           <div class="reset-icon">
-            <KeyRound :size="32" class="icon-content" />
+            <v-icon :icon="done ? 'mdi-check-circle' : 'mdi-key-variant'" size="32" class="icon-content" />
           </div>
-          <h2 class="reset-title">{{ done ? 'تم تغيير كلمة المرور' : 'إعادة تعيين كلمة المرور' }}</h2>
+          <h2 class="reset-title">{{ done ? 'تم تغيير كلمة المرور' : 'هل نسيت كلمة المرور؟' }}</h2>
           <p class="reset-subtitle">
-            {{ done ? 'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة' : 'أدخل كلمة مرور جديدة آمنة لحسابك' }}
+            {{ done ? 'يمكنك الآن متابعة استخدام حسابك بكلمة المرور الجديدة.' : 'اتبع خطوات التحقق لإعادة تعيين كلمة المرور.' }}
           </p>
         </div>
 
-        <!-- Success State -->
+        <div v-if="!done" class="stepper" aria-label="خطوات إعادة تعيين كلمة المرور">
+          <div class="step-item" :class="{ active: stepIndex >= 1 }">
+            <span>1</span>
+            <p>الهاتف</p>
+          </div>
+          <div class="step-line" :class="{ active: stepIndex >= 2 }" />
+          <div class="step-item" :class="{ active: stepIndex >= 2 }">
+            <span>2</span>
+            <p>OTP</p>
+          </div>
+          <div class="step-line" :class="{ active: stepIndex >= 3 }" />
+          <div class="step-item" :class="{ active: stepIndex >= 3 }">
+            <span>3</span>
+            <p>كلمة المرور</p>
+          </div>
+        </div>
+
         <div v-if="done" class="reset-success">
           <v-alert type="success" variant="tonal" class="success-alert">
             <v-icon icon="mdi-check-circle" start />
             تم تغيير كلمة المرور بنجاح!
           </v-alert>
 
-          <v-btn
-            color="primary"
-            size="large"
-            block
-            class="reset-button"
-            @click="goToLogin"
-          >
-            الانتقال إلى تسجيل الدخول
+          <v-btn color="primary" size="large" block class="reset-button" @click="goToDashboard">
+            المتابعة إلى لوحة التحكم
+          </v-btn>
+          <v-btn variant="text" color="primary" block @click="goToLogin">
+            العودة إلى تسجيل الدخول
           </v-btn>
         </div>
 
-        <!-- Reset Form -->
-        <form v-else class="reset-form" @submit.prevent="resetPassword" @keypress="handleKeyPress">
-          <!-- New Password -->
-          <TextInput
-            v-model="form.newPassword"
-            label="كلمة المرور الجديدة"
-            type="password"
-            icon="mdi-lock"
-            placeholder="أدخل كلمة المرور الجديدة"
-            :error="getPasswordError()"
-            :disabled="loading"
-            clearable
-          />
-
-          <!-- Password Strength Indicator -->
-          <div class="password-strength">
-            <div class="strength-bar">
-              <div
-                class="strength-fill"
-                :class="`strength-${strengthColor}`"
-                :style="{ width: `${strengthPercentage}%` }"
-              />
-            </div>
-            <p class="strength-label" :class="`text-${strengthColor}`">
-              {{ strengthLabel }}
-            </p>
-          </div>
-
-          <!-- Confirm Password -->
-          <TextInput
-            v-model="form.confirmPassword"
-            label="تأكيد كلمة المرور"
-            type="password"
-            icon="mdi-lock-check"
-            placeholder="أدخل كلمة المرور مرة أخرى"
-            :error="getConfirmError()"
-            :disabled="loading"
-            clearable
-          />
-
-          <!-- Match Indicator -->
-          <div v-if="form.confirmPassword" class="match-indicator">
-            <v-icon
-              :icon="passwordsMatch ? 'mdi-check-circle' : 'mdi-alert-circle'"
-              :color="passwordsMatch ? 'success' : 'error'"
-              size="small"
+        <form v-else class="reset-form" @submit.prevent="handleSubmit">
+          <template v-if="step === 'phone'">
+            <TextInput
+              v-model="form.phoneNumber"
+              label="رقم الهاتف"
+              type="tel"
+              icon="mdi-phone"
+              placeholder="07XXXXXXXXX"
+              :error="phoneError()"
+              :disabled="loading"
+              required
+              clearable
             />
-            <span :class="passwordsMatch ? 'text-success' : 'text-error'">
-              {{ passwordsMatch ? 'كلمات المرور متطابقة' : 'كلمات المرور غير متطابقة' }}
-            </span>
-          </div>
 
-          <!-- Submit Button -->
-          <v-btn
-            type="submit"
-            color="primary"
-            size="large"
-            block
-            class="reset-button"
-            :loading="loading"
-            :disabled="!canSubmit"
-          >
-            {{ loading ? 'جاري حفظ كلمة المرور...' : 'حفظ كلمة المرور الجديدة' }}
-          </v-btn>
+            <v-btn
+              type="submit"
+              color="primary"
+              size="large"
+              block
+              class="reset-button"
+              :loading="loading"
+              :disabled="!canSendOtp"
+            >
+              إرسال رمز التحقق
+            </v-btn>
+          </template>
 
-          <!-- Helper Text -->
-          <p class="helper-text">
-            <v-icon icon="mdi-information" size="14" />
-            استخدم كلمة مرور قوية تتضمن أحرف وأرقام ورموز خاصة
-          </p>
+          <template v-else-if="step === 'otp'">
+            <TextInput
+              v-model="form.otpCode"
+              label="رمز التحقق OTP"
+              type="tel"
+              icon="mdi-message-processing"
+              placeholder="أدخل الرمز المكون من 6 أرقام"
+              :error="otpError()"
+              :disabled="loading"
+              required
+              clearable
+            />
+
+            <p class="helper-text">
+              <v-icon icon="mdi-information" size="14" />
+              تم إرسال الرمز إلى {{ normalizedPhone }}
+            </p>
+
+            <v-btn
+              type="submit"
+              color="primary"
+              size="large"
+              block
+              class="reset-button"
+              :loading="loading"
+              :disabled="!canVerifyOtp"
+            >
+              تأكيد الرمز
+            </v-btn>
+
+            <div class="form-actions">
+              <v-btn variant="text" color="primary" :disabled="loading" @click="sendOtp">
+                إعادة إرسال الرمز
+              </v-btn>
+              <v-btn variant="text" color="secondary" :disabled="loading" @click="backToPhone">
+                تغيير رقم الهاتف
+              </v-btn>
+            </div>
+          </template>
+
+          <template v-else>
+            <TextInput
+              v-model="form.newPassword"
+              label="كلمة المرور الجديدة"
+              type="password"
+              icon="mdi-lock"
+              placeholder="أدخل كلمة المرور الجديدة"
+              :error="passwordError()"
+              :disabled="loading"
+              required
+              clearable
+            />
+
+            <div class="password-strength">
+              <div class="strength-bar">
+                <div
+                  class="strength-fill"
+                  :class="`strength-${strengthColor}`"
+                  :style="{ width: `${strengthPercentage}%` }"
+                />
+              </div>
+              <p class="strength-label" :class="`text-${strengthColor}`">
+                {{ strengthLabel }}
+              </p>
+            </div>
+
+            <TextInput
+              v-model="form.confirmPassword"
+              label="تأكيد كلمة المرور"
+              type="password"
+              icon="mdi-lock-check"
+              placeholder="أدخل كلمة المرور مرة أخرى"
+              :error="confirmPasswordError()"
+              :disabled="loading"
+              required
+              clearable
+            />
+
+            <div v-if="form.confirmPassword" class="match-indicator">
+              <v-icon
+                :icon="passwordsMatch ? 'mdi-check-circle' : 'mdi-alert-circle'"
+                :color="passwordsMatch ? 'success' : 'error'"
+                size="small"
+              />
+              <span :class="passwordsMatch ? 'text-success' : 'text-error'">
+                {{ passwordsMatch ? 'كلمات المرور متطابقة' : 'كلمات المرور غير متطابقة' }}
+              </span>
+            </div>
+
+            <v-btn
+              type="submit"
+              color="primary"
+              size="large"
+              block
+              class="reset-button"
+              :loading="loading"
+              :disabled="!canResetPassword"
+            >
+              حفظ كلمة المرور الجديدة
+            </v-btn>
+          </template>
         </form>
       </v-card>
     </div>
@@ -278,7 +441,6 @@ const handleKeyPress = (event: KeyboardEvent): void => {
   background: var(--color-background);
 }
 
-/* Left Side - Branding */
 .reset-intro {
   display: flex;
   align-items: center;
@@ -385,15 +547,6 @@ const handleKeyPress = (event: KeyboardEvent): void => {
   color: white;
 }
 
-.intro-footer {
-  margin: 0;
-  padding: 0;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  text-align: center;
-}
-
-/* Right Side - Reset Panel */
 .reset-panel {
   display: flex;
   align-items: center;
@@ -404,7 +557,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
 
 .reset-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -469,6 +622,62 @@ const handleKeyPress = (event: KeyboardEvent): void => {
   line-height: 1.6;
 }
 
+.stepper {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) var(--spacing-xl) 0;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  min-width: 54px;
+}
+
+.step-item span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--color-surface);
+}
+
+.step-item p {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.step-item.active {
+  color: var(--color-primary);
+}
+
+.step-item.active span {
+  color: white;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.step-line {
+  height: 2px;
+  background: var(--color-border);
+  transform: translateY(-11px);
+}
+
+.step-line.active {
+  background: var(--color-primary);
+}
+
 .reset-form {
   display: flex;
   flex-direction: column;
@@ -480,11 +689,11 @@ const handleKeyPress = (event: KeyboardEvent): void => {
   padding: var(--spacing-xl);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
 }
 
 .success-alert {
-  margin: 0;
+  margin: 0 0 var(--spacing-sm);
 }
 
 .password-strength {
@@ -538,15 +747,23 @@ const handleKeyPress = (event: KeyboardEvent): void => {
   color: var(--color-success);
 }
 
-.match-indicator {
+.match-indicator,
+.helper-text {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  margin: 0;
   padding: var(--spacing-md);
   background: var(--color-background);
   border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 600;
+  line-height: 1.5;
+}
+
+.helper-text {
+  color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 .reset-button {
@@ -556,20 +773,13 @@ const handleKeyPress = (event: KeyboardEvent): void => {
   margin-top: var(--spacing-md);
 }
 
-.helper-text {
+.form-actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-sm);
-  margin: 0;
-  padding: var(--spacing-md);
-  font-size: 12px;
-  color: var(--color-text-muted);
-  background: var(--color-background);
-  border-radius: var(--radius-md);
-  line-height: 1.5;
 }
 
-/* Responsive */
 @media (max-width: 1000px) {
   .reset-intro {
     display: none;
@@ -607,8 +817,13 @@ const handleKeyPress = (event: KeyboardEvent): void => {
     padding: var(--spacing-lg);
   }
 
-  .reset-form {
+  .reset-form,
+  .reset-success {
     padding: var(--spacing-lg);
+  }
+
+  .stepper {
+    padding: var(--spacing-lg) var(--spacing-lg) 0;
   }
 
   .reset-title {
@@ -630,6 +845,11 @@ const handleKeyPress = (event: KeyboardEvent): void => {
 
   .mobile-brand h2 {
     font-size: 18px;
+  }
+
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

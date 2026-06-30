@@ -244,22 +244,22 @@ onMounted(loadUsers)
               <!-- Actions -->
               <td>
                 <div class="row-actions">
-                  <v-btn icon size="small" variant="text" color="info" title="عرض التفاصيل" @click="detailsUser = user; detailsDialog = true">
+                  <v-btn icon size="small" variant="text" color="info" aria-label="عرض التفاصيل" @click="detailsUser = user; detailsDialog = true">
                     <v-icon icon="mdi-eye" size="16" />
                   </v-btn>
-                  <v-btn icon size="small" variant="text" color="primary" title="تعديل" :disabled="isProtected(user)" @click="openEdit(user)">
+                  <v-btn icon size="small" variant="text" color="primary" aria-label="تعديل" :disabled="isProtected(user)" @click="openEdit(user)">
                     <v-icon icon="mdi-pencil" size="16" />
                   </v-btn>
                   <v-btn
                     icon size="small" variant="text"
                     :color="user.isLocked ? 'success' : 'warning'"
-                    :title="user.isLocked ? 'إلغاء الإيقاف' : 'إيقاف الحساب'"
+                    :aria-label="user.isLocked ? 'إلغاء الإيقاف' : 'إيقاف الحساب'"
                     :disabled="isProtected(user)"
                     @click="toggleLock(user)"
                   >
                     <v-icon :icon="user.isLocked ? 'mdi-lock-open' : 'mdi-lock'" size="16" />
                   </v-btn>
-                  <v-btn icon size="small" variant="text" color="error" title="حذف" :disabled="isProtected(user)" @click="selectedUser = user; deleteDialog = true">
+                  <v-btn icon size="small" variant="text" color="error" aria-label="حذف" :disabled="isProtected(user)" @click="selectedUser = user; deleteDialog = true">
                     <v-icon icon="mdi-delete" size="16" />
                   </v-btn>
                 </div>

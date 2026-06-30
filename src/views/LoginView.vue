@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { HeartPulse } from '@lucide/vue'
 import { useAuthStore } from '../stores/auth'
 import { useNotifications } from '../composables/useNotifications'
 import TextInput from '../components/forms/Textinput.vue'
@@ -56,7 +55,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
     <div class="login-intro">
       <div class="intro-content">
         <div class="brand-intro">
-          <HeartPulse :size="40" class="brand-icon" />
+          <v-icon icon="mdi-heart-pulse" size="40" class="brand-icon" />
           <h1 class="brand-title">عيادتي</h1>
           <p class="brand-subtitle">لوحة التحكم الطبية</p>
         </div>
@@ -90,7 +89,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
       <v-card class="login-card" elevation="0">
         <!-- Mobile Brand -->
         <div class="mobile-brand">
-          <HeartPulse :size="28" class="brand-icon-mobile" />
+          <v-icon icon="mdi-heart-pulse" size="28" class="brand-icon-mobile" />
           <h2>عيادتي</h2>
         </div>
 

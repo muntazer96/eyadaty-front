@@ -238,32 +238,59 @@ onMounted(initialize)
       <div class="filters-bar">
         <div class="filter-field">
           <label class="filter-label">الطبيب</label>
-          <select v-model="filters.doctorId" class="filter-select">
-            <option value="">كل الأطباء</option>
-            <option v-for="d in doctors" :key="d.id" :value="d.id">{{ d.name }}</option>
-          </select>
+          <v-autocomplete
+            v-model="filters.doctorId"
+            :items="[{ value: '', label: 'كل الأطباء' }, ...doctors.map(d => ({ value: d.id, label: d.name }))]"
+            item-title="label"
+            item-value="value"
+            class="filter-select"
+            density="compact"
+            variant="outlined"
+            hide-details
+          />
         </div>
         <div class="filter-field">
           <label class="filter-label">الباقة</label>
-          <select v-model="filters.packageId" class="filter-select">
-            <option value="">كل الباقات</option>
-            <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
-          </select>
+          <v-autocomplete
+            v-model="filters.packageId"
+            :items="[{ value: '', label: 'كل الباقات' }, ...packages.map(p => ({ value: p.id, label: p.name }))]"
+            item-title="label"
+            item-value="value"
+            class="filter-select"
+            density="compact"
+            variant="outlined"
+            hide-details
+          />
         </div>
         <div class="filter-field">
           <label class="filter-label">الحالة</label>
-          <select v-model="filters.status" class="filter-select">
-            <option value="">الكل</option>
-            <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-          </select>
+          <v-autocomplete
+            v-model="filters.status"
+            :items="statusOptions"
+            item-title="label"
+            item-value="value"
+            class="filter-select"
+            density="compact"
+            variant="outlined"
+            hide-details
+          />
         </div>
         <div class="filter-field">
           <label class="filter-label">الفعالية</label>
-          <select v-model="filters.isActive" class="filter-select">
-            <option value="">الكل</option>
-            <option value="true">فعّال الآن</option>
-            <option value="false">غير فعّال</option>
-          </select>
+          <v-autocomplete
+            v-model="filters.isActive"
+            :items="[
+              { value: '', label: 'الكل' },
+              { value: 'true', label: 'مفعلة' },
+              { value: 'false', label: 'متوقفة' },
+            ]"
+            item-title="label"
+            item-value="value"
+            class="filter-select"
+            density="compact"
+            variant="outlined"
+            hide-details
+          />
         </div>
         <v-btn color="primary" prepend-icon="mdi-magnify" class="filter-btn" @click="applyFilters">تطبيق</v-btn>
       </div>
@@ -314,16 +341,16 @@ onMounted(initialize)
                 </td>
                 <td>
                   <div class="row-actions">
-                    <v-btn v-if="sub.status === 1" icon size="small" variant="tonal" color="success" title="تفعيل" @click="activate(sub)">
+                    <v-btn v-if="sub.status === 1" icon size="small" variant="tonal" color="success" aria-label="تفعيل" @click="activate(sub)">
                       <v-icon icon="mdi-check" size="16" />
                     </v-btn>
-                    <v-btn v-if="sub.status !== 3" icon size="small" variant="tonal" color="primary" title="تجديد" @click="openRenew(sub)">
+                    <v-btn v-if="sub.status !== 3" icon size="small" variant="tonal" color="primary" aria-label="تجديد" @click="openRenew(sub)">
                       <v-icon icon="mdi-refresh" size="16" />
                     </v-btn>
-                    <v-btn v-if="sub.status === 0 && sub.isActive" icon size="small" variant="tonal" color="info" title="ترقية" @click="openUpgrade(sub)">
+                    <v-btn v-if="sub.status === 0 && sub.isActive" icon size="small" variant="tonal" color="info" aria-label="ترقية" @click="openUpgrade(sub)">
                       <v-icon icon="mdi-trending-up" size="16" />
                     </v-btn>
-                    <v-btn v-if="sub.status !== 3" icon size="small" variant="tonal" color="error" title="إلغاء" @click="askCancel(sub)">
+                    <v-btn v-if="sub.status !== 3" icon size="small" variant="tonal" color="error" aria-label="إلغاء" @click="askCancel(sub)">
                       <v-icon icon="mdi-close-circle" size="16" />
                     </v-btn>
                   </div>
@@ -411,10 +438,16 @@ onMounted(initialize)
       <div class="filters-bar">
         <div class="filter-field">
           <label class="filter-label">الطبيب</label>
-          <select v-model="featureDoctorId" class="filter-select">
-            <option value="">كل الأطباء</option>
-            <option v-for="d in doctors" :key="d.id" :value="d.id">{{ d.name }}</option>
-          </select>
+          <v-autocomplete
+            v-model="featureDoctorId"
+            :items="[{ value: '', label: 'اختر الطبيب' }, ...doctors.map(d => ({ value: d.id, label: d.name }))]"
+            item-title="label"
+            item-value="value"
+            class="filter-select"
+            density="compact"
+            variant="outlined"
+            hide-details
+          />
         </div>
         <v-btn color="primary" prepend-icon="mdi-magnify" class="filter-btn" @click="applyFilters">تطبيق</v-btn>
       </div>
@@ -490,24 +523,44 @@ onMounted(initialize)
           <div class="form-fields">
             <div class="form-field">
               <label class="form-label">الطبيب <span class="required">*</span></label>
-              <select v-model="createForm.doctorId" class="form-select" required>
-                <option disabled value="">اختر الطبيب</option>
-                <option v-for="d in doctors" :key="d.id" :value="d.id">{{ d.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="createForm.doctorId"
+                :items="doctors.map(d => ({ value: d.id, label: d.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+                placeholder="اختر الطبيب"
+              />
             </div>
             <div class="form-field">
               <label class="form-label">الباقة <span class="required">*</span></label>
-              <select v-model="createForm.packageId" class="form-select" required>
-                <option disabled value="">اختر الباقة</option>
-                <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
-              </select>
+              <v-autocomplete
+                v-model="createForm.packageId"
+                :items="packages.map(p => ({ value: p.id, label: p.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+                placeholder="اختر الباقة"
+              />
             </div>
             <div class="form-field">
               <label class="form-label">الحالة الابتدائية</label>
-              <select v-model="createForm.status" class="form-select">
-                <option value="0">نشط</option>
-                <option value="1">قيد الانتظار</option>
-              </select>
+              <v-autocomplete
+                v-model="createForm.status"
+                :items="statusOptions"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
             </div>
             <label class="check-label">
               <input v-model="createForm.isYearly" type="checkbox" class="check-native" />
@@ -554,10 +607,17 @@ onMounted(initialize)
           <p class="dialog-desc">اختر باقة أعلى لاشتراك الطبيب <strong>{{ selectedSubscription?.doctor.name }}</strong>.</p>
           <div class="form-field">
             <label class="form-label">الباقة الجديدة</label>
-            <select v-model="upgradePackageId" class="form-select" required>
-              <option disabled value="">اختر الباقة</option>
-              <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
+            <v-autocomplete
+              v-model="upgradePackageId"
+              :items="packages.map(p => ({ value: p.id, label: p.name }))"
+              item-title="label"
+              item-value="value"
+              class="form-select"
+              density="compact"
+              variant="outlined"
+              hide-details
+              placeholder="اختر الباقة"
+            />
           </div>
         </v-card-text>
         <v-divider />
@@ -702,5 +762,5 @@ onMounted(initialize)
 
 /* Responsive */
 @media (max-width: 1100px) { .packages-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 700px) { .packages-grid { grid-template-columns: 1fr; } .filters-bar { flex-direction: column; } .form-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .packages-grid { grid-template-columns: 1fr; } .filters-bar { flex-direction: column; } .form-grid { grid-template-columns: 1fr; } }
 </style>

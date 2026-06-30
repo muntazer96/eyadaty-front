@@ -1,35 +1,42 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import { useAuthStore } from '../stores/auth'
 import { useLayoutStore } from '../stores/layout'
 import { getNavigationItems } from '../constants/navigation'
 import AppBar from '../components/common/Appbar.vue'
 import NavigationDrawer from '../components/common/Navigationdrawer.vue'
-import NotificationCenter from '../components/common/NotificationCenter.vue'
 import type { NavItem } from '../components/common/Navigationdrawer.vue'
 
-const auth   = useAuthStore()
+const auth = useAuthStore()
 const layout = useLayoutStore()
-const route  = useRoute()
+const route = useRoute()
 const router = useRouter()
+const { mdAndUp } = useDisplay()
 
 const pageTitle = computed(() => (route.meta.title as string | undefined) ?? 'لوحة التحكم')
-const navItems  = computed<NavItem[]>(() => getNavigationItems(auth.primaryRole))
+const navItems = computed<NavItem[]>(() => getNavigationItems(auth.primaryRole))
+const isPermanentSidebar = computed(() => mdAndUp.value)
 
-// يغلق فقط على موبايل
 const handleNavItemClick = (_item: NavItem): void => {
-  if (window.innerWidth < 960) layout.closeSidebar()
+  if (!isPermanentSidebar.value) layout.closeSidebar()
 }
 
-// زر الهامبرغر يفتح/يغلق
 const handleMenuToggle = (): void => layout.toggleSidebar()
 
-const handleSettingsClick = (): void => { router.push('/profile') }
+const handleSettingsClick = (): void => {
+  router.push('/profile')
+}
 
 onMounted(() => {
-  // على الديسكتوب يبقى مفتوح دائماً
-  if (window.innerWidth >= 960) layout.openSidebar()
+  if (isPermanentSidebar.value) layout.openSidebar()
+  else layout.closeSidebar()
+})
+
+watch(isPermanentSidebar, (isPermanent) => {
+  if (isPermanent) layout.openSidebar()
+  else layout.closeSidebar()
 })
 </script>
 
@@ -44,11 +51,10 @@ onMounted(() => {
       @settings-click="handleSettingsClick"
     />
 
-    <!-- permanent مرتبط بـ sidebarOpen فقط عند الديسكتوب -->
     <NavigationDrawer
       v-model="layout.sidebarOpen"
       :items="navItems"
-      :permanent="layout.sidebarOpen"
+      :permanent="isPermanentSidebar"
       @item-click="handleNavItemClick"
     />
 
@@ -64,8 +70,6 @@ onMounted(() => {
         </div>
       </footer>
     </v-main>
-
-    <NotificationCenter />
   </v-app>
 </template>
 

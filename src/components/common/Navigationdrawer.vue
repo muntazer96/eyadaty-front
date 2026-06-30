@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { HeartPulse } from '@lucide/vue'
 import { useAuthStore } from '../../stores/auth'
 
 export interface NavItem {
@@ -21,7 +20,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
-  permanent: true,
+  permanent: false,
 })
 
 const emit = defineEmits<{
@@ -83,6 +82,8 @@ function handleNavigation(item: NavItem): void {
   <v-navigation-drawer
     :model-value="modelValue"
     :permanent="permanent"
+    :temporary="!permanent"
+    location="right"
     width="260"
     class="nav-drawer"
     @update:model-value="emit('update:modelValue', $event)"
@@ -91,7 +92,7 @@ function handleNavigation(item: NavItem): void {
     <div class="drawer-header">
       <div class="brand-logo">
         <v-avatar color="primary" size="40">
-          <HeartPulse :size="22" color="white" />
+          <v-icon icon="mdi-heart-pulse" size="22" color="white" />
         </v-avatar>
         <div>
           <p class="brand-name">عيادتي</p>
@@ -319,5 +320,11 @@ function handleNavigation(item: NavItem): void {
 .footer-row strong {
   color: var(--color-text);
   font-weight: 700;
+}
+
+@media (max-width: 959px) {
+  .nav-drawer {
+    max-width: min(82vw, 300px);
+  }
 }
 </style>
