@@ -27,8 +27,15 @@ const blobUrls: string[] = []
 
 async function loadIdentityImage(path: string): Promise<string> {
   const fileName = path.replace('/RequestIdentity/', '')
+  const normalizedFileName = (() => {
+    try {
+      return decodeURIComponent(fileName)
+    } catch {
+      return fileName
+    }
+  })()
   try {
-    const res = await api.get(`/Files/identity-image/${fileName}`, {
+    const res = await api.get(`/Files/identity-image/${encodeURIComponent(normalizedFileName)}`, {
       responseType: 'blob',
     })
     const url = URL.createObjectURL(res.data)
