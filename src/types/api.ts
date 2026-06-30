@@ -449,6 +449,120 @@ export interface ConversionAnalytics {
   profileToBookingRate: number
 }
 
+export interface DatabaseBackupResponse {
+  id: string
+  fileName: string
+  status: string
+  trigger: string
+  createdAt: string
+  completedAt?: string
+  startedAt?: string
+  sizeBytes?: number
+  errorMessage?: string
+  requestedByUserId?: string
+  requestedByUserName?: string
+}
+
+export interface DatabaseRestoreResponse {
+  id: string
+  backupId: string
+  backupFileName: string
+  status: string
+  createdAt: string
+  startedAt?: string
+  completedAt?: string
+  errorMessage?: string
+  requestedByUserId?: string
+  requestedByUserName?: string
+}
+
+export interface CreateDatabaseRestoreRequest {
+  backupId: string
+  password: string
+  useLatest: boolean
+}
+
+export interface CheckPhoneResponse {
+  userId: string
+  phoneNumber: string
+}
+
+export interface SendOtpRequest {
+  userId: string
+  phoneNumber: string
+}
+
+export interface VerifyOtpRequest {
+  userId: string
+  phoneNumber: string
+  otpCode: string
+}
+
+export interface VerifyOtpResponse {
+  verificationTokenId: number
+  userId: string
+  phoneNumber: string
+}
+
+export interface CreateDoctorRequestForm {
+  verificationTokenId: number
+  fullName: string
+  knownName: string
+  province: number
+  birthDay: string
+  specializationId: number
+  identityFront: File
+  identityBack?: File
+}
+
+export interface DoctorRequestResponse {
+  id: number
+  code: string
+  status: string
+  createdAt: string
+  message: string
+}
+
+export interface DoctorRequestListItem {
+  id: number
+  code: string
+  fullName: string
+  knownName: string
+  phoneNumber: string
+  status: string
+  specializationName: string
+  provinceName: string
+  createdAt: string
+  rejectedReason?: string
+}
+
+export interface DoctorRequestDetails {
+  id: number
+  code: string
+  userId?: string
+  phoneNumber: string
+  fullName: string
+  knownName: string
+  province: string
+  birthDay: string
+  specializationId: number
+  specializationName: string
+  identityFront: string
+  identityBack?: string
+  status: string
+  rejectedReason?: string
+  createdAt: string
+  modifiedAt?: string
+}
+
+export interface DoctorRequestPagination {
+  items: DoctorRequestListItem[]
+  totalItems: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+}
+
 export interface AnalyticsSummary {
   metrics: AnalyticsMetric[]
   appointmentStatus: AnalyticsLabelValue[]

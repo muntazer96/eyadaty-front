@@ -227,6 +227,21 @@ onMounted(async () => {
           </ul>
         </div>
 
+        <!-- Doctor Request CTA -->
+        <div class="dl-divider-line">
+          <span class="dl-divider-label">هل أنت مريض وتريد أن تصبح طبيباً؟</span>
+        </div>
+        <div class="dl-section-center">
+          <p class="dl-prompt">يمكنك الآن تقديم طلب لتحويل حسابك إلى حساب طبيب والاستفادة من خدمات عيادتي</p>
+          <RouterLink to="/doctor-request" class="dl-btn-primary dl-btn-block" style="text-decoration: none;">
+            <HeartPulse :size="20" />
+            تقديم طلب التحويل إلى طبيب
+          </RouterLink>
+          <RouterLink to="/doctor-request/status" class="dl-btn-outline dl-btn-block" style="text-decoration: none;">
+            متابعة طلب موجود
+          </RouterLink>
+        </div>
+
         <!-- Divider -->
         <div class="dl-divider-line">
           <span class="dl-divider-label">مميزات التطبيق</span>

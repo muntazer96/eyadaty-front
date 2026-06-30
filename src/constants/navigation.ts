@@ -43,6 +43,18 @@ const adminNavigation: NavItem[] = [
         icon: 'mdi-whatsapp',
         roles: ['SuperAdmin'],
       },
+      {
+        label: 'النسخ الاحتياطي',
+        to: '/backup-restore',
+        icon: 'mdi-database',
+        roles: ['SuperAdmin'],
+      },
+      {
+        label: 'طلبات التحويل',
+        to: '/doctor-requests',
+        icon: 'mdi-file-document-edit',
+        roles: ['SuperAdmin'],
+      },
     ],
   },
   {

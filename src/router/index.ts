@@ -22,6 +22,11 @@ import ReviewsView from '../views/ReviewsView.vue'
 import SubscriptionsView from '../views/SubscriptionsView.vue'
 import UsersView from '../views/UsersView.vue'
 import WhatsAppView from '../views/WhatsAppView.vue'
+import BackupRestoreView from '../views/BackupRestoreView.vue'
+import DoctorRequestFlowView from '../views/DoctorRequestFlowView.vue'
+import DoctorRequestStatusView from '../views/DoctorRequestStatusView.vue'
+import AdminDoctorRequestListView from '../views/admin/DoctorRequestListView.vue'
+import AdminDoctorRequestDetailView from '../views/admin/DoctorRequestDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -29,6 +34,8 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
     { path: '/password-reset', name: 'password-reset', component: PasswordResetView },
     { path: '/download', name: 'download-app', component: DownloadAppView },
+    { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView },
+    { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView },
 
     {
       path: '/',
@@ -44,6 +51,9 @@ const router = createRouter({
         { path: 'app-versions', name: 'app-versions', component: AppVersionsView, meta: { title: 'سياسات التحديث', roles: ['SuperAdmin'] } },
         { path: 'app-releases', name: 'app-releases', component: AppVersionManagementView, meta: { title: 'إصدارات APK', roles: ['SuperAdmin'] } },
         { path: 'whatsapp', name: 'whatsapp', component: WhatsAppView, meta: { title: 'WhatsApp OTP', roles: ['SuperAdmin'] } },
+        { path: 'backup-restore', name: 'backup-restore', component: BackupRestoreView, meta: { title: 'النسخ الاحتياطي', roles: ['SuperAdmin'] } },
+        { path: 'doctor-requests', name: 'doctor-requests', component: AdminDoctorRequestListView, meta: { title: 'طلبات التحويل', roles: ['SuperAdmin'] } },
+        { path: 'doctor-requests/:id', name: 'doctor-request-detail', component: AdminDoctorRequestDetailView, meta: { title: 'تفاصيل الطلب', roles: ['SuperAdmin'] } },
         { path: 'offers', name: 'offers', component: OffersView, meta: { title: 'العروض', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'clinics', name: 'clinics', component: ClinicsView, meta: { title: 'عياداتي', roles: ['DoctorUser'] } },
         { path: 'appointments', name: 'appointments', component: AppointmentsView, meta: { title: 'الحجوزات اليومية', roles: ['SuperAdmin', 'DoctorUser'] } },
