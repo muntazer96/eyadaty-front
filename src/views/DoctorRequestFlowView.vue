@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '../services/api'
 import { checkPhone, sendOtp, verifyOtp, submitDoctorRequest } from '../services/doctorRequestService'
 import { getErrorMessage } from '../utils/errors'
@@ -55,6 +55,26 @@ const isFormValid = computed(() =>
   identityFront.value !== null
 )
 
+// --- إعادة إرسال الرمز مع عداد تنازلي ---
+const resendCooldown = ref(0)
+let resendTimer: ReturnType<typeof setInterval> | null = null
+
+function startResendCooldown() {
+  resendCooldown.value = 60
+  if (resendTimer) clearInterval(resendTimer)
+  resendTimer = setInterval(() => {
+    resendCooldown.value--
+    if (resendCooldown.value <= 0 && resendTimer) {
+      clearInterval(resendTimer)
+      resendTimer = null
+    }
+  }, 1000)
+}
+
+onUnmounted(() => {
+  if (resendTimer) clearInterval(resendTimer)
+})
+
 onMounted(async () => {
   try {
     const [pRes, sRes] = await Promise.all([
@@ -96,6 +116,8 @@ async function handleCheckPhone() {
     const res = await checkPhone(phoneNumber.value, token)
     userId.value = res.data!.userId
     currentStep.value = 1
+    // إرسال رمز التحقق تلقائياً مرة واحدة فقط عند الدخول للخطوة
+    await handleSendOtp()
   } catch (e) {
     errorMsg.value = getErrorMessage(e)
     resetCaptchaChallenge()
@@ -109,6 +131,7 @@ async function handleSendOtp() {
   loading.value = true
   try {
     await sendOtp(userId.value, phoneNumber.value)
+    startResendCooldown()
   } catch (e) {
     errorMsg.value = getErrorMessage(e)
   } finally {
@@ -295,10 +318,29 @@ function goBack() {
                   placeholder="000000"
                   maxlength="6"
                   dir="ltr"
-                  @focus="handleSendOtp"
+                  @keyup.enter="handleVerifyOtp"
                 />
               </div>
-              <div class="dr-hint">تم إرسال رمز التحقق إلى <strong class="dr-hint-strong">{{ phoneNumber }}</strong> عبر واتساب</div>
+              <div class="dr-hint">
+                تم إرسال رمز التحقق إلى <strong class="dr-hint-strong">{{ phoneNumber }}</strong> عبر واتساب
+              </div>
+
+              <!-- إعادة إرسال الرمز -->
+              <div class="dr-resend">
+                <button
+                  v-if="resendCooldown === 0"
+                  type="button"
+                  class="dr-resend-btn"
+                  :disabled="loading"
+                  @click="handleSendOtp"
+                >
+                  <v-icon icon="mdi-refresh" size="15" />
+                  إعادة إرسال الرمز
+                </button>
+                <span v-else class="dr-resend-wait">
+                  يمكنك إعادة الإرسال خلال {{ resendCooldown }} ثانية
+                </span>
+              </div>
             </div>
             <div class="dr-btn-row">
               <button class="dr-btn dr-btn-ghost" @click="goBack">
@@ -791,6 +833,38 @@ function goBack() {
   color: var(--color-primary);
   direction: ltr;
   display: inline-block;
+}
+
+/* Resend OTP */
+.dr-resend {
+  margin-top: 4px;
+}
+
+.dr-resend-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.dr-resend-btn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.dr-resend-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dr-resend-wait {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
 }
 
 /* Captcha */
