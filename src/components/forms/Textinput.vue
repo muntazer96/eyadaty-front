@@ -8,6 +8,9 @@ interface Props {
   error?: string | boolean
   type?: 'text' | 'email' | 'password' | 'tel' | 'url' | 'number'
   placeholder?: string
+  dir?: 'rtl' | 'ltr' | 'auto'
+  inputmode?: 'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'
+  autocomplete?: string
   disabled?: boolean
   readonly?: boolean
   required?: boolean
@@ -26,6 +29,9 @@ const props = withDefaults(defineProps<Props>(), {
   error: false,
   type: 'text',
   placeholder: '',
+  dir: 'rtl',
+  inputmode: undefined,
+  autocomplete: undefined,
   disabled: false,
   readonly: false,
   required: false,
@@ -79,6 +85,9 @@ const togglePassword = () => {
         :value="modelValue"
         :type="inputType"
         :placeholder="placeholder"
+        :dir="dir"
+        :inputmode="inputmode"
+        :autocomplete="autocomplete"
         :disabled="disabled"
         :readonly="readonly"
         :required="required"
@@ -187,6 +196,7 @@ const togglePassword = () => {
   font-family: var(--font-family-primary);
   padding: 0 12px;
   min-width: 0;
+  text-align: start;
 }
 
 .input-field.has-leading-icon {
