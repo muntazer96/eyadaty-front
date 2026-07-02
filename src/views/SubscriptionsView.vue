@@ -68,11 +68,11 @@ function money(v: number) {
 // API
 async function loadLookups() {
   const [pkgRes, docRes] = await Promise.all([
-    api.get<ApiResponse<PageResult<SubscriptionPackage>>>('/SubscriptionPackages', { params: { page: 1, pageSize: 100 } }),
-    api.get<ApiResponse<PageResult<DoctorItem>>>('/Doctor', { params: { page: 1, pageSize: 100 } }),
+    api.get<ApiResponse<SubscriptionPackage[]>>('/SubscriptionPackages/items'),
+    api.get<ApiResponse<DoctorItem[]>>('/Doctor/items'),
   ])
-  packages.value = pkgRes.data.data.items
-  doctors.value  = docRes.data.data.items
+  packages.value = pkgRes.data.data
+  doctors.value  = docRes.data.data
 }
 
 async function loadSubscriptions() {
@@ -240,7 +240,7 @@ onMounted(initialize)
           <label class="filter-label">الطبيب</label>
           <v-autocomplete
             v-model="filters.doctorId"
-            :items="[{ value: '', label: 'كل الأطباء' }, ...doctors.map(d => ({ value: d.id, label: d.name }))]"
+            :items="[{ value: '', label: 'كل الأطباء' }, ...doctors.map(d => ({ value: String(d.id), label: d.name }))]"
             item-title="label"
             item-value="value"
             class="filter-select"
@@ -253,7 +253,7 @@ onMounted(initialize)
           <label class="filter-label">الباقة</label>
           <v-autocomplete
             v-model="filters.packageId"
-            :items="[{ value: '', label: 'كل الباقات' }, ...packages.map(p => ({ value: p.id, label: p.name }))]"
+            :items="[{ value: '', label: 'كل الباقات' }, ...packages.map(p => ({ value: String(p.id), label: p.name }))]"
             item-title="label"
             item-value="value"
             class="filter-select"
@@ -310,7 +310,7 @@ onMounted(initialize)
         <EmptyState v-else-if="!subscriptions.length" icon="mdi-calendar-blank" title="لا توجد اشتراكات" description="لا توجد اشتراكات مطابقة للفلاتر" />
 
         <div v-else class="table-scroll">
-          <table class="data-table">
+          <table class="data-table mobile-card-table">
             <thead>
               <tr>
                 <th>الطبيب</th>
@@ -322,19 +322,19 @@ onMounted(initialize)
             </thead>
             <tbody>
               <tr v-for="sub in subscriptions" :key="sub.id">
-                <td>
+                <td data-label="الطبيب">
                   <strong>{{ sub.doctor.name }}</strong>
                   <p class="row-sub">{{ sub.doctor.specialization.name }}</p>
                 </td>
-                <td>
+                <td data-label="الباقة">
                   <strong>{{ sub.package.name }}</strong>
                   <p class="row-sub">{{ money(sub.package.price) }} د.ع / شهر</p>
                 </td>
-                <td>
+                <td data-label="المدة">
                   <strong>{{ formatDate(sub.startDate) }}</strong>
                   <p class="row-sub">حتى {{ formatDate(sub.endDate) }}</p>
                 </td>
-                <td>
+                <td data-label="الحالة">
                   <v-chip size="small" :color="statusMeta(sub.status).color" variant="tonal">
                     {{ statusMeta(sub.status).label }}
                   </v-chip>
@@ -440,7 +440,7 @@ onMounted(initialize)
           <label class="filter-label">الطبيب</label>
           <v-autocomplete
             v-model="featureDoctorId"
-            :items="[{ value: '', label: 'اختر الطبيب' }, ...doctors.map(d => ({ value: d.id, label: d.name }))]"
+            :items="[{ value: '', label: 'اختر الطبيب' }, ...doctors.map(d => ({ value: String(d.id), label: d.name }))]"
             item-title="label"
             item-value="value"
             class="filter-select"
@@ -466,7 +466,7 @@ onMounted(initialize)
         <EmptyState v-else-if="!features.length" icon="mdi-star-off" title="لا توجد مميزات" />
 
         <div v-else class="table-scroll">
-          <table class="data-table">
+          <table class="data-table mobile-card-table">
             <thead>
               <tr>
                 <th>الطبيب</th>
@@ -478,21 +478,21 @@ onMounted(initialize)
             </thead>
             <tbody>
               <tr v-for="feature in features" :key="feature.id">
-                <td>
+                <td data-label="الطبيب">
                   <strong>{{ feature.doctor.name }}</strong>
                   <p class="row-sub">{{ feature.doctor.specialization.name }}</p>
                 </td>
-                <td>
+                <td data-label="الميزة">
                   <strong>{{ feature.feature.name }}</strong>
                   <p class="row-sub">{{ feature.feature.normalizedName }}</p>
                 </td>
-                <td class="muted-cell">{{ feature.feature.description || '-' }}</td>
-                <td>
+                <td class="muted-cell" data-label="الوصف">{{ feature.feature.description || '-' }}</td>
+                <td data-label="الحالة">
                   <v-chip size="small" :color="feature.isEnabled ? 'success' : 'default'" variant="tonal">
                     {{ feature.isEnabled ? 'مفعّلة' : 'معطّلة' }}
                   </v-chip>
                 </td>
-                <td>
+                <td data-label="التحكم">
                   <v-btn
                     size="small"
                     :color="feature.isEnabled ? 'warning' : 'success'"
@@ -525,7 +525,7 @@ onMounted(initialize)
               <label class="form-label">الطبيب <span class="required">*</span></label>
               <v-autocomplete
                 v-model="createForm.doctorId"
-                :items="doctors.map(d => ({ value: d.id, label: d.name }))"
+                :items="doctors.map(d => ({ value: String(d.id), label: d.name }))"
                 item-title="label"
                 item-value="value"
                 class="form-select"
@@ -539,7 +539,7 @@ onMounted(initialize)
               <label class="form-label">الباقة <span class="required">*</span></label>
               <v-autocomplete
                 v-model="createForm.packageId"
-                :items="packages.map(p => ({ value: p.id, label: p.name }))"
+                :items="packages.map(p => ({ value: String(p.id), label: p.name }))"
                 item-title="label"
                 item-value="value"
                 class="form-select"
@@ -609,7 +609,7 @@ onMounted(initialize)
             <label class="form-label">الباقة الجديدة</label>
             <v-autocomplete
               v-model="upgradePackageId"
-              :items="packages.map(p => ({ value: p.id, label: p.name }))"
+              :items="packages.map(p => ({ value: String(p.id), label: p.name }))"
               item-title="label"
               item-value="value"
               class="form-select"
@@ -762,5 +762,11 @@ onMounted(initialize)
 
 /* Responsive */
 @media (max-width: 1100px) { .packages-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .packages-grid { grid-template-columns: 1fr; } .filters-bar { flex-direction: column; } .form-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  .packages-grid { grid-template-columns: 1fr; }
+  .filters-bar { flex-direction: column; align-items: stretch; }
+  .filter-field, .filter-select { width: 100%; }
+  .filter-btn { align-self: stretch; }
+  .form-grid { grid-template-columns: 1fr; }
+}
 </style>

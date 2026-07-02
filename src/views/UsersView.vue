@@ -177,7 +177,7 @@ onMounted(loadUsers)
 
       <!-- Table -->
       <div v-else class="table-scroll">
-        <table class="data-table">
+        <table class="data-table mobile-card-table">
           <thead>
             <tr>
               <th>المستخدم</th>
@@ -192,7 +192,7 @@ onMounted(loadUsers)
           <tbody>
             <tr v-for="user in users" :key="user.id">
               <!-- User -->
-              <td>
+              <td data-label="المستخدم">
                 <div class="user-cell">
                   <div class="user-avatar">
                     <v-icon icon="mdi-account" size="18" color="primary" />
@@ -204,7 +204,7 @@ onMounted(loadUsers)
                 </div>
               </td>
               <!-- Contact -->
-              <td>
+              <td data-label="بيانات التواصل">
                 <strong class="ltr">{{ user.phoneNumber || '-' }}</strong>
                 <v-chip
                   size="x-small"
@@ -217,11 +217,11 @@ onMounted(loadUsers)
                 </v-chip>
               </td>
               <!-- Role -->
-              <td>
+              <td data-label="الدور">
                 <v-chip size="small" variant="tonal" color="primary">{{ roleLabel(user.roleName) }}</v-chip>
               </td>
               <!-- Linked Doctor -->
-              <td>
+              <td data-label="الطبيب المرتبط">
                 <div
                   v-if="user.linkedDoctor"
                   class="linked-doctor"
@@ -234,9 +234,9 @@ onMounted(loadUsers)
                 <v-chip v-else size="x-small" variant="tonal">غير مرتبط</v-chip>
               </td>
               <!-- Last Login -->
-              <td class="muted-cell">{{ formatDate(user.lastLoginDate) }}</td>
+              <td class="muted-cell" data-label="آخر دخول">{{ formatDate(user.lastLoginDate) }}</td>
               <!-- Status -->
-              <td>
+              <td data-label="الحالة">
                 <v-chip size="small" :color="user.isLocked ? 'error' : 'success'" variant="tonal">
                   {{ user.isLocked ? 'موقوف' : 'فعّال' }}
                 </v-chip>

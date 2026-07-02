@@ -537,5 +537,21 @@ onMounted(fetchData)
   .action-bar {
     flex-direction: column;
   }
+  .info-row {
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  .info-value {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  .attachments-row {
+    flex-direction: column;
+  }
+  .attachments-row .v-btn {
+    width: 100%;
+  }
 }
 </style>

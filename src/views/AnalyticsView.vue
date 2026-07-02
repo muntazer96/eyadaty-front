@@ -4,7 +4,7 @@ import type { PropType } from 'vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { useNotifications } from '../composables/useNotifications'
-import type { AnalyticsLabelValue, AnalyticsMetric, AnalyticsSummary, ApiResponse, DoctorItem, PageResult } from '../types/api'
+import type { AnalyticsLabelValue, AnalyticsMetric, AnalyticsSummary, ApiResponse, DoctorItem } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import PageHeader from '../components/common/Pageheader.vue'
 import EmptyState from '../components/common/Emptystate.vue'
@@ -22,7 +22,7 @@ const selectedDoctorId = ref('')
 const activeTab = ref<TabKey>('overview')
 const doctorOptions = computed(() => [
   { value: '', label: 'كل النظام' },
-  ...doctors.value.map((doctor) => ({ value: doctor.id, label: doctor.name })),
+  ...doctors.value.map((doctor) => ({ value: String(doctor.id), label: doctor.name })),
 ])
 
 const today = new Date()
@@ -175,10 +175,8 @@ async function loadAnalytics() {
 
 async function loadDoctors() {
   if (!isAdmin.value) return
-  const response = await api.get<ApiResponse<PageResult<DoctorItem>>>('/Doctor', {
-    params: { page: 1, pageSize: 300 },
-  })
-  doctors.value = response.data.data.items
+  const response = await api.get<ApiResponse<DoctorItem[]>>('/Doctor/items')
+  doctors.value = response.data.data
 }
 
 onMounted(() => Promise.all([loadDoctors(), loadAnalytics()]))
@@ -851,7 +849,7 @@ onMounted(() => Promise.all([loadDoctors(), loadAnalytics()]))
 
 @media (max-width: 600px) {
   .kpi-grid { grid-template-columns: 1fr; }
-  .filters-bar { flex-direction: column; }
-  .filter-input, .doctor-select { width: 100%; }
+  .filters-bar { flex-direction: column; align-items: stretch; }
+  .filter-field, .filter-input, .doctor-select { width: 100%; min-width: 0; }
 }
 </style>

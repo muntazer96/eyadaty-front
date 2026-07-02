@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
-import type { ApiResponse, ClinicExceptionItem, ClinicItem } from '../types/api'
+import type { ApiResponse, ClinicExceptionItem, ClinicItem, PageResult } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
 
@@ -12,7 +12,9 @@ const clinics        = ref<ClinicItem[]>([])
 const exceptions     = ref<ClinicExceptionItem[]>([])
 const page           = ref(1)
 const pageSize       = 6
-const clinicId       = ref('')
+const totalPages     = ref(1)
+const totalItems     = ref(0)
+const clinicId       = ref<number | null>(null)
 const loading        = ref(false)
 const saving         = ref(false)
 const editorOpen     = ref(false)
@@ -21,16 +23,16 @@ const deleteException = ref<ClinicExceptionItem>()
 
 const filters = reactive({ fromDate: '', toDate: '' })
 const form = reactive({
-  id: 0, exceptionDate: '', isClosed: true, closureReason: '',
+  id: 0, clinicId: null as number | null, exceptionDate: '', isClosed: true, closureReason: '',
   maxAppointments: '', startTime: '', endTime: '',
   appointmentConflictAction: 'cancel', moveAppointmentsToDate: '',
 })
 
-const selectedClinic     = computed(() => clinics.value.find((c) => c.id === Number(clinicId.value)))
+const clinicOptions      = computed(() => clinics.value.map((c) => ({ value: c.id, title: c.name })))
+const selectedClinic     = computed(() => clinics.value.find((c) => c.id === clinicId.value))
+const formClinic         = computed(() => clinics.value.find((c) => c.id === form.clinicId) ?? selectedClinic.value)
 const selectedClinicName = computed(() => selectedClinic.value?.name)
-const bookingWindowDays  = computed(() => Math.max(1, selectedClinic.value?.bookingWindowDays ?? 7))
-const totalPages         = computed(() => Math.max(1, Math.ceil(exceptions.value.length / pageSize)))
-const paginatedExceptions = computed(() => exceptions.value.slice((page.value - 1) * pageSize, page.value * pageSize))
+const bookingWindowDays  = computed(() => Math.max(1, formClinic.value?.bookingWindowDays ?? 7))
 const minMoveDate        = computed(() => form.exceptionDate ? addDays(form.exceptionDate, 1) : today())
 const maxMoveDate        = computed(() => addDays(today(), bookingWindowDays.value - 1))
 const moveDateHint       = computed(() => `تاريخ النقل يجب أن يكون بعد تاريخ الاستثناء وضمن نافذة الحجز (${bookingWindowDays.value} يوم).`)
@@ -47,7 +49,12 @@ function addDays(value: string, days: number) {
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ar-IQ', { dateStyle: 'full' }).format(new Date(`${value}T00:00:00`))
 }
-function normalizePage() { if (page.value > totalPages.value) page.value = totalPages.value }
+
+function setExceptionsFromFullList(items: ClinicExceptionItem[]) {
+  totalItems.value = items.length
+  totalPages.value = Math.max(1, Math.ceil(items.length / pageSize))
+  exceptions.value = items.slice((page.value - 1) * pageSize, page.value * pageSize)
+}
 
 function validateMoveDate() {
   if (!form.isClosed || form.appointmentConflictAction !== 'move') return true
@@ -61,19 +68,46 @@ function validateMoveDate() {
 async function loadClinics() {
   const r = await api.get<ApiResponse<ClinicItem[]>>('/Clinic/my')
   clinics.value = r.data.data
-  if (!clinicId.value && clinics.value.length) clinicId.value = String(clinics.value[0].id)
+  if (!clinicId.value && clinics.value.length) clinicId.value = clinics.value[0].id
 }
 
 async function loadExceptions() {
-  if (!clinicId.value) { exceptions.value = []; page.value = 1; return }
+  if (!clinicId.value) { exceptions.value = []; page.value = 1; totalPages.value = 1; totalItems.value = 0; return }
   loading.value = true
   try {
-    const r = await api.get<ApiResponse<ClinicExceptionItem[]>>(`/ClinicException/my/${clinicId.value}`, {
-      params: { fromDate: filters.fromDate || undefined, toDate: filters.toDate || undefined },
+    const r = await api.get<ApiResponse<PageResult<ClinicExceptionItem> | ClinicExceptionItem[]>>(`/ClinicException/my/${clinicId.value}/paged`, {
+      params: {
+        fromDate: filters.fromDate || undefined,
+        toDate: filters.toDate || undefined,
+        page: page.value,
+        pageSize,
+      },
     })
-    exceptions.value = r.data.data
-    normalizePage()
-  } catch (e) { showError(getErrorMessage(e)) }
+    if (Array.isArray(r.data.data)) {
+      setExceptionsFromFullList(r.data.data)
+    } else {
+      exceptions.value = r.data.data.items
+      totalPages.value = r.data.data.totalPages || 1
+      totalItems.value = r.data.data.totalItems
+    }
+    if (!exceptions.value.length && page.value > 1) {
+      page.value = Math.max(1, totalPages.value)
+      await loadExceptions()
+    }
+  } catch (e: any) {
+    if (e.response?.status === 404) {
+      try {
+        const fallback = await api.get<ApiResponse<ClinicExceptionItem[]>>(`/ClinicException/my/${clinicId.value}`, {
+          params: { fromDate: filters.fromDate || undefined, toDate: filters.toDate || undefined },
+        })
+        setExceptionsFromFullList(fallback.data.data)
+      } catch (fallbackError: any) {
+        if (fallbackError.response?.status === 404) { exceptions.value = []; totalPages.value = 1; totalItems.value = 0 }
+        else showError(getErrorMessage(fallbackError))
+      }
+    }
+    else showError(getErrorMessage(e))
+  }
   finally { loading.value = false }
 }
 
@@ -81,12 +115,12 @@ function applyFilters() { page.value = 1; loadExceptions() }
 
 function openEditor(item?: ClinicExceptionItem) {
   Object.assign(form, item ? {
-    id: item.id, exceptionDate: item.exceptionDate, isClosed: item.isClosed,
+    id: item.id, clinicId: item.clinicId, exceptionDate: item.exceptionDate, isClosed: item.isClosed,
     closureReason: item.closureReason ?? '', maxAppointments: item.maxAppointments?.toString() ?? '',
     startTime: item.startTime?.slice(0, 5) ?? '', endTime: item.endTime?.slice(0, 5) ?? '',
     appointmentConflictAction: 'cancel', moveAppointmentsToDate: '',
   } : {
-    id: 0, exceptionDate: '', isClosed: true, closureReason: '',
+    id: 0, clinicId: clinicId.value, exceptionDate: '', isClosed: true, closureReason: '',
     maxAppointments: '', startTime: '', endTime: '',
     appointmentConflictAction: 'cancel', moveAppointmentsToDate: '',
   })
@@ -94,12 +128,13 @@ function openEditor(item?: ClinicExceptionItem) {
 }
 
 async function saveException() {
+  if (!form.clinicId) { showError('يجب اختيار العيادة.'); return }
   if (!validateMoveDate()) return
   saving.value = true
   try {
     const r = await api.post<ApiResponse<object>>('/ClinicException/my', {
       id: form.id || null,
-      clinicId: Number(clinicId.value),
+      clinicId: form.clinicId,
       exceptionDate: form.exceptionDate,
       isClosed: form.isClosed,
       closureReason: form.closureReason || null,
@@ -111,6 +146,7 @@ async function saveException() {
     })
     showSuccess(r.data.message)
     editorOpen.value = false
+    clinicId.value = form.clinicId
     await loadExceptions()
   } catch (e) { showError(getErrorMessage(e)) }
   finally { saving.value = false }
@@ -143,6 +179,9 @@ onMounted(async () => {
         <h1 class="page-title">الإجازات والاستثناءات</h1>
       </div>
       <div class="page-actions">
+        <v-chip v-if="totalItems > 0" color="primary" variant="tonal" size="small">
+          {{ totalItems }}
+        </v-chip>
         <v-btn variant="outlined" color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="loadExceptions">
           تحديث
         </v-btn>
@@ -158,8 +197,8 @@ onMounted(async () => {
         <label class="filter-label">العيادة</label>
         <v-autocomplete
           v-model="clinicId"
-          :items="clinics.map(c => ({ value: c.id, label: c.name }))"
-          item-title="label"
+          :items="clinicOptions"
+          item-title="title"
           item-value="value"
           class="filter-select"
           density="compact"
@@ -183,8 +222,8 @@ onMounted(async () => {
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="exceptions-grid">
-      <v-skeleton-loader v-for="i in 3" :key="i" type="card" height="180" />
+    <div v-if="loading" class="exceptions-loading">
+      <v-skeleton-loader v-for="i in 4" :key="i" type="table-row" />
     </div>
 
     <!-- No Clinics -->
@@ -203,65 +242,107 @@ onMounted(async () => {
       :description="`دوام ${selectedClinicName} يعمل وفق الجدول الأسبوعي`"
     />
 
-    <!-- Exceptions Grid -->
-    <div v-else class="exceptions-grid">
-      <div
-        v-for="item in paginatedExceptions"
-        :key="item.id"
-        class="exception-card"
-        :class="item.isClosed ? 'exception-card--closed' : 'exception-card--custom'"
-      >
-        <!-- Badge -->
-        <div class="exception-card-top">
-          <v-chip
-            size="small"
-            :color="item.isClosed ? 'error' : 'warning'"
-            variant="tonal"
-          >
-            <v-icon :icon="item.isClosed ? 'mdi-lock' : 'mdi-calendar-edit'" size="14" start />
-            {{ item.isClosed ? 'إغلاق كامل' : 'دوام مخصص' }}
-          </v-chip>
+    <!-- Exceptions Table / Cards -->
+    <div v-else class="exceptions-list">
+      <v-card elevation="0" class="exceptions-table-card">
+        <div class="table-scroll">
+          <table class="exceptions-table">
+            <thead>
+              <tr>
+                <th>التاريخ</th>
+                <th>الحالة</th>
+                <th>عدد الأدوار</th>
+                <th>الوقت</th>
+                <th>الملاحظة</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in exceptions" :key="item.id">
+                <td data-label="التاريخ">
+                  <strong class="table-date">{{ formatDate(item.exceptionDate) }}</strong>
+                </td>
+                <td data-label="الحالة">
+                  <v-chip size="small" :color="item.isClosed ? 'error' : 'warning'" variant="tonal">
+                    <v-icon :icon="item.isClosed ? 'mdi-lock' : 'mdi-calendar-edit'" size="14" start />
+                    {{ item.isClosed ? 'إغلاق كامل' : 'دوام مخصص' }}
+                  </v-chip>
+                </td>
+                <td data-label="عدد الأدوار">
+                  {{ item.isClosed ? '-' : item.maxAppointments ?? 'حسب الجدول' }}
+                </td>
+                <td data-label="الوقت">
+                  {{ item.isClosed || !item.startTime ? '-' : `${item.startTime.slice(0, 5)} - ${item.endTime?.slice(0, 5)}` }}
+                </td>
+                <td data-label="الملاحظة">
+                  <span class="table-reason">{{ item.closureReason || '-' }}</span>
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <v-btn icon size="small" variant="tonal" color="primary" @click="openEditor(item)">
+                      <v-icon icon="mdi-pencil" size="16" />
+                    </v-btn>
+                    <v-btn icon size="small" variant="tonal" color="error" @click="deleteException = item; deleteDialog = true">
+                      <v-icon icon="mdi-delete" size="16" />
+                    </v-btn>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+      </v-card>
 
-        <!-- Date -->
-        <h3 class="exception-date">{{ formatDate(item.exceptionDate) }}</h3>
+      <div class="exceptions-mobile-cards">
+        <div
+          v-for="item in exceptions"
+          :key="item.id"
+          class="exception-card"
+          :class="item.isClosed ? 'exception-card--closed' : 'exception-card--custom'"
+        >
+          <div class="exception-card-top">
+            <v-chip size="small" :color="item.isClosed ? 'error' : 'warning'" variant="tonal">
+              <v-icon :icon="item.isClosed ? 'mdi-lock' : 'mdi-calendar-edit'" size="14" start />
+              {{ item.isClosed ? 'إغلاق كامل' : 'دوام مخصص' }}
+            </v-chip>
+          </div>
 
-        <!-- Reason -->
-        <p v-if="item.closureReason" class="exception-reason">{{ item.closureReason }}</p>
+          <h3 class="exception-date">{{ formatDate(item.exceptionDate) }}</h3>
+          <p v-if="item.closureReason" class="exception-reason">{{ item.closureReason }}</p>
 
-        <!-- Custom Schedule Details -->
-        <div v-if="!item.isClosed" class="exception-details">
-          <span class="detail-chip">
-            <v-icon icon="mdi-account-group" size="14" />
-            الأدوار: {{ item.maxAppointments ?? 'حسب الجدول' }}
-          </span>
-          <span v-if="item.startTime" class="detail-chip">
-            <v-icon icon="mdi-clock" size="14" />
-            {{ item.startTime.slice(0, 5) }} - {{ item.endTime?.slice(0, 5) }}
-          </span>
-        </div>
+          <div v-if="!item.isClosed" class="exception-details">
+            <span class="detail-chip">
+              <v-icon icon="mdi-account-group" size="14" />
+              الأدوار: {{ item.maxAppointments ?? 'حسب الجدول' }}
+            </span>
+            <span v-if="item.startTime" class="detail-chip">
+              <v-icon icon="mdi-clock" size="14" />
+              {{ item.startTime.slice(0, 5) }} - {{ item.endTime?.slice(0, 5) }}
+            </span>
+          </div>
 
-        <!-- Actions -->
-        <div class="exception-actions">
-          <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-pencil" @click="openEditor(item)">
-            تعديل
-          </v-btn>
-          <v-btn
-            size="small"
-            variant="text"
-            color="error"
-            prepend-icon="mdi-delete"
-            @click="deleteException = item; deleteDialog = true"
-          >
-            حذف
-          </v-btn>
+          <div class="exception-actions">
+            <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-pencil" @click="openEditor(item)">
+              تعديل
+            </v-btn>
+            <v-btn size="small" variant="text" color="error" prepend-icon="mdi-delete" @click="deleteException = item; deleteDialog = true">
+              حذف
+            </v-btn>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Pagination -->
     <div v-if="totalPages > 1" class="pagination-bar">
-      <v-pagination v-model="page" :length="totalPages" :total-visible="5" density="compact" color="primary" />
+      <v-pagination
+        v-model="page"
+        :length="totalPages"
+        :total-visible="5"
+        density="compact"
+        color="primary"
+        @update:model-value="loadExceptions"
+      />
     </div>
 
     <!-- ── Editor Dialog ── -->
@@ -275,6 +356,23 @@ onMounted(async () => {
 
         <v-card-text class="dialog-body">
           <div class="form-fields">
+            <!-- Clinic -->
+            <div class="form-field">
+              <label class="form-label">العيادة <span class="required">*</span></label>
+              <v-autocomplete
+                v-model="form.clinicId"
+                :items="clinicOptions"
+                item-title="title"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+                placeholder="اختر العيادة"
+                :disabled="!!form.id"
+              />
+            </div>
+
             <!-- Date -->
             <div class="form-field">
               <label class="form-label">التاريخ <span class="required">*</span></label>
@@ -424,11 +522,79 @@ onMounted(async () => {
 .filter-input:focus, .filter-select:focus { border-color: var(--color-primary); }
 .filter-btn { align-self: flex-end; }
 
-/* Exceptions Grid */
-.exceptions-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+/* Exceptions Table */
+.exceptions-loading {
+  padding: var(--spacing-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.exceptions-list {
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-lg);
+}
+
+.exceptions-table-card {
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden;
+}
+
+.table-scroll { overflow-x: auto; }
+
+.exceptions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.exceptions-table th {
+  padding: 12px 16px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.exceptions-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: middle;
+  color: var(--color-text);
+}
+
+.exceptions-table tbody tr:hover { background: var(--color-background); }
+.exceptions-table tbody tr:last-child td { border-bottom: none; }
+
+.table-date {
+  display: block;
+  min-width: 180px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.table-reason {
+  display: block;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.exceptions-mobile-cards {
+  display: none;
 }
 
 /* Exception Card */
@@ -505,7 +671,7 @@ onMounted(async () => {
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
 .form-label { font-size: 13px; font-weight: 600; color: var(--color-text); }
 .required { color: var(--color-error); }
-.form-input, .form-textarea {
+.form-input, .form-select, .form-textarea {
   padding: 10px 12px;
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -515,7 +681,7 @@ onMounted(async () => {
   font-size: 14px; outline: none; width: 100%;
   transition: border-color 0.2s;
 }
-.form-input:focus, .form-textarea:focus { border-color: var(--color-primary); }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--color-primary); }
 .form-textarea { resize: vertical; }
 .field-hint { margin: 4px 0 0 0; font-size: 12px; color: var(--color-text-muted); }
 
@@ -557,6 +723,18 @@ onMounted(async () => {
 .move-date-field { background: white; padding: var(--spacing-md); border-radius: var(--radius-md); }
 
 /* Responsive */
-@media (max-width: 768px) { .exceptions-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .exceptions-grid { grid-template-columns: 1fr; } .filters-bar { flex-direction: column; } .form-row { grid-template-columns: 1fr; } }
+@media (max-width: 768px) {
+  .exceptions-table-card { display: none; }
+  .exceptions-mobile-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+}
+@media (max-width: 600px) {
+  .filters-bar { flex-direction: column; align-items: stretch; }
+  .filter-field, .filter-input, .filter-select { width: 100%; min-width: 0; }
+  .filter-btn { align-self: stretch; }
+  .form-row { grid-template-columns: 1fr; }
+}
 </style>

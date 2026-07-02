@@ -256,6 +256,131 @@ textarea:focus-visible {
   outline: 0 !important;
 }
 
+.filters-bar .filter-field:not(.filter-field--search):has(.filter-select) {
+  flex: 0 0 190px;
+  width: 190px;
+}
+
+.filters-bar .filter-field:not(.filter-field--search):has(.filter-select) .filter-select {
+  width: 100% !important;
+}
+
+:where(.v-select, .v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) .v-field__field {
+  min-width: 0 !important;
+}
+
+:where(.v-select, .v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) .v-field__input {
+  min-width: 0 !important;
+  text-align: start !important;
+}
+
+:where(.v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) .v-field__input {
+  flex-wrap: nowrap !important;
+}
+
+:where(.v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) .v-field:focus-within :is(.v-select__selection, .v-autocomplete__selection),
+:where(.v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+).v-input--focused :is(.v-select__selection, .v-autocomplete__selection) {
+  display: none !important;
+}
+
+:where(.v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) .v-field:focus-within .v-field__input > input,
+:where(.v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+).v-input--focused .v-field__input > input {
+  flex: 1 1 100% !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  padding-inline: 8px !important;
+  text-align: start !important;
+}
+
+:where(.v-select, .v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) :is(.v-select__selection, .v-autocomplete__selection) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin-inline: 0 !important;
+}
+
+:where(.v-select, .v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) :is(.v-select__selection-text, .v-autocomplete__selection-text) {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-align: start !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+:where(.v-select, .v-autocomplete):is(
+  .filter-select,
+  .form-select,
+  .doctor-select,
+  .dr-select,
+  .status-select,
+  .select-input
+) .v-field__append-inner {
+  padding-inline-start: 4px !important;
+}
+
 :where(.v-select, .v-autocomplete):is(
   .filter-select,
   .form-select,
@@ -509,6 +634,119 @@ textarea:focus-visible {
   border-radius: 50%;
   animation: pulseDot 1.8s ease infinite;
   background-color: var(--color-primary);
+}
+
+/* Mobile table cards */
+@media (max-width: 700px) {
+  .filters-bar .filter-field:not(.filter-field--search):has(.filter-select) {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .table-scroll:has(.mobile-card-table) {
+    overflow: visible !important;
+    padding: var(--spacing-md);
+    background: var(--color-background);
+  }
+
+  .mobile-card-table {
+    display: block;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .mobile-card-table thead {
+    display: none;
+  }
+
+  .mobile-card-table tbody {
+    display: grid;
+    gap: var(--spacing-md);
+  }
+
+  .mobile-card-table tr {
+    display: grid;
+    gap: 0;
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .mobile-card-table tbody tr:hover {
+    background: var(--color-surface) !important;
+  }
+
+  .mobile-card-table tr:is(.row-active, .row-completed) {
+    background: var(--color-primary-soft);
+    border-color: var(--color-primary-light);
+  }
+
+  .mobile-card-table tr.row-failed {
+    background: #fff5f5;
+    border-color: var(--color-error-light);
+  }
+
+  .mobile-card-table tr:is(.row-active, .row-completed, .row-failed) td {
+    background: transparent !important;
+  }
+
+  .mobile-card-table tbody tr:last-child td,
+  .mobile-card-table td {
+    display: grid;
+    grid-template-columns: minmax(88px, 34%) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--spacing-md);
+    min-height: 38px;
+    padding: 9px 0 !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--color-border-light) !important;
+    color: var(--color-text);
+  }
+
+  .mobile-card-table td:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .mobile-card-table td::before {
+    content: attr(data-label);
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  .mobile-card-table td > * {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .mobile-card-table td:empty {
+    display: none;
+  }
+
+  .mobile-card-table td:last-child:not([data-label]) {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: var(--spacing-md) !important;
+  }
+
+  .mobile-card-table td:last-child:not([data-label])::before {
+    content: none;
+  }
+
+  .mobile-card-table .row-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .mobile-card-table :is(.doctor-cell, .user-cell, .version-cell, .file-cell, .offer-title-cell, .name-cell) {
+    min-width: 0;
+  }
 }
 
 /* RTL-specific adjustments */

@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import api from '../../services/api'
-import type { ApiResponse, DoctorNotificationItem } from '../../types/api'
+import type { ApiResponse, DoctorNotificationItem, PageResult } from '../../types/api'
 
 interface Props {
   title?: string
@@ -31,44 +31,99 @@ const userMenuOpen  = ref(false)
 const notifMenuOpen = ref(false)
 const notifItems    = ref<DoctorNotificationItem[]>([])
 const notifLoading  = ref(false)
+const notifLoadingMore = ref(false)
+const notifPage = ref(1)
+const notifPageSize = 5
+const notifTotalItems = ref(0)
+const notifUnreadCount = ref(0)
+
+interface UnreadCountResponse {
+  unreadCount?: number
+  UnreadCount?: number
+}
 
 const roleLabel = computed(() =>
   auth.primaryRole === 'SuperAdmin' ? 'مدير النظام' : 'حساب الطبيب'
 )
 
-const unreadCount = computed(() => notifItems.value.filter((n) => !n.readAt).length)
+const unreadCount = computed(() => notifUnreadCount.value)
+const notifHasMore = computed(() => notifItems.value.length < notifTotalItems.value)
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-async function loadNotifications() {
-  // الإشعارات فقط للطبيب
+async function loadUnreadCount() {
   if (!auth.hasAnyRole(['DoctorUser'])) return
-  notifLoading.value = true
   try {
-    const r = await api.get<ApiResponse<DoctorNotificationItem[]>>('/Notification/doctor/my')
-    notifItems.value = r.data.data
+    const r = await api.get<ApiResponse<UnreadCountResponse>>('/Notification/doctor/my/unread-count')
+    notifUnreadCount.value = r.data.data.unreadCount ?? r.data.data.UnreadCount ?? 0
+  } catch { /* silent */ }
+}
+
+async function loadNotifications(reset = true) {
+  if (!auth.hasAnyRole(['DoctorUser'])) return
+  if (reset) {
+    notifPage.value = 1
+    notifLoading.value = true
+  } else {
+    notifLoadingMore.value = true
+  }
+
+  try {
+    const r = await api.get<ApiResponse<PageResult<DoctorNotificationItem> | DoctorNotificationItem[]>>('/Notification/doctor/my/paged', {
+      params: { page: notifPage.value, pageSize: notifPageSize },
+    })
+    const loadedItems = Array.isArray(r.data.data) ? r.data.data : r.data.data.items
+    notifTotalItems.value = Array.isArray(r.data.data)
+      ? (notifPage.value - 1) * notifPageSize + loadedItems.length + (loadedItems.length === notifPageSize ? 1 : 0)
+      : r.data.data.totalItems
+    notifItems.value = reset ? loadedItems : [...notifItems.value, ...loadedItems]
+    await loadUnreadCount()
   } catch (e: any) {
-    if (e.response?.status === 404) notifItems.value = []
+    if (e.response?.status === 404) {
+      try {
+        const fallback = await api.get<ApiResponse<DoctorNotificationItem[]>>('/Notification/doctor/my', {
+          params: { page: notifPage.value, pageSize: notifPageSize },
+        })
+        const loadedItems = fallback.data.data
+        notifTotalItems.value = (notifPage.value - 1) * notifPageSize + loadedItems.length + (loadedItems.length === notifPageSize ? 1 : 0)
+        notifItems.value = reset ? loadedItems : [...notifItems.value, ...loadedItems]
+        await loadUnreadCount()
+      } catch {
+        notifItems.value = []
+        notifTotalItems.value = 0
+        notifUnreadCount.value = 0
+      }
+    }
   } finally {
     notifLoading.value = false
+    notifLoadingMore.value = false
   }
+}
+
+async function loadMoreNotifications() {
+  if (!notifHasMore.value || notifLoadingMore.value) return
+  notifPage.value += 1
+  await loadNotifications(false)
 }
 
 async function markAsRead(item: DoctorNotificationItem) {
   if (item.readAt) return
   try {
     await api.post<ApiResponse<object>>(`/Notification/doctor/my/${item.id}/read`)
-    await loadNotifications()
+    item.readAt = new Date().toISOString()
+    notifUnreadCount.value = Math.max(0, notifUnreadCount.value - 1)
   } catch { /* silent */ }
 }
 
 async function markAllRead() {
-  const unread = notifItems.value.filter((n) => !n.readAt)
-  await Promise.all(unread.map((n) => markAsRead(n)))
+  try {
+    await api.post<ApiResponse<object>>('/Notification/doctor/my/read-all')
+    notifItems.value = notifItems.value.map((item) => item.readAt ? item : { ...item, readAt: new Date().toISOString() })
+    notifUnreadCount.value = 0
+  } catch { /* silent */ }
 }
-
 function handleLogout() {
   userMenuOpen.value = false
   auth.logout()
@@ -143,7 +198,7 @@ onMounted(loadNotifications)
               <v-btn
                 v-else
                 icon size="x-small" variant="text" color="primary"
-                @click="loadNotifications"
+                @click="loadNotifications()"
               >
                 <v-icon icon="mdi-refresh" size="16" />
               </v-btn>
@@ -206,6 +261,19 @@ onMounted(loadNotifications)
                 <v-icon icon="mdi-check-all" size="16" />
               </v-btn>
             </div>
+          </div>
+
+          <div v-if="notifHasMore" class="notif-load-more">
+            <v-btn
+              variant="text"
+              size="small"
+              color="primary"
+              block
+              :loading="notifLoadingMore"
+              @click="loadMoreNotifications"
+            >
+              عرض المزيد
+            </v-btn>
           </div>
 
           <!-- Footer -->
@@ -289,6 +357,14 @@ onMounted(loadNotifications)
   color: var(--color-text);
   font-weight: 600;
   font-size: 18px;
+  min-width: 0;
+}
+
+:deep(.app-bar-title .v-toolbar-title__placeholder) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  unicode-bidi: plaintext;
 }
 
 .user-button { margin-left: var(--spacing-md); }
@@ -438,6 +514,12 @@ onMounted(loadNotifications)
   color: var(--color-text-muted);
 }
 
+.notif-load-more {
+  padding: 8px;
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-surface);
+}
+
 /* Footer */
 .notif-footer {
   padding: 8px;
@@ -464,5 +546,14 @@ onMounted(loadNotifications)
 
 :deep(.logout-item:hover) {
   background-color: rgba(179, 60, 60, 0.08);
+}
+
+@media (max-width: 600px) {
+  .app-bar-title {
+    font-size: 15px;
+    max-width: calc(100vw - 156px);
+  }
+
+  .user-button { margin-left: 0; }
 }
 </style>

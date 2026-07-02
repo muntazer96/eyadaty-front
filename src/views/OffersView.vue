@@ -123,8 +123,8 @@ function resetForm(item?: DoctorOfferItem) {
 async function loadDoctors() {
   if (!isAdmin.value) return
   try {
-    const r = await api.get<ApiResponse<PageResult<DoctorItem>>>('/Doctor', { params: { page: 1, pageSize: 200 } })
-    doctors.value = r.data.data.items
+    const r = await api.get<ApiResponse<DoctorItem[]>>('/Doctor/items')
+    doctors.value = r.data.data
   } catch (e: any) { if (e.response?.status !== 404) showError(getErrorMessage(e)) }
 }
 
@@ -323,7 +323,7 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
         <label class="filter-label">الطبيب</label>
         <v-autocomplete
           v-model="filters.doctorId"
-          :items="[{ value: '', label: 'كل الأطباء' }, ...doctors.map(d => ({ value: d.id, label: d.name }))]"
+          :items="[{ value: '', label: 'كل الأطباء' }, ...doctors.map(d => ({ value: String(d.id), label: d.name }))]"
           item-title="label"
           item-value="value"
           class="filter-select"
@@ -336,7 +336,7 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
         <label class="filter-label">العيادة</label>
         <v-autocomplete
           v-model="filters.clinicId"
-          :items="[{ value: '', label: 'كل العيادات' }, ...clinics.map(c => ({ value: c.id, label: c.name }))]"
+          :items="[{ value: '', label: 'كل العيادات' }, ...clinics.map(c => ({ value: String(c.id), label: c.name }))]"
           item-title="label"
           item-value="value"
           class="filter-select"
@@ -412,7 +412,7 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
 
       <!-- Table -->
       <div v-else class="table-scroll">
-        <table class="data-table">
+        <table class="data-table mobile-card-table">
           <thead>
             <tr>
               <th>العرض</th>
@@ -427,7 +427,7 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
           <tbody>
             <tr v-for="offer in offers" :key="offer.id">
               <!-- Title -->
-              <td>
+              <td data-label="العرض">
                 <div class="offer-title-cell">
                   <strong>{{ offer.title }}</strong>
                   <span class="offer-desc">{{ offer.description || offer.terms || 'بدون تفاصيل' }}</span>
@@ -435,25 +435,25 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
                 </div>
               </td>
               <!-- Doctor (Admin) -->
-              <td v-if="isAdmin">{{ offer.doctorName }}</td>
+              <td v-if="isAdmin" data-label="الطبيب">{{ offer.doctorName }}</td>
               <!-- Scope -->
-              <td>
+              <td data-label="النطاق">
                 <v-chip size="x-small" variant="tonal" color="primary">{{ scopeLabel(offer) }}</v-chip>
               </td>
               <!-- Price -->
-              <td>
+              <td data-label="السعر / النوع">
                 <strong class="price-value">{{ priceLabel(offer) }}</strong>
                 <p class="row-sub">{{ offer.offerTypeName }}</p>
               </td>
               <!-- Duration -->
-              <td>
+              <td data-label="مدة الظهور">
                 <span>{{ formatDate(offer.startsAt) }}</span>
                 <span class="date-sep">-</span>
                 <span>{{ formatDate(offer.endsAt) }}</span>
                 <p class="row-sub">{{ offer.remainingDays }} يوم متبقي</p>
               </td>
               <!-- Status -->
-              <td>
+              <td data-label="الحالة">
                 <v-chip size="small" :color="statusMeta(offer).color" variant="tonal">
                   {{ statusMeta(offer).label }}
                 </v-chip>
@@ -503,7 +503,7 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
               <label class="form-label">الطبيب <span class="required">*</span></label>
               <v-autocomplete
                 v-model="form.doctorId"
-                :items="doctors.map(d => ({ value: d.id, label: d.name }))"
+                :items="doctors.map(d => ({ value: String(d.id), label: d.name }))"
                 item-title="label"
                 item-value="value"
                 class="form-select"
@@ -592,7 +592,7 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
               <label class="form-label">العيادة <span class="required">*</span></label>
               <v-autocomplete
                 v-model="form.clinicId"
-                :items="clinics.map(c => ({ value: c.id, label: c.name }))"
+                :items="clinics.map(c => ({ value: String(c.id), label: c.name }))"
                 item-title="label"
                 item-value="value"
                 class="form-select"
@@ -841,5 +841,13 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
 
 /* Responsive */
 @media (max-width: 1100px) { .quota-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 768px) { .quota-grid { grid-template-columns: 1fr; } .filters-bar { flex-direction: column; } .form-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) {
+  .quota-grid { grid-template-columns: 1fr; }
+  .filters-bar { flex-direction: column; align-items: stretch; }
+  .filter-field, .filter-select, .search-wrap { width: 100%; }
+  .filter-field--search { min-width: 0; }
+  .filter-btn { align-self: stretch; }
+  .form-grid { grid-template-columns: 1fr; }
+  .page-actions { width: 100%; flex-wrap: wrap; }
+}
 </style>

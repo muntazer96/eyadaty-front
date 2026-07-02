@@ -333,7 +333,7 @@ onBeforeUnmount(() => {
               <label class="form-label">الاختصاص <span class="required">*</span></label>
               <v-autocomplete
                 v-model="form.specializationId"
-                :items="specializations.map(s => ({ value: s.id, label: s.name }))"
+                :items="specializations.map(s => ({ value: String(s.id), label: s.name }))"
                 item-title="label"
                 item-value="value"
                 class="form-select"
@@ -348,7 +348,7 @@ onBeforeUnmount(() => {
               <label class="form-label">المحافظة <span class="required">*</span></label>
               <v-autocomplete
                 v-model="form.iraqiProvince"
-                :items="provinces.map(p => ({ value: p.value, label: p.name }))"
+                :items="provinces.map(p => ({ value: String(p.value), label: p.name }))"
                 item-title="label"
                 item-value="value"
                 class="form-select"

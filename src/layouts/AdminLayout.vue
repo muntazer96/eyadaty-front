@@ -157,5 +157,14 @@ watch(isPermanentSidebar, (isPermanent) => {
     gap: var(--spacing-md);
     text-align: center;
   }
+
+  .footer-brand {
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .footer-phone {
+    order: -1;
+  }
 }
 </style>

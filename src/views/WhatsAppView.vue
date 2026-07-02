@@ -346,6 +346,7 @@ onMounted(() => { loadSettings(); checkStatus() })
 
 /* Code Block */
 .code-block {
+  max-width: 100%;
   overflow: auto;
   margin: 0 0 var(--spacing-lg) 0;
   padding: var(--spacing-lg);
@@ -356,11 +357,18 @@ onMounted(() => { loadSettings(); checkStatus() })
   line-height: 1.7;
   direction: ltr;
   text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .wa-grid { grid-template-columns: 1fr; }
   .page-top { flex-direction: column; align-items: flex-start; }
+  .wa-card { padding: var(--spacing-md); }
+  .form-actions, .wa-form > .v-btn, .wa-card > .v-btn { width: 100%; }
+  .form-actions { flex-direction: column; }
+  .code-block { font-size: 11px; }
 }
 </style>

@@ -175,8 +175,8 @@ async function loadClinics() {
 async function loadDoctors() {
   if (!isAdmin.value) return
   try {
-    const r = await api.get<ApiResponse<PageResult<DoctorItem>>>('/Doctor', { params: { page: 1, pageSize: 100 } })
-    doctors.value = r.data.data.items
+    const r = await api.get<ApiResponse<DoctorItem[]>>('/Doctor/items')
+    doctors.value = r.data.data
   } catch (e: any) {
     if (e.response?.status === 404) doctors.value = []
     else showError(getErrorMessage(e))
@@ -358,7 +358,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
         <label class="filter-label">الطبيب</label>
         <v-autocomplete
           v-model="filters.doctorId"
-          :items="[{ value: '', label: 'كل الأطباء' }, ...doctors.map(d => ({ value: d.id, label: d.name }))]"
+          :items="[{ value: '', label: 'كل الأطباء' }, ...doctors.map(d => ({ value: String(d.id), label: d.name }))]"
           item-title="label"
           item-value="value"
           class="filter-select"
@@ -373,7 +373,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
         <label class="filter-label">العيادة</label>
         <v-autocomplete
           v-model="filters.clinicId"
-          :items="[{ value: '', label: isAdmin ? 'كل عيادات الطبيب' : 'كل العيادات' }, ...clinics.map(c => ({ value: c.id, label: c.name }))]"
+          :items="[{ value: '', label: isAdmin ? 'كل عيادات الطبيب' : 'كل العيادات' }, ...clinics.map(c => ({ value: String(c.id), label: c.name }))]"
           item-title="label"
           item-value="value"
           class="filter-select"
@@ -440,7 +440,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
 
       <!-- Table -->
       <div v-else class="table-scroll">
-        <table class="data-table">
+        <table class="data-table mobile-card-table">
           <thead>
             <tr>
               <th>الدور</th>
@@ -458,19 +458,19 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
           <tbody>
             <tr v-for="a in visibleAppointments" :key="a.id">
               <!-- Queue # -->
-              <td>
+              <td data-label="الدور">
                 <strong class="queue-number">#{{ a.queueNumber }}</strong>
                 <p class="row-sub">{{ a.code }}</p>
               </td>
 
               <!-- Patient -->
-              <td>
+              <td data-label="المراجع">
                 <strong>{{ a.patientName || 'مراجع' }}</strong>
                 <p class="row-sub">{{ a.patientPhoneNumber || '-' }}</p>
               </td>
 
               <!-- Booking Source -->
-              <td>
+              <td data-label="نوع الحجز">
                 <v-chip
                   size="small"
                   :color="bookingSourceMeta(a).color"
@@ -481,16 +481,16 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
               </td>
 
               <!-- Doctor (Admin) -->
-              <td v-if="isAdmin">{{ a.doctorName || '-' }}</td>
+              <td v-if="isAdmin" data-label="الطبيب">{{ a.doctorName || '-' }}</td>
 
               <!-- Clinic -->
-              <td>{{ a.clinicName }}</td>
+              <td data-label="العيادة">{{ a.clinicName }}</td>
 
               <!-- Date -->
-              <td>{{ formatDate(a.appointmentDate) }}</td>
+              <td data-label="التاريخ">{{ formatDate(a.appointmentDate) }}</td>
 
               <!-- Phone Confirmed -->
-              <td>
+              <td data-label="التحقق">
                 <v-chip
                   size="small"
                   :color="a.isPhoneConfirmed ? 'success' : 'warning'"
@@ -501,7 +501,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
               </td>
 
               <!-- Status -->
-              <td>
+              <td data-label="الحالة">
                 <v-chip
                   size="small"
                   :color="statusMeta(a.status).color"
@@ -512,7 +512,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
               </td>
 
               <!-- Payment (Admin) -->
-              <td v-if="isAdmin">
+              <td v-if="isAdmin" data-label="الدفع">
                 <v-chip
                   size="small"
                   :color="paymentMeta(a.paymentStatus).color"
@@ -617,7 +617,7 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
               <label class="form-label">العيادة</label>
               <v-autocomplete
                 v-model="manualForm.clinicId"
-                :items="clinics.map(c => ({ value: c.id, label: c.name }))"
+                :items="clinics.map(c => ({ value: String(c.id), label: c.name }))"
                 item-title="label"
                 item-value="value"
                 class="form-select"
@@ -944,8 +944,9 @@ onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointment
 
 /* Responsive */
 @media (max-width: 768px) {
-  .filters-bar { flex-direction: column; }
-  .filter-input, .filter-select { min-width: 100%; }
+  .filters-bar { flex-direction: column; align-items: stretch; }
+  .filter-field, .filter-input, .filter-select { width: 100%; min-width: 0; }
+  .filter-btn { align-self: stretch; }
   .data-table th, .data-table td { padding: 10px 12px; }
 }
 </style>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
-import type { ApiResponse, DoctorNotificationItem } from '../types/api'
+import type { ApiResponse, DoctorNotificationItem, PageResult } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
 
@@ -10,22 +10,71 @@ const { success: showSuccess, error: showError } = useNotifications()
 
 const items   = ref<DoctorNotificationItem[]>([])
 const loading = ref(false)
+const page = ref(1)
+const pageSize = 10
+const totalPages = ref(1)
+const totalItems = ref(0)
+const unreadCount = ref(0)
 
-const unreadCount = computed(() => items.value.filter((i) => !i.readAt).length)
+interface UnreadCountResponse {
+  unreadCount?: number
+  UnreadCount?: number
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
+async function loadUnreadCount() {
+  try {
+    const unreadResponse = await api.get<ApiResponse<UnreadCountResponse>>('/Notification/doctor/my/unread-count')
+    unreadCount.value = unreadResponse.data.data.unreadCount ?? unreadResponse.data.data.UnreadCount ?? 0
+  } catch {
+    unreadCount.value = items.value.filter((item) => !item.readAt).length
+  }
+}
+
 async function loadNotifications() {
   loading.value = true
   try {
-    const r = await api.get<ApiResponse<DoctorNotificationItem[]>>('/Notification/doctor/my')
-    items.value = r.data.data
+    const notificationsResponse = await api.get<ApiResponse<PageResult<DoctorNotificationItem> | DoctorNotificationItem[]>>('/Notification/doctor/my/paged', {
+      params: { page: page.value, pageSize },
+    })
+    if (Array.isArray(notificationsResponse.data.data)) {
+      items.value = notificationsResponse.data.data
+      totalItems.value = (page.value - 1) * pageSize + items.value.length
+      totalPages.value = items.value.length === pageSize ? page.value + 1 : Math.max(1, page.value)
+    } else {
+      items.value = notificationsResponse.data.data.items
+      totalPages.value = notificationsResponse.data.data.totalPages || 1
+      totalItems.value = notificationsResponse.data.data.totalItems
+    }
+    await loadUnreadCount()
+    if (!items.value.length && page.value > 1) {
+      page.value = Math.max(1, totalPages.value)
+      await loadNotifications()
+    }
   } catch (e: any) {
-    if (e.response?.status === 404) items.value = []
+    if (e.response?.status === 404) {
+      try {
+        const fallback = await api.get<ApiResponse<DoctorNotificationItem[]>>('/Notification/doctor/my', {
+          params: { page: page.value, pageSize },
+        })
+        items.value = fallback.data.data
+        totalItems.value = (page.value - 1) * pageSize + items.value.length
+        totalPages.value = items.value.length === pageSize ? page.value + 1 : Math.max(1, page.value)
+        await loadUnreadCount()
+      } catch (fallbackError: any) {
+        if (fallbackError.response?.status === 404) { items.value = []; totalPages.value = 1; totalItems.value = 0; unreadCount.value = 0 }
+        else showError(getErrorMessage(fallbackError))
+      }
+    }
     else showError(getErrorMessage(e))
   } finally { loading.value = false }
+}
+
+function changePage() {
+  loadNotifications()
 }
 
 async function markAsRead(item: DoctorNotificationItem) {
@@ -52,6 +101,9 @@ onMounted(loadNotifications)
       <div class="page-actions">
         <v-chip v-if="unreadCount > 0" color="error" variant="tonal" size="small">
           {{ unreadCount }} غير مقروء
+        </v-chip>
+        <v-chip v-if="totalItems > 0" color="primary" variant="tonal" size="small">
+          {{ totalItems }}
         </v-chip>
         <v-btn variant="outlined" color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="loadNotifications">
           تحديث
@@ -120,6 +172,17 @@ onMounted(loadNotifications)
           مقروء
         </v-chip>
       </div>
+    </div>
+
+    <div v-if="totalPages > 1" class="pagination-bar">
+      <v-pagination
+        v-model="page"
+        :length="totalPages"
+        :total-visible="5"
+        density="compact"
+        color="primary"
+        @update:model-value="changePage"
+      />
     </div>
 
   </div>
@@ -244,6 +307,12 @@ onMounted(loadNotifications)
 
 .notif-read-chip {
   flex-shrink: 0;
+}
+
+.pagination-bar {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--spacing-sm);
 }
 
 /* Responsive */

@@ -148,7 +148,7 @@ onMounted(fetchData)
       />
 
       <div v-else class="table-scroll">
-        <table class="data-table">
+        <table class="data-table mobile-card-table">
           <thead>
             <tr>
               <th>الكود</th>
@@ -162,23 +162,23 @@ onMounted(fetchData)
           </thead>
           <tbody>
             <tr v-for="item in items" :key="item.id" @click="viewDetails(item.id)">
-              <td>
+              <td data-label="الكود">
                 <span class="code-cell" dir="ltr">{{ item.code }}</span>
               </td>
-              <td>
+              <td data-label="الاسم">
                 <div class="name-cell">
                   <span class="name-main">{{ item.fullName }}</span>
                   <span class="name-sub">{{ item.knownName }}</span>
                 </div>
               </td>
-              <td class="muted-cell" dir="ltr">{{ item.phoneNumber }}</td>
-              <td class="muted-cell">{{ item.specializationName }}</td>
-              <td>
+              <td class="muted-cell" dir="ltr" data-label="رقم الهاتف">{{ item.phoneNumber }}</td>
+              <td class="muted-cell" data-label="التخصص">{{ item.specializationName }}</td>
+              <td data-label="الحالة">
                 <v-chip size="small" :color="statusColor(item.status)" variant="tonal">
                   {{ statusLabel(item.status) }}
                 </v-chip>
               </td>
-              <td class="muted-cell">
+              <td class="muted-cell" data-label="التاريخ">
                 {{ new Date(item.createdAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }) }}
               </td>
               <td>

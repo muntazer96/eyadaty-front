@@ -252,7 +252,7 @@ onMounted(fetchReleases)
       />
 
       <div v-else class="table-scroll">
-        <table class="data-table">
+        <table class="data-table mobile-card-table">
           <thead>
             <tr>
               <th>الإصدار</th>
@@ -267,7 +267,7 @@ onMounted(fetchReleases)
           </thead>
           <tbody>
             <tr v-for="r in releases" :key="r.id" :class="{ 'row-active': r.isActive }">
-              <td>
+              <td data-label="الإصدار">
                 <div class="version-cell">
                   <v-icon
                     :icon="r.isActive ? 'mdi-android' : 'mdi-android'"
@@ -277,12 +277,12 @@ onMounted(fetchReleases)
                   <strong>{{ r.versionName }}</strong>
                 </div>
               </td>
-              <td>
+              <td data-label="الكود">
                 <v-chip size="x-small" variant="tonal">{{ r.versionCode }}</v-chip>
               </td>
-              <td class="muted-cell">{{ formatSize(r.fileSize) }}</td>
-              <td class="muted-cell">{{ r.downloadCount }}</td>
-              <td>
+              <td class="muted-cell" data-label="الحجم">{{ formatSize(r.fileSize) }}</td>
+              <td class="muted-cell" data-label="التحميلات">{{ r.downloadCount }}</td>
+              <td data-label="الحالة">
                 <v-chip
                   size="small"
                   :color="r.isActive ? 'success' : 'default'"
@@ -291,8 +291,8 @@ onMounted(fetchReleases)
                   {{ r.isActive ? 'نشط' : 'غير نشط' }}
                 </v-chip>
               </td>
-              <td class="muted-cell">{{ new Date(r.createdAt).toLocaleDateString('ar-IQ') }}</td>
-              <td class="muted-cell">{{ r.createdBy }}</td>
+              <td class="muted-cell" data-label="تاريخ الرفع">{{ new Date(r.createdAt).toLocaleDateString('ar-IQ') }}</td>
+              <td class="muted-cell" data-label="رفع بواسطة">{{ r.createdBy }}</td>
               <td>
                 <div class="row-actions">
                   <v-btn

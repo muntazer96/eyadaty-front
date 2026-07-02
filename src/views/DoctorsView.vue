@@ -34,7 +34,7 @@ const fileInput       = ref<HTMLInputElement>()
 let localPreviewUrl   = ''
 
 const filters = reactive({ name: '', specialization: '', iraqiProvince: '' })
-const defaultProvinceValue = provinces[0]?.value ?? 0
+const defaultProvinceValue = String(provinces[0]?.value ?? 0)
 const form    = reactive({
   id: 0, name: '', normalizedName: '', specializationId: '',
   description: '', iraqiProvince: defaultProvinceValue, birthDay: '', phoneNumber: '',
@@ -75,7 +75,7 @@ function resetForm(doctor?: DoctorItem) {
   Object.assign(form, doctor ? {
     id: doctor.id, name: doctor.name, normalizedName: doctor.normalizedName,
     specializationId: String(doctor.specialization.id),
-    description: doctor.description, iraqiProvince: doctor.iraqiProvince,
+    description: doctor.description, iraqiProvince: String(doctor.iraqiProvince),
     birthDay: doctor.birthDay, phoneNumber: doctor.phoneNumber,
     location: doctor.location, imageName: undefined,
   } : {
@@ -154,10 +154,10 @@ function openLinkAccount(doctor: DoctorItem) {
 async function searchLinkUsers() {
   linkLoading.value = true
   try {
-    const r = await api.get<ApiResponse<PageResult<UserItem>>>('/User', {
-      params: { search: linkSearch.value.trim() || undefined, page: 1, pageSize: 8 },
+    const r = await api.get<ApiResponse<UserItem[]>>('/User/items', {
+      params: { search: linkSearch.value.trim() || undefined },
     })
-    linkUsers.value = r.data.data.items.filter((u) => u.userName?.toLowerCase() !== 'superadmin' && !u.isLocked)
+    linkUsers.value = r.data.data.filter((u) => u.userName?.toLowerCase() !== 'superadmin' && !u.isLocked)
   } catch (e) { showError(getErrorMessage(e)) }
   finally { linkLoading.value = false }
 }
@@ -244,7 +244,7 @@ onBeforeUnmount(clearImagePreview)
         <label class="filter-label">الاختصاص</label>
         <v-autocomplete
           v-model="filters.specialization"
-          :items="[{ value: '', label: 'كل الاختصاصات' }, ...specializations.map(s => ({ value: s.id, label: s.name }))]"
+          :items="[{ value: '', label: 'كل الاختصاصات' }, ...specializations.map(s => ({ value: String(s.id), label: s.name }))]"
           item-title="label"
           item-value="value"
           class="filter-select"
@@ -257,7 +257,7 @@ onBeforeUnmount(clearImagePreview)
         <label class="filter-label">المحافظة</label>
         <v-autocomplete
           v-model="filters.iraqiProvince"
-          :items="[{ value: '', label: 'كل المحافظات' }, ...provinces.map(p => ({ value: p.value, label: p.name }))]"
+          :items="[{ value: '', label: 'كل المحافظات' }, ...provinces.map(p => ({ value: String(p.value), label: p.name }))]"
           item-title="label"
           item-value="value"
           class="filter-select"
@@ -289,7 +289,7 @@ onBeforeUnmount(clearImagePreview)
       />
 
       <div v-else class="table-scroll">
-        <table class="data-table">
+        <table class="data-table mobile-card-table">
           <thead>
             <tr>
               <th>الطبيب</th>
@@ -303,7 +303,7 @@ onBeforeUnmount(clearImagePreview)
           <tbody>
             <tr v-for="doctor in doctors" :key="doctor.id">
               <!-- Doctor -->
-              <td>
+              <td data-label="الطبيب">
                 <div class="doctor-cell">
                   <div class="doctor-avatar">
                     <v-icon icon="mdi-stethoscope" color="primary" size="18" />
@@ -315,17 +315,17 @@ onBeforeUnmount(clearImagePreview)
                 </div>
               </td>
               <!-- Specialization -->
-              <td>
+              <td data-label="الاختصاص والمحافظة">
                 <strong>{{ doctor.specialization.name }}</strong>
                 <p class="row-sub">{{ doctor.iraqiProvinceName }}</p>
               </td>
               <!-- Contact -->
-              <td>
+              <td data-label="التواصل">
                 <strong>{{ doctor.phoneNumber }}</strong>
                 <p class="row-sub">{{ doctor.location }}</p>
               </td>
               <!-- Linked Account -->
-              <td>
+              <td data-label="الحساب المرتبط">
                 <div v-if="doctor.linkedUser">
                   <strong>{{ doctor.linkedUser.name || doctor.linkedUser.userName }}</strong>
                   <p class="row-sub ltr">{{ doctor.linkedUser.phoneNumber || doctor.linkedUser.id }}</p>
@@ -333,7 +333,7 @@ onBeforeUnmount(clearImagePreview)
                 <v-chip v-else size="small" variant="tonal" color="default">غير مربوط</v-chip>
               </td>
               <!-- Visibility -->
-              <td>
+              <td data-label="الظهور">
                 <v-btn
                   size="small"
                   :color="doctor.isPubliclyVisible ? 'success' : 'default'"
@@ -408,7 +408,7 @@ onBeforeUnmount(clearImagePreview)
               <label class="form-label">الاختصاص <span class="required">*</span></label>
               <v-autocomplete
                 v-model="form.specializationId"
-                :items="specializations.map(s => ({ value: s.id, label: s.name }))"
+                :items="specializations.map(s => ({ value: String(s.id), label: s.name }))"
                 item-title="label"
                 item-value="value"
                 class="form-select"
@@ -422,7 +422,7 @@ onBeforeUnmount(clearImagePreview)
               <label class="form-label">المحافظة <span class="required">*</span></label>
               <v-autocomplete
                 v-model="form.iraqiProvince"
-                :items="provinces.map(p => ({ value: p.value, label: p.name }))"
+                :items="provinces.map(p => ({ value: String(p.value), label: p.name }))"
                 item-title="label"
                 item-value="value"
                 class="form-select"
@@ -640,5 +640,12 @@ onBeforeUnmount(clearImagePreview)
 .mr-auto { margin-right: auto !important; }
 
 /* Responsive */
-@media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } .filters-bar { flex-direction: column; } }
+@media (max-width: 768px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .filters-bar { flex-direction: column; align-items: stretch; }
+  .filter-field, .filter-select, .search-wrap { width: 100%; }
+  .filter-field--search { min-width: 0; }
+  .filter-btn { align-self: stretch; }
+  .page-actions { width: 100%; flex-wrap: wrap; }
+}
 </style>

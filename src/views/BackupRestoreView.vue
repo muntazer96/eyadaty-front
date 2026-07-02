@@ -352,7 +352,7 @@ onMounted(fetchData)
       />
 
       <div v-else class="table-scroll">
-        <table class="data-table">
+        <table class="data-table mobile-card-table">
           <thead>
             <tr>
               <th>الملف</th>
@@ -366,28 +366,28 @@ onMounted(fetchData)
           </thead>
           <tbody>
             <tr v-for="b in backups" :key="b.id" :class="{ 'row-completed': b.status === 'Completed', 'row-failed': b.status === 'Failed' }">
-              <td>
+              <td data-label="الملف">
                 <div class="file-cell">
                   <v-icon icon="mdi-file-database" size="18" />
                   <span class="file-name">{{ b.fileName }}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="الحالة">
                 <v-chip size="small" :color="statusColor(b.status)" variant="tonal">
                   {{ statusLabel(b.status) }}
                 </v-chip>
               </td>
-              <td class="muted-cell">
+              <td class="muted-cell" data-label="المشغل">
                 <v-chip size="x-small" variant="tonal">{{ triggerLabel(b.trigger) }}</v-chip>
               </td>
-              <td class="muted-cell">{{ formatSize(b.sizeBytes) }}</td>
-              <td class="muted-cell">
+              <td class="muted-cell" data-label="الحجم">{{ formatSize(b.sizeBytes) }}</td>
+              <td class="muted-cell" data-label="التاريخ">
                 <div class="date-cell">
                   <span>{{ new Date(b.createdAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }) }}</span>
                   <span class="time">{{ new Date(b.createdAt).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }) }}</span>
                 </div>
               </td>
-              <td class="muted-cell">{{ b.requestedByUserName ?? 'النظام' }}</td>
+              <td class="muted-cell" data-label="بواسطة">{{ b.requestedByUserName ?? 'النظام' }}</td>
               <td>
                 <div class="row-actions">
                   <v-btn
@@ -710,12 +710,17 @@ onMounted(fetchData)
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  min-width: 0;
 }
 
 .file-name {
   font-weight: 600;
   direction: ltr;
   display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .muted-cell { color: var(--color-text-muted); }
