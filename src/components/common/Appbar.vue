@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import api from '../../services/api'
+import { REALTIME_NOTIFICATION_EVENT } from '../../services/realtimeNotifications'
 import type { ApiResponse, DoctorNotificationItem, PageResult } from '../../types/api'
 
 interface Props {
@@ -135,7 +136,18 @@ function handleSettings() {
   router.push('/profile')
 }
 
+async function handleRealtimeNotification() {
+  await loadUnreadCount()
+  await loadNotifications(true)
+}
+
 onMounted(loadNotifications)
+
+window.addEventListener(REALTIME_NOTIFICATION_EVENT, handleRealtimeNotification)
+
+onUnmounted(() => {
+  window.removeEventListener(REALTIME_NOTIFICATION_EVENT, handleRealtimeNotification)
+})
 </script>
 
 <template>

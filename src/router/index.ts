@@ -27,6 +27,7 @@ import DoctorRequestFlowView from '../views/DoctorRequestFlowView.vue'
 import DoctorRequestStatusView from '../views/DoctorRequestStatusView.vue'
 import AdminDoctorRequestListView from '../views/admin/DoctorRequestListView.vue'
 import AdminDoctorRequestDetailView from '../views/admin/DoctorRequestDetailView.vue'
+import AdminNotificationSendView from '../views/AdminNotificationSendView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -54,6 +55,7 @@ const router = createRouter({
         { path: 'backup-restore', name: 'backup-restore', component: BackupRestoreView, meta: { title: 'النسخ الاحتياطي', roles: ['SuperAdmin'] } },
         { path: 'doctor-requests', name: 'doctor-requests', component: AdminDoctorRequestListView, meta: { title: 'طلبات التحويل', roles: ['SuperAdmin'] } },
         { path: 'doctor-requests/:id', name: 'doctor-request-detail', component: AdminDoctorRequestDetailView, meta: { title: 'تفاصيل الطلب', roles: ['SuperAdmin'] } },
+        { path: 'admin-notifications/send', name: 'admin-notifications-send', component: AdminNotificationSendView, meta: { title: 'إرسال إشعار', roles: ['SuperAdmin'] } },
         { path: 'offers', name: 'offers', component: OffersView, meta: { title: 'العروض', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'clinics', name: 'clinics', component: ClinicsView, meta: { title: 'عياداتي', roles: ['DoctorUser'] } },
         { path: 'appointments', name: 'appointments', component: AppointmentsView, meta: { title: 'الحجوزات اليومية', roles: ['SuperAdmin', 'DoctorUser'] } },

@@ -461,10 +461,10 @@ onMounted(() => Promise.all([loadDoctors(), loadClinics(), loadQuota(), loadOffe
               <!-- Actions -->
               <td>
                 <div class="row-actions">
-                  <v-btn icon size="small" variant="tonal" color="primary" @click="openEditor(offer)">
+                  <v-btn icon size="small" variant="tonal" color="primary" aria-label="تعديل" @click="openEditor(offer)">
                     <v-icon icon="mdi-pencil" size="16" />
                   </v-btn>
-                  <v-btn icon size="small" variant="tonal" color="error" @click="deleting = offer; deleteDialog = true">
+                  <v-btn icon size="small" variant="tonal" color="error" aria-label="حذف" @click="deleting = offer; deleteDialog = true">
                     <v-icon icon="mdi-delete" size="16" />
                   </v-btn>
                 </div>

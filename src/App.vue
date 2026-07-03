@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView } from 'vue-router'
 import NotificationCenter from './components/common/NotificationCenter.vue'
 import api from './services/api'
+import {
+  startRealtimeNotifications,
+  stopRealtimeNotifications,
+} from './services/realtimeNotifications'
+import { useAuthStore } from './stores/auth'
 import type { ApiResponse, AppVersionCheck } from './types/api'
 import { adminAppVersion, adminBuildNumber } from './utils/appVersion'
 
 const updateInfo = ref<AppVersionCheck>()
+const auth = useAuthStore()
 
 onMounted(async () => {
+  if (auth.isAuthenticated) startRealtimeNotifications()
+
   try {
     const response = await api.get<ApiResponse<AppVersionCheck>>('/AppVersion/check', {
       params: {
@@ -23,6 +31,25 @@ onMounted(async () => {
   } catch {
     // Version checks should not block the admin panel when the API is unavailable.
   }
+})
+
+watch(
+  () => auth.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) startRealtimeNotifications()
+    else stopRealtimeNotifications()
+  },
+)
+
+const handleAuthRefreshed = () => {
+  if (auth.isAuthenticated) startRealtimeNotifications()
+}
+
+window.addEventListener('clinic-auth-refreshed', handleAuthRefreshed)
+
+onUnmounted(() => {
+  window.removeEventListener('clinic-auth-refreshed', handleAuthRefreshed)
+  stopRealtimeNotifications()
 })
 
 function closeUpdateModal() {

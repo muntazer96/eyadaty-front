@@ -636,7 +636,7 @@ textarea:focus-visible {
   background-color: var(--color-primary);
 }
 
-/* Mobile table cards */
+/* Responsive admin data cards */
 @media (max-width: 700px) {
   .filters-bar .filter-field:not(.filter-field--search):has(.filter-select) {
     flex: 1 1 auto;
@@ -646,7 +646,8 @@ textarea:focus-visible {
   .table-scroll:has(.mobile-card-table) {
     overflow: visible !important;
     padding: var(--spacing-md);
-    background: var(--color-background);
+    background:
+      linear-gradient(180deg, rgba(246, 249, 248, 0.65), rgba(246, 249, 248, 0));
   }
 
   .mobile-card-table {
@@ -662,31 +663,40 @@ textarea:focus-visible {
 
   .mobile-card-table tbody {
     display: grid;
-    gap: var(--spacing-md);
+    gap: var(--spacing-lg);
   }
 
   .mobile-card-table tr {
     display: grid;
-    gap: 0;
-    padding: var(--spacing-md);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    border: 1px solid #eef2f7;
+    border-radius: var(--radius-xl);
     background: var(--color-surface);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 12px 34px rgba(22, 49, 45, 0.08);
+    animation: fadeInUp 0.32s ease both;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
   }
 
   .mobile-card-table tbody tr:hover {
     background: var(--color-surface) !important;
+    border-color: #dce8e5;
+    box-shadow: 0 18px 42px rgba(22, 49, 45, 0.12);
+    transform: translateY(-2px);
   }
 
   .mobile-card-table tr:is(.row-active, .row-completed) {
-    background: var(--color-primary-soft);
-    border-color: var(--color-primary-light);
+    background: linear-gradient(180deg, #ffffff 0%, #f7fffc 100%);
+    border-color: rgba(19, 121, 107, 0.2);
   }
 
   .mobile-card-table tr.row-failed {
-    background: #fff5f5;
-    border-color: var(--color-error-light);
+    background: linear-gradient(180deg, #ffffff 0%, #fff8f8 100%);
+    border-color: rgba(179, 60, 60, 0.18);
   }
 
   .mobile-card-table tr:is(.row-active, .row-completed, .row-failed) td {
@@ -696,56 +706,354 @@ textarea:focus-visible {
   .mobile-card-table tbody tr:last-child td,
   .mobile-card-table td {
     display: grid;
-    grid-template-columns: minmax(88px, 34%) minmax(0, 1fr);
-    align-items: center;
-    gap: var(--spacing-md);
-    min-height: 38px;
-    padding: 9px 0 !important;
+    grid-template-columns: 22px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: start;
+    column-gap: var(--spacing-sm);
+    row-gap: 2px;
+    min-height: 52px;
+    padding: var(--spacing-sm) 0 !important;
     border: 0 !important;
-    border-bottom: 1px solid var(--color-border-light) !important;
     color: var(--color-text);
-  }
-
-  .mobile-card-table td:last-child {
-    border-bottom: 0 !important;
+    text-align: start !important;
   }
 
   .mobile-card-table td::before {
     content: attr(data-label);
+    grid-column: 2;
+    grid-row: 1;
     color: var(--color-text-muted);
-    font-size: 11px;
-    font-weight: 800;
+    font-size: 12px;
+    font-weight: 600;
     line-height: 1.3;
   }
 
+  .mobile-card-table td::after {
+    content: '';
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 22px;
+    height: 22px;
+    margin-top: 1px;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 50% 50%, #8a9b98 0 2px, transparent 3px),
+      #f3f6f6;
+    box-shadow: inset 0 0 0 1px #e7eeee;
+  }
+
   .mobile-card-table td > * {
+    grid-column: 2;
+    grid-row: 2;
     min-width: 0;
     max-width: 100%;
     overflow-wrap: anywhere;
     word-break: break-word;
   }
 
+  .mobile-card-table td > :is(strong, span, p, code) {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .mobile-card-table .row-sub,
+  .mobile-card-table .muted-cell,
+  .mobile-card-table td > p {
+    color: var(--color-text-muted) !important;
+    font-size: 12px !important;
+    line-height: 1.45;
+  }
+
   .mobile-card-table td:empty {
     display: none;
   }
 
-  .mobile-card-table td:last-child:not([data-label]) {
+  .mobile-card-table td:first-child {
+    grid-column: 1 / -1;
     display: flex;
-    justify-content: flex-end;
-    padding-top: var(--spacing-md) !important;
+    align-items: center;
+    gap: var(--spacing-md);
+    min-height: 58px;
+    padding: 0 0 var(--spacing-md) !important;
+    border-bottom: 1px solid #eef2f7 !important;
   }
 
-  .mobile-card-table td:last-child:not([data-label])::before {
+  .mobile-card-table td:first-child::before,
+  .mobile-card-table td:first-child::after {
+    content: none;
+  }
+
+  .mobile-card-table td:first-child > * {
+    flex: 1 1 auto;
+  }
+
+  .mobile-card-table td:first-child :is(strong, .name-main, .reviewer-name) {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  .mobile-card-table :is(.doctor-cell, .user-cell, .version-cell, .file-cell, .offer-title-cell, .name-cell) {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    min-width: 0;
+  }
+
+  .mobile-card-table :is(.doctor-avatar, .user-avatar, .clinic-icon, .reviewer-avatar) {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 50% !important;
+    background: #e8f6f3 !important;
+    box-shadow: inset 0 0 0 1px rgba(19, 121, 107, 0.08);
+  }
+
+  .mobile-card-table .v-chip {
+    min-height: 25px !important;
+    border-radius: 999px !important;
+    padding-inline: 10px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .mobile-card-table .v-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(22, 49, 45, 0.08);
+  }
+
+  .mobile-card-table td:last-child:not([data-label]),
+  .mobile-card-table td:has(.row-actions) {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: stretch;
+    min-height: auto;
+    margin-top: var(--spacing-xs);
+    padding: var(--spacing-md) 0 0 !important;
+    border-top: 1px solid #eef2f7 !important;
+  }
+
+  .mobile-card-table td:last-child:not([data-label])::before,
+  .mobile-card-table td:last-child:not([data-label])::after,
+  .mobile-card-table td:has(.row-actions)::before,
+  .mobile-card-table td:has(.row-actions)::after {
     content: none;
   }
 
   .mobile-card-table .row-actions {
-    justify-content: flex-end;
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
     flex-wrap: wrap;
+    gap: var(--spacing-sm) !important;
   }
 
-  .mobile-card-table :is(.doctor-cell, .user-cell, .version-cell, .file-cell, .offer-title-cell, .name-cell) {
-    min-width: 0;
+  .mobile-card-table .row-actions .v-btn {
+    flex: 1 1 auto;
+    width: auto !important;
+    min-width: max-content !important;
+    height: 34px !important;
+    padding: 0 10px !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .mobile-card-table .row-actions .v-btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .mobile-card-table .row-actions .v-btn[aria-label]::after {
+    content: attr(aria-label);
+    margin-inline-start: 6px;
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .mobile-card-table .row-actions .v-btn .v-icon {
+    font-size: 16px !important;
+  }
+
+  .mobile-card-table .row-actions .text-info {
+    color: var(--color-info) !important;
+  }
+
+  .mobile-card-table .row-actions .text-primary {
+    color: var(--color-primary) !important;
+  }
+
+  .mobile-card-table .row-actions .text-success {
+    color: var(--color-success) !important;
+  }
+
+  .mobile-card-table .row-actions .text-warning {
+    color: var(--color-warning) !important;
+  }
+
+  .mobile-card-table .row-actions .text-error {
+    color: var(--color-error) !important;
+  }
+
+  .mobile-card-table .row-actions .v-btn:hover.text-info {
+    background: var(--color-info-light) !important;
+  }
+
+  .mobile-card-table .row-actions .v-btn:hover.text-primary {
+    background: var(--color-primary-soft) !important;
+  }
+
+  .mobile-card-table .row-actions .v-btn:hover.text-success {
+    background: var(--color-success-light) !important;
+  }
+
+  .mobile-card-table .row-actions .v-btn:hover.text-warning {
+    background: var(--color-warning-light) !important;
+  }
+
+  .mobile-card-table .row-actions .v-btn:hover.text-error {
+    background: var(--color-error-light) !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .mobile-card-table tr {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-card-table .row-actions {
+    justify-content: flex-start;
+  }
+
+  .mobile-card-table .row-actions .v-btn {
+    flex: 1 1 calc(50% - var(--spacing-sm));
+  }
+}
+
+@media (max-width: 700px) {
+  :where(.clinic-card, .package-card, .review-card, .notif-card, .exception-card) {
+    border: 1px solid #eef2f7 !important;
+    border-radius: var(--radius-xl) !important;
+    background: var(--color-surface) !important;
+    box-shadow: 0 12px 34px rgba(22, 49, 45, 0.08) !important;
+    animation: fadeInUp 0.32s ease both;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease !important;
+  }
+
+  :where(.clinic-card, .package-card, .review-card, .notif-card, .exception-card):hover {
+    border-color: #dce8e5 !important;
+    box-shadow: 0 18px 42px rgba(22, 49, 45, 0.12) !important;
+    transform: translateY(-2px);
+  }
+
+  :where(.clinic-card-header, .package-header, .review-card-header) {
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid #eef2f7;
+  }
+
+  :where(.clinic-icon, .package-icon, .reviewer-avatar, .notif-icon) {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 50% !important;
+    background: #e8f6f3 !important;
+    box-shadow: inset 0 0 0 1px rgba(19, 121, 107, 0.08);
+  }
+
+  :where(.clinic-name, .package-title h3, .reviewer-name) {
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    color: var(--color-text) !important;
+  }
+
+  :where(.clinic-details, .package-limits, .package-features) {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-md) !important;
+    padding-block: var(--spacing-md);
+  }
+
+  :where(.detail-row, .package-limits span) {
+    display: grid !important;
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: start !important;
+    gap: var(--spacing-sm) !important;
+    color: var(--color-text) !important;
+    font-size: 14px !important;
+    font-weight: 500;
+  }
+
+  :where(.feature-chip, .notif-read-chip, .clinic-card .v-chip, .package-card .v-chip) {
+    min-height: 25px !important;
+    border-radius: 999px !important;
+    padding-inline: 10px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  :where(.feature-chip, .notif-read-chip, .clinic-card .v-chip, .package-card .v-chip):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(22, 49, 45, 0.08);
+  }
+
+  :where(.clinic-card-actions, .exception-actions) {
+    display: flex !important;
+    justify-content: space-between;
+    gap: var(--spacing-sm) !important;
+    padding: var(--spacing-md) 0 0 !important;
+    border-top: 1px solid #eef2f7;
+  }
+
+  :where(.clinic-card-actions .v-btn, .exception-actions .v-btn, .package-header .v-btn, .notif-btn) {
+    flex: 1 1 auto;
+    min-width: max-content !important;
+    height: 34px !important;
+    padding-inline: 10px !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+    transition:
+      background-color 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  :where(.clinic-card-actions .v-btn, .exception-actions .v-btn, .package-header .v-btn, .notif-btn):hover {
+    transform: translateY(-1px);
+  }
+
+  .notif-card {
+    display: grid !important;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    align-items: start !important;
+    gap: var(--spacing-md) !important;
+    padding: var(--spacing-lg) !important;
+  }
+
+  .notif-btn,
+  .notif-read-chip {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 420px) {
+  :where(.clinic-details, .package-limits, .package-features) {
+    grid-template-columns: 1fr;
   }
 }
 

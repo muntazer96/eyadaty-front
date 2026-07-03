@@ -55,6 +55,12 @@ const adminNavigation: NavItem[] = [
         icon: 'mdi-file-document-edit',
         roles: ['SuperAdmin'],
       },
+      {
+        label: 'إرسال إشعارات',
+        to: '/admin-notifications/send',
+        icon: 'mdi-bell-plus',
+        roles: ['SuperAdmin'],
+      },
     ],
   },
   {

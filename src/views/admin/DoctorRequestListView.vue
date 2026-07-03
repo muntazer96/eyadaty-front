@@ -182,9 +182,11 @@ onMounted(fetchData)
                 {{ new Date(item.createdAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }) }}
               </td>
               <td>
-                <v-btn icon size="small" variant="tonal" color="primary" @click.stop="viewDetails(item.id)">
-                  <v-icon icon="mdi-chevron-left" size="16" />
-                </v-btn>
+                <div class="row-actions">
+                  <v-btn icon size="small" variant="tonal" color="primary" aria-label="عرض" @click.stop="viewDetails(item.id)">
+                    <v-icon icon="mdi-chevron-left" size="16" />
+                  </v-btn>
+                </div>
               </td>
             </tr>
           </tbody>

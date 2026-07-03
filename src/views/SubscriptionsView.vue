@@ -381,8 +381,8 @@ onMounted(initialize)
               <h3>{{ item.name }}</h3>
               <p>{{ item.normalizedName }}</p>
             </div>
-            <v-btn icon size="small" variant="text" color="primary" @click="openEditPackage(item)">
-              <v-icon icon="mdi-tune" size="18" />
+            <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-tune" @click="openEditPackage(item)">
+              تعديل
             </v-btn>
           </div>
 

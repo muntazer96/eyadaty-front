@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
+import { REALTIME_NOTIFICATION_EVENT } from '../services/realtimeNotifications'
 import type { ApiResponse, DoctorNotificationItem, PageResult } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
@@ -87,6 +88,12 @@ async function markAsRead(item: DoctorNotificationItem) {
 }
 
 onMounted(loadNotifications)
+
+window.addEventListener(REALTIME_NOTIFICATION_EVENT, loadNotifications)
+
+onUnmounted(() => {
+  window.removeEventListener(REALTIME_NOTIFICATION_EVENT, loadNotifications)
+})
 </script>
 
 <template>
