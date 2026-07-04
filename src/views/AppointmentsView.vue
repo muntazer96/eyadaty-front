@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { useNotifications } from '../composables/useNotifications'
+import { REALTIME_NOTIFICATION_EVENT } from '../services/realtimeNotifications'
 import type { ApiResponse, AppointmentItem, ClinicItem, DoctorItem, PageResult, QueueAvailabilityItem } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import PageHeader from '../components/common/Pageheader.vue'
@@ -46,6 +47,7 @@ const totalPages       = ref(1)
 const totalItems       = ref(0)
 const queueAvailability = ref<QueueAvailabilityItem>()
 const queueLoading     = ref(false)
+const pendingRealtimeRefresh = ref(false)
 
 const filters = reactive({
   doctorId: '', clinicId: '', fromDate: today(), toDate: today(), status: '',
@@ -233,7 +235,22 @@ async function loadAppointments() {
     if (e.response?.status === 404) {
       appointments.value = []; totalPages.value = 1; totalItems.value = 0
     } else showError(getErrorMessage(e))
-  } finally { loading.value = false }
+  } finally {
+    loading.value = false
+    if (pendingRealtimeRefresh.value) {
+      pendingRealtimeRefresh.value = false
+      void loadAppointments()
+    }
+  }
+}
+
+function refreshAppointmentsFromRealtime() {
+  if (!isDoctor.value) return
+  if (loading.value) {
+    pendingRealtimeRefresh.value = true
+    return
+  }
+  void loadAppointments()
 }
 
 async function loadQueueAvailability() {
@@ -318,7 +335,14 @@ function changePage(n: number) {
 watch(() => filters.doctorId, (id) => { if (isAdmin.value) loadAdminClinics(id) })
 watch(() => [manualForm.clinicId, manualForm.appointmentDate], loadQueueAvailability)
 
-onMounted(() => Promise.all([loadClinics(), loadDoctors()]).then(loadAppointments))
+onMounted(() => {
+  window.addEventListener(REALTIME_NOTIFICATION_EVENT, refreshAppointmentsFromRealtime)
+  Promise.all([loadClinics(), loadDoctors()]).then(loadAppointments)
+})
+
+onUnmounted(() => {
+  window.removeEventListener(REALTIME_NOTIFICATION_EVENT, refreshAppointmentsFromRealtime)
+})
 </script>
 
 <template>
