@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useMessagesStore } from '../../stores/messages'
 import api from '../../services/api'
 import { REALTIME_NOTIFICATION_EVENT } from '../../services/realtimeNotifications'
 import type { ApiResponse, DoctorNotificationItem, PageResult } from '../../types/api'
@@ -26,6 +27,7 @@ defineEmits<{
 }>()
 
 const auth   = useAuthStore()
+const messages = useMessagesStore()
 const router = useRouter()
 
 const userMenuOpen  = ref(false)
@@ -48,6 +50,7 @@ const roleLabel = computed(() =>
 )
 
 const unreadCount = computed(() => notifUnreadCount.value)
+const unreadMessages = computed(() => messages.unreadCount)
 const notifHasMore = computed(() => notifItems.value.length < notifTotalItems.value)
 
 function formatDate(value: string) {
@@ -171,6 +174,23 @@ onUnmounted(() => {
     <template #append>
 
       <!-- Notifications Menu -->
+      <v-btn
+        v-if="auth.hasAnyRole(['DoctorUser'])"
+        icon
+        variant="text"
+        size="large"
+        aria-label="الرسائل"
+        @click="router.push('/messages')"
+      >
+        <v-badge
+          :content="unreadMessages"
+          :model-value="unreadMessages > 0"
+          color="error"
+        >
+          <v-icon icon="mdi-message-text" />
+        </v-badge>
+      </v-btn>
+
       <v-menu
         v-if="showNotifications"
         v-model="notifMenuOpen"

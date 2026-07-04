@@ -128,6 +128,12 @@ const adminNavigation: NavItem[] = [
     roles: ['DoctorUser'],
   },
   {
+    label: 'الرسائل',
+    to: '/messages',
+    icon: 'mdi-message-text',
+    roles: ['DoctorUser'],
+  },
+  {
     label: 'التقييمات',
     to: '/reviews',
     icon: 'mdi-star',

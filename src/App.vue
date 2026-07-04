@@ -8,14 +8,22 @@ import {
   stopRealtimeNotifications,
 } from './services/realtimeNotifications'
 import { useAuthStore } from './stores/auth'
+import { useMessagesStore } from './stores/messages'
 import type { ApiResponse, AppVersionCheck } from './types/api'
 import { adminAppVersion, adminBuildNumber } from './utils/appVersion'
 
 const updateInfo = ref<AppVersionCheck>()
 const auth = useAuthStore()
+const messages = useMessagesStore()
+
+function syncMessageConnection() {
+  if (auth.isAuthenticated && auth.hasAnyRole(['DoctorUser'])) messages.connect()
+  else messages.disconnect()
+}
 
 onMounted(async () => {
   if (auth.isAuthenticated) startRealtimeNotifications()
+  syncMessageConnection()
 
   try {
     const response = await api.get<ApiResponse<AppVersionCheck>>('/AppVersion/check', {
@@ -38,11 +46,13 @@ watch(
   (isAuthenticated) => {
     if (isAuthenticated) startRealtimeNotifications()
     else stopRealtimeNotifications()
+    syncMessageConnection()
   },
 )
 
 const handleAuthRefreshed = () => {
   if (auth.isAuthenticated) startRealtimeNotifications()
+  syncMessageConnection()
 }
 
 window.addEventListener('clinic-auth-refreshed', handleAuthRefreshed)
@@ -50,6 +60,7 @@ window.addEventListener('clinic-auth-refreshed', handleAuthRefreshed)
 onUnmounted(() => {
   window.removeEventListener('clinic-auth-refreshed', handleAuthRefreshed)
   stopRealtimeNotifications()
+  messages.disconnect()
 })
 
 function closeUpdateModal() {

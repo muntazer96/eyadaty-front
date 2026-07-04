@@ -250,6 +250,40 @@ export interface DoctorNotificationItem {
   readAt?: string
 }
 
+export interface MessageItem {
+  id: number
+  senderId: string
+  senderName: string
+  senderImage?: string
+  receiverId: string
+  receiverName: string
+  receiverImage?: string
+  content: string
+  imageName?: string
+  sentAt: string
+  isRead: boolean
+  readAt?: string
+  type: string
+}
+
+export interface ConversationItem {
+  otherUserId: string
+  otherUserName: string
+  otherUserImage?: string
+  lastMessage: string
+  lastMessageImageName?: string
+  lastMessageAt: string
+  unreadCount: number
+}
+
+export interface ConversationResult {
+  messages: MessageItem[]
+  totalCount: number
+  page: number
+  pageSize: number
+  hasMore: boolean
+}
+
 export interface ReviewItem {
   id: number
   user: {

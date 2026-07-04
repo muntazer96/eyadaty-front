@@ -14,6 +14,7 @@ import DoctorDetailsView from '../views/DoctorDetailsView.vue'
 import DoctorsView from '../views/DoctorsView.vue'
 import ExceptionsView from '../views/ExceptionsView.vue'
 import NotificationsView from '../views/NotificationsView.vue'
+import MessagesView from '../views/MessagesView.vue'
 import OffersView from '../views/OffersView.vue'
 import PasswordResetView from '../views/PasswordResetView.vue'
 import ProfileView from '../views/ProfileView.vue'
@@ -61,6 +62,7 @@ const router = createRouter({
         { path: 'appointments', name: 'appointments', component: AppointmentsView, meta: { title: 'الحجوزات اليومية', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'exceptions', name: 'exceptions', component: ExceptionsView, meta: { title: 'الإجازات والاستثناءات', roles: ['DoctorUser'] } },
         { path: 'notifications', name: 'notifications', component: NotificationsView, meta: { title: 'إشعارات الطبيب', roles: ['DoctorUser'] } },
+        { path: 'messages', name: 'messages', component: MessagesView, meta: { title: 'الرسائل', roles: ['DoctorUser'] } },
         { path: 'reviews', name: 'reviews', component: ReviewsView, meta: { title: 'التقييمات', roles: ['DoctorUser'] } },
         { path: 'profile', name: 'profile', component: ProfileView, meta: { title: 'الملف الشخصي', roles: ['DoctorUser'] } },
       ],
