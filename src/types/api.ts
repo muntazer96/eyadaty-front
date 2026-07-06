@@ -64,6 +64,11 @@ export interface DoctorItem {
   }
 }
 
+export interface DoctorCreateResult {
+  id: number
+  defaultClinicId?: number
+}
+
 export interface SubscriptionPackage {
   id: number
   name: string

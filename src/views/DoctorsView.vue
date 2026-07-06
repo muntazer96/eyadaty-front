@@ -38,7 +38,7 @@ const defaultProvinceValue = String(provinces[0]?.value ?? 0)
 const form    = reactive({
   id: 0, name: '', normalizedName: '', specializationId: '',
   description: '', iraqiProvince: defaultProvinceValue, birthDay: '', phoneNumber: '',
-  location: '', imageName: undefined as File | undefined,
+  location: '', defaultClinicLocation: '', defaultClinicMapUrl: '', imageName: undefined as File | undefined,
 })
 
 const isEditing = computed(() => Boolean(form.id))
@@ -77,11 +77,11 @@ function resetForm(doctor?: DoctorItem) {
     specializationId: String(doctor.specialization.id),
     description: doctor.description, iraqiProvince: String(doctor.iraqiProvince),
     birthDay: doctor.birthDay, phoneNumber: doctor.phoneNumber,
-    location: doctor.location, imageName: undefined,
+    location: doctor.location, defaultClinicLocation: '', defaultClinicMapUrl: '', imageName: undefined,
   } : {
     id: 0, name: '', normalizedName: '', specializationId: '',
     description: '', iraqiProvince: defaultProvinceValue, birthDay: '', phoneNumber: '',
-    location: '', imageName: undefined,
+    location: '', defaultClinicLocation: '', defaultClinicMapUrl: '', imageName: undefined,
   })
   clearImagePreview()
   editorOpen.value = true
@@ -226,6 +226,7 @@ onBeforeUnmount(clearImagePreview)
         <h1 class="page-title">الأطباء</h1>
       </div>
       <div class="page-actions">
+        <v-btn variant="outlined" color="primary" prepend-icon="mdi-hospital-building" @click="router.push('/doctors/create-with-clinic')">إضافة طبيب مع عيادة</v-btn>
         <v-btn variant="outlined" color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="loadDoctors">تحديث</v-btn>
         <v-btn color="primary" prepend-icon="mdi-plus" @click="resetForm()">إضافة طبيب</v-btn>
       </div>
@@ -395,6 +396,17 @@ onBeforeUnmount(clearImagePreview)
         <v-divider />
 
         <v-card-text class="dialog-body">
+          <v-alert
+            v-if="false"
+            type="info"
+            variant="tonal"
+            density="comfortable"
+            icon="mdi-hospital-building"
+            class="default-clinic-alert"
+          >
+            سيتم إنشاء عيادة افتراضية باسم "العيادة الافتراضية" باستخدام رقم الهاتف وموقع العيادة الافتراضية.
+          </v-alert>
+
           <div class="form-grid">
             <div class="form-field">
               <label class="form-label">اسم الطبيب <span class="required">*</span></label>
@@ -440,8 +452,16 @@ onBeforeUnmount(clearImagePreview)
               <input v-model="form.phoneNumber" class="form-input" required />
             </div>
             <div class="form-field form-field--full">
-              <label class="form-label">الموقع <span class="required">*</span></label>
+              <label class="form-label">موقع الطبيب <span class="required">*</span></label>
               <input v-model="form.location" class="form-input" required />
+            </div>
+            <div v-if="false" class="form-field form-field--full">
+              <label class="form-label">موقع العيادة الافتراضية <span class="required">*</span></label>
+              <input v-model="form.defaultClinicLocation" class="form-input" required />
+            </div>
+            <div v-if="false" class="form-field form-field--full">
+              <label class="form-label">رابط موقع العيادة الافتراضية <span class="required">*</span></label>
+              <input v-model="form.defaultClinicMapUrl" class="form-input" required />
             </div>
             <div class="form-field form-field--full">
               <label class="form-label">الوصف <span class="required">*</span></label>
@@ -606,6 +626,7 @@ onBeforeUnmount(clearImagePreview)
 .dialog-body { padding: var(--spacing-lg) !important; }
 .dialog-desc { margin: 0 0 var(--spacing-lg) 0; font-size: 13px; color: var(--color-text-muted); line-height: 1.6; }
 .dialog-actions { padding: var(--spacing-lg) !important; gap: var(--spacing-md); justify-content: flex-end; }
+.default-clinic-alert { margin-bottom: var(--spacing-lg); }
 
 /* Form */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }

@@ -11,6 +11,7 @@ import LoginView from '../views/LoginView.vue'
 import ClinicsView from '../views/ClinicsView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import DoctorDetailsView from '../views/DoctorDetailsView.vue'
+import DoctorCreateWithClinicView from '../views/DoctorCreateWithClinicView.vue'
 import DoctorsView from '../views/DoctorsView.vue'
 import ExceptionsView from '../views/ExceptionsView.vue'
 import NotificationsView from '../views/NotificationsView.vue'
@@ -48,6 +49,7 @@ const router = createRouter({
         { path: 'analytics', name: 'analytics', component: AnalyticsView, meta: { title: 'الإحصائيات', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'users', name: 'users', component: UsersView, meta: { title: 'إدارة المستخدمين', roles: ['SuperAdmin'] } },
         { path: 'doctors', name: 'doctors', component: DoctorsView, meta: { title: 'إدارة الأطباء', roles: ['SuperAdmin'] } },
+        { path: 'doctors/create-with-clinic', name: 'doctor-create-with-clinic', component: DoctorCreateWithClinicView, meta: { title: 'إضافة طبيب مع عيادة', roles: ['SuperAdmin'] } },
         { path: 'doctors/:doctorId', name: 'doctor-details', component: DoctorDetailsView, meta: { title: 'تفاصيل الطبيب', roles: ['SuperAdmin'] } },
         { path: 'subscriptions', name: 'subscriptions', component: SubscriptionsView, meta: { title: 'الاشتراكات والباقات', roles: ['SuperAdmin'] } },
         { path: 'app-versions', name: 'app-versions', component: AppVersionsView, meta: { title: 'سياسات التحديث', roles: ['SuperAdmin'] } },
