@@ -98,6 +98,56 @@ export interface DoctorSubscription {
   cancelledAt?: string
 }
 
+export interface SubscriptionMetric {
+  key: string
+  label: string
+  value: number
+  note?: string
+}
+
+export interface SubscriptionTrendPoint {
+  label: string
+  date: string
+  value: number
+}
+
+export interface SubscriptionLabelValue {
+  label: string
+  value: number
+}
+
+export interface SubscriptionDoctorValue {
+  doctorId: number
+  doctorName: string
+  packageName: string
+  revenue: number
+  subscriptions: number
+}
+
+export interface SubscriptionPackageInsight {
+  packageId: number
+  packageName: string
+  totalSubscriptions: number
+  activeSubscriptions: number
+  revenue: number
+  averageRevenue: number
+  sharePercent: number
+}
+
+export interface SubscriptionStatistics {
+  fromDate: string
+  toDate: string
+  metrics: SubscriptionMetric[]
+  revenueTrend: SubscriptionTrendPoint[]
+  subscriptionTrend: SubscriptionTrendPoint[]
+  packageRevenue: SubscriptionLabelValue[]
+  packageDistribution: SubscriptionLabelValue[]
+  statusDistribution: SubscriptionLabelValue[]
+  technicalCapabilities: SubscriptionLabelValue[]
+  topDoctorsByRevenue: SubscriptionDoctorValue[]
+  packageInsights: SubscriptionPackageInsight[]
+}
+
 export interface CurrentDoctorSubscription {
   id: number
   packageId: number
