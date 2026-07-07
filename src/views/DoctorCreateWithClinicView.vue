@@ -38,6 +38,7 @@ const form = reactive({
   imageName: undefined as File | undefined,
   clinicAddress: '',
   clinicMapUrl: '',
+  clinicPhoneNumber: '',
 })
 
 const selectedScheduleCount = computed(() => scheduleDays.value.filter((day) => day.enabled).length)
@@ -96,6 +97,7 @@ function validateForm() {
   if (!form.doctorLocation.trim()) return 'موقع الطبيب مطلوب.'
   if (!form.clinicAddress.trim()) return 'عنوان العيادة الافتراضية مطلوب.'
   if (!form.clinicMapUrl.trim()) return 'رابط موقع العيادة الافتراضية مطلوب.'
+  if (!form.clinicPhoneNumber.trim()) return 'رقم هاتف العيادة أو الحجز مطلوب.'
 
   for (const day of scheduleDays.value.filter((item) => item.enabled)) {
     if (day.startTime >= day.endTime) return `وقت دوام ${day.name} غير صحيح.`
@@ -122,6 +124,7 @@ async function save() {
     data.append('Location', form.doctorLocation)
     data.append('DefaultClinicLocation', form.clinicAddress)
     data.append('DefaultClinicMapUrl', form.clinicMapUrl)
+    data.append('DefaultClinicPhoneNumber', form.clinicPhoneNumber)
     if (form.imageName) data.append('ImageName', form.imageName)
 
     scheduleDays.value
@@ -199,7 +202,7 @@ onBeforeUnmount(clearImagePreview)
           <input v-model="form.birthDay" type="date" class="form-input" />
         </div>
         <div class="form-field">
-          <label class="form-label">رقم الهاتف <span class="required">*</span></label>
+          <label class="form-label">رقم هاتف الطبيب <span class="required">*</span></label>
           <input v-model="form.phoneNumber" class="form-input" />
         </div>
         <div class="form-field form-field--full">
@@ -231,6 +234,10 @@ onBeforeUnmount(clearImagePreview)
         <h2>العيادة الافتراضية</h2>
       </div>
       <div class="form-grid">
+        <div class="form-field form-field--full">
+          <label class="form-label">رقم هاتف العيادة أو الحجز <span class="required">*</span></label>
+          <input v-model="form.clinicPhoneNumber" class="form-input" />
+        </div>
         <div class="form-field form-field--full">
           <label class="form-label">عنوان العيادة النصي <span class="required">*</span></label>
           <input v-model="form.clinicAddress" class="form-input" placeholder="مثلاً: بغداد - الحارثية - قرب ..." />
