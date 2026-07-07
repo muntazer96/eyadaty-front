@@ -36,7 +36,7 @@ const editPackageForm = reactive({
   id: 0, name: '', normalizedName: '', price: 0, yearlyPrice: 0,
   maxClinics: 0, maxWeeklyDays: 0, maxDailyAppointments: 0,
   showReviews: false, showMessages: false, eBooking: false,
-  ePayments: false, makeOffers: false, maxActiveOffers: 0,
+  autoApproveAppointments: false, ePayments: false, makeOffers: false, maxActiveOffers: 0,
 })
 
 const statusOptions = [
@@ -408,6 +408,10 @@ onMounted(initialize)
               <v-icon :icon="item.eBooking ? 'mdi-check' : 'mdi-close'" size="12" />
               الحجز الإلكتروني
             </span>
+            <span class="feature-chip" :class="{ 'feature-chip--on': item.autoApproveAppointments }">
+              <v-icon :icon="item.autoApproveAppointments ? 'mdi-check' : 'mdi-close'" size="12" />
+              الموافقة التلقائية
+            </span>
             <span class="feature-chip" :class="{ 'feature-chip--on': item.showReviews }">
               <v-icon :icon="item.showReviews ? 'mdi-check' : 'mdi-close'" size="12" />
               التقييمات
@@ -646,7 +650,7 @@ onMounted(initialize)
             <div class="form-field form-field--full">
               <label class="form-label">المميزات</label>
               <div class="features-checks">
-                <label class="check-label" v-for="(label, key) in { eBooking: 'الحجز الإلكتروني', showReviews: 'التقييمات', showMessages: 'الرسائل', ePayments: 'الدفع الإلكتروني', makeOffers: 'العروض' }" :key="key">
+                <label class="check-label" v-for="(label, key) in { eBooking: 'الحجز الإلكتروني', autoApproveAppointments: 'الموافقة التلقائية', showReviews: 'التقييمات', showMessages: 'الرسائل', ePayments: 'الدفع الإلكتروني', makeOffers: 'العروض' }" :key="key">
                   <input v-model="(editPackageForm as any)[key]" type="checkbox" class="check-native" />
                   <span class="check-box"><v-icon v-if="(editPackageForm as any)[key]" icon="mdi-check" size="12" color="white" /></span>
                   <span>{{ label }}</span>

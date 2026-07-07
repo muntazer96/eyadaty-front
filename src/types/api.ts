@@ -81,6 +81,7 @@ export interface SubscriptionPackage {
   showReviews: boolean
   showMessages: boolean
   eBooking: boolean
+  autoApproveAppointments: boolean
   ePayments: boolean
   makeOffers: boolean
   maxActiveOffers: number
@@ -117,6 +118,7 @@ export interface CurrentDoctorSubscription {
   showReviews: boolean
   showMessages: boolean
   eBooking: boolean
+  autoApproveAppointments: boolean
   ePayments: boolean
   makeOffers: boolean
   maxActiveOffers: number

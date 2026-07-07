@@ -116,6 +116,12 @@ const adminNavigation: NavItem[] = [
     roles: ['DoctorUser'],
   },
   {
+    label: 'مميزات الاشتراك',
+    to: '/features',
+    icon: 'mdi-star-circle',
+    roles: ['DoctorUser'],
+  },
+  {
     label: 'الإجازات والاستثناءات',
     to: '/exceptions',
     icon: 'mdi-calendar-alert',

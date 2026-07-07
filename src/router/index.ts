@@ -14,6 +14,7 @@ import DoctorDetailsView from '../views/DoctorDetailsView.vue'
 import DoctorCreateWithClinicView from '../views/DoctorCreateWithClinicView.vue'
 import DoctorsView from '../views/DoctorsView.vue'
 import ExceptionsView from '../views/ExceptionsView.vue'
+import FeaturesView from '../views/FeaturesView.vue'
 import NotificationsView from '../views/NotificationsView.vue'
 import MessagesView from '../views/MessagesView.vue'
 import OffersView from '../views/OffersView.vue'
@@ -62,6 +63,7 @@ const router = createRouter({
         { path: 'offers', name: 'offers', component: OffersView, meta: { title: 'العروض', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'clinics', name: 'clinics', component: ClinicsView, meta: { title: 'عياداتي', roles: ['DoctorUser'] } },
         { path: 'appointments', name: 'appointments', component: AppointmentsView, meta: { title: 'الحجوزات اليومية', roles: ['SuperAdmin', 'DoctorUser'] } },
+        { path: 'features', name: 'features', component: FeaturesView, meta: { title: 'مميزات الاشتراك', roles: ['DoctorUser'] } },
         { path: 'exceptions', name: 'exceptions', component: ExceptionsView, meta: { title: 'الإجازات والاستثناءات', roles: ['DoctorUser'] } },
         { path: 'notifications', name: 'notifications', component: NotificationsView, meta: { title: 'إشعارات الطبيب', roles: ['DoctorUser'] } },
         { path: 'messages', name: 'messages', component: MessagesView, meta: { title: 'الرسائل', roles: ['DoctorUser'] } },
