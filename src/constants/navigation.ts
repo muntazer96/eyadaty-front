@@ -56,6 +56,12 @@ const adminNavigation: NavItem[] = [
         roles: ['SuperAdmin'],
       },
       {
+        label: 'بلاغات المشاكل',
+        to: '/problem-reports',
+        icon: 'mdi-alert-circle',
+        roles: ['SuperAdmin'],
+      },
+      {
         label: 'إرسال إشعارات',
         to: '/admin-notifications/send',
         icon: 'mdi-bell-plus',
@@ -149,6 +155,12 @@ const adminNavigation: NavItem[] = [
     label: 'الملف الشخصي',
     to: '/profile',
     icon: 'mdi-account',
+    roles: ['DoctorUser'],
+  },
+  {
+    label: 'الإبلاغ عن مشكلة',
+    to: '/problem-report',
+    icon: 'mdi-alert-circle-outline',
     roles: ['DoctorUser'],
   },
 ]

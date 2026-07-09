@@ -20,6 +20,7 @@ import MessagesView from '../views/MessagesView.vue'
 import OffersView from '../views/OffersView.vue'
 import PasswordResetView from '../views/PasswordResetView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import ProblemReportView from '../views/ProblemReportView.vue'
 
 import ReviewsView from '../views/ReviewsView.vue'
 import SubscriptionsView from '../views/SubscriptionsView.vue'
@@ -31,6 +32,7 @@ import DoctorRequestStatusView from '../views/DoctorRequestStatusView.vue'
 import AdminDoctorRequestListView from '../views/admin/DoctorRequestListView.vue'
 import AdminDoctorRequestDetailView from '../views/admin/DoctorRequestDetailView.vue'
 import AdminNotificationSendView from '../views/AdminNotificationSendView.vue'
+import AdminProblemReportsView from '../views/admin/ProblemReportsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -59,6 +61,7 @@ const router = createRouter({
         { path: 'backup-restore', name: 'backup-restore', component: BackupRestoreView, meta: { title: 'النسخ الاحتياطي', roles: ['SuperAdmin'] } },
         { path: 'doctor-requests', name: 'doctor-requests', component: AdminDoctorRequestListView, meta: { title: 'طلبات التحويل', roles: ['SuperAdmin'] } },
         { path: 'doctor-requests/:id', name: 'doctor-request-detail', component: AdminDoctorRequestDetailView, meta: { title: 'تفاصيل الطلب', roles: ['SuperAdmin'] } },
+        { path: 'problem-reports', name: 'problem-reports', component: AdminProblemReportsView, meta: { title: 'بلاغات المشاكل', roles: ['SuperAdmin'] } },
         { path: 'admin-notifications/send', name: 'admin-notifications-send', component: AdminNotificationSendView, meta: { title: 'إرسال إشعار', roles: ['SuperAdmin'] } },
         { path: 'offers', name: 'offers', component: OffersView, meta: { title: 'العروض', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'clinics', name: 'clinics', component: ClinicsView, meta: { title: 'عياداتي', roles: ['DoctorUser'] } },
@@ -69,6 +72,7 @@ const router = createRouter({
         { path: 'messages', name: 'messages', component: MessagesView, meta: { title: 'الرسائل', roles: ['DoctorUser'] } },
         { path: 'reviews', name: 'reviews', component: ReviewsView, meta: { title: 'التقييمات', roles: ['DoctorUser'] } },
         { path: 'profile', name: 'profile', component: ProfileView, meta: { title: 'الملف الشخصي', roles: ['DoctorUser'] } },
+        { path: 'problem-report', name: 'problem-report', component: ProblemReportView, meta: { title: 'الإبلاغ عن مشكلة', roles: ['DoctorUser'] } },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },

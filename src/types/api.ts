@@ -654,6 +654,34 @@ export interface DoctorRequestPagination {
   pageSize: number
 }
 
+export interface ProblemReportItem {
+  id: number
+  userId?: string
+  doctorId?: number
+  doctorName?: string
+  reporterName: string
+  reporterPhone?: string
+  reporterEmail?: string
+  source: string
+  pageUrl?: string
+  deviceInfo?: string
+  title: string
+  description: string
+  status: string
+  adminNotes?: string
+  createdAt: string
+  modifiedAt?: string
+  resolvedAt?: string
+}
+
+export interface ProblemReportPagination {
+  items: ProblemReportItem[]
+  totalItems: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+}
+
 export interface AnalyticsSummary {
   metrics: AnalyticsMetric[]
   appointmentStatus: AnalyticsLabelValue[]
