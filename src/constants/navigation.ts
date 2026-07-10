@@ -137,7 +137,7 @@ const adminNavigation: NavItem[] = [
     label: 'الإشعارات',
     to: '/notifications',
     icon: 'mdi-bell',
-    roles: ['DoctorUser'],
+    roles: ['SuperAdmin', 'DoctorUser'],
   },
   {
     label: 'الرسائل',

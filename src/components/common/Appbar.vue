@@ -52,21 +52,33 @@ const roleLabel = computed(() =>
 const unreadCount = computed(() => notifUnreadCount.value)
 const unreadMessages = computed(() => messages.unreadCount)
 const notifHasMore = computed(() => notifItems.value.length < notifTotalItems.value)
+const canUseNotifications = computed(() => auth.hasAnyRole(['SuperAdmin', 'DoctorUser']))
+const notificationBaseUrl = computed(() =>
+  auth.hasAnyRole(['SuperAdmin']) ? '/Notification/admin/my' : '/Notification/doctor/my'
+)
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 async function loadUnreadCount() {
-  if (!auth.hasAnyRole(['DoctorUser'])) return
+  if (!canUseNotifications.value) {
+    notifUnreadCount.value = 0
+    return
+  }
   try {
-    const r = await api.get<ApiResponse<UnreadCountResponse>>('/Notification/doctor/my/unread-count')
+    const r = await api.get<ApiResponse<UnreadCountResponse>>(`${notificationBaseUrl.value}/unread-count`)
     notifUnreadCount.value = r.data.data.unreadCount ?? r.data.data.UnreadCount ?? 0
   } catch { /* silent */ }
 }
 
 async function loadNotifications(reset = true) {
-  if (!auth.hasAnyRole(['DoctorUser'])) return
+  if (!canUseNotifications.value) {
+    notifItems.value = []
+    notifTotalItems.value = 0
+    notifUnreadCount.value = 0
+    return
+  }
   if (reset) {
     notifPage.value = 1
     notifLoading.value = true
@@ -75,7 +87,7 @@ async function loadNotifications(reset = true) {
   }
 
   try {
-    const r = await api.get<ApiResponse<PageResult<DoctorNotificationItem> | DoctorNotificationItem[]>>('/Notification/doctor/my/paged', {
+    const r = await api.get<ApiResponse<PageResult<DoctorNotificationItem> | DoctorNotificationItem[]>>(`${notificationBaseUrl.value}/paged`, {
       params: { page: notifPage.value, pageSize: notifPageSize },
     })
     const loadedItems = Array.isArray(r.data.data) ? r.data.data : r.data.data.items
@@ -87,7 +99,7 @@ async function loadNotifications(reset = true) {
   } catch (e: any) {
     if (e.response?.status === 404) {
       try {
-        const fallback = await api.get<ApiResponse<DoctorNotificationItem[]>>('/Notification/doctor/my', {
+        const fallback = await api.get<ApiResponse<DoctorNotificationItem[]>>(notificationBaseUrl.value, {
           params: { page: notifPage.value, pageSize: notifPageSize },
         })
         const loadedItems = fallback.data.data
@@ -115,7 +127,7 @@ async function loadMoreNotifications() {
 async function markAsRead(item: DoctorNotificationItem) {
   if (item.readAt) return
   try {
-    await api.post<ApiResponse<object>>(`/Notification/doctor/my/${item.id}/read`)
+    await api.post<ApiResponse<object>>(`${notificationBaseUrl.value}/${item.id}/read`)
     item.readAt = new Date().toISOString()
     notifUnreadCount.value = Math.max(0, notifUnreadCount.value - 1)
   } catch { /* silent */ }
@@ -123,7 +135,7 @@ async function markAsRead(item: DoctorNotificationItem) {
 
 async function markAllRead() {
   try {
-    await api.post<ApiResponse<object>>('/Notification/doctor/my/read-all')
+    await api.post<ApiResponse<object>>(`${notificationBaseUrl.value}/read-all`)
     notifItems.value = notifItems.value.map((item) => item.readAt ? item : { ...item, readAt: new Date().toISOString() })
     notifUnreadCount.value = 0
   } catch { /* silent */ }

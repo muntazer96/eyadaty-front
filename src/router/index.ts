@@ -68,7 +68,7 @@ const router = createRouter({
         { path: 'appointments', name: 'appointments', component: AppointmentsView, meta: { title: 'الحجوزات اليومية', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'features', name: 'features', component: FeaturesView, meta: { title: 'مميزات الاشتراك', roles: ['DoctorUser'] } },
         { path: 'exceptions', name: 'exceptions', component: ExceptionsView, meta: { title: 'الإجازات والاستثناءات', roles: ['DoctorUser'] } },
-        { path: 'notifications', name: 'notifications', component: NotificationsView, meta: { title: 'إشعارات الطبيب', roles: ['DoctorUser'] } },
+        { path: 'notifications', name: 'notifications', component: NotificationsView, meta: { title: 'الإشعارات', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'messages', name: 'messages', component: MessagesView, meta: { title: 'الرسائل', roles: ['DoctorUser'] } },
         { path: 'reviews', name: 'reviews', component: ReviewsView, meta: { title: 'التقييمات', roles: ['DoctorUser'] } },
         { path: 'profile', name: 'profile', component: ProfileView, meta: { title: 'الملف الشخصي', roles: ['DoctorUser'] } },

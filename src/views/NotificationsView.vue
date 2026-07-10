@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
 import { REALTIME_NOTIFICATION_EVENT } from '../services/realtimeNotifications'
 import type { ApiResponse, DoctorNotificationItem, PageResult } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
+import { useAuthStore } from '../stores/auth'
 
 const { success: showSuccess, error: showError } = useNotifications()
+const auth = useAuthStore()
 
 const items   = ref<DoctorNotificationItem[]>([])
 const loading = ref(false)
@@ -22,13 +24,25 @@ interface UnreadCountResponse {
   UnreadCount?: number
 }
 
+const canUseNotifications = computed(() => auth.hasAnyRole(['SuperAdmin', 'DoctorUser']))
+const notificationBaseUrl = computed(() =>
+  auth.hasAnyRole(['SuperAdmin']) ? '/Notification/admin/my' : '/Notification/doctor/my'
+)
+const pageTitle = computed(() =>
+  auth.hasAnyRole(['SuperAdmin']) ? 'إشعارات الإدارة' : 'إشعارات الطبيب'
+)
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 async function loadUnreadCount() {
+  if (!canUseNotifications.value) {
+    unreadCount.value = 0
+    return
+  }
   try {
-    const unreadResponse = await api.get<ApiResponse<UnreadCountResponse>>('/Notification/doctor/my/unread-count')
+    const unreadResponse = await api.get<ApiResponse<UnreadCountResponse>>(`${notificationBaseUrl.value}/unread-count`)
     unreadCount.value = unreadResponse.data.data.unreadCount ?? unreadResponse.data.data.UnreadCount ?? 0
   } catch {
     unreadCount.value = items.value.filter((item) => !item.readAt).length
@@ -36,9 +50,16 @@ async function loadUnreadCount() {
 }
 
 async function loadNotifications() {
+  if (!canUseNotifications.value) {
+    items.value = []
+    totalItems.value = 0
+    totalPages.value = 1
+    unreadCount.value = 0
+    return
+  }
   loading.value = true
   try {
-    const notificationsResponse = await api.get<ApiResponse<PageResult<DoctorNotificationItem> | DoctorNotificationItem[]>>('/Notification/doctor/my/paged', {
+    const notificationsResponse = await api.get<ApiResponse<PageResult<DoctorNotificationItem> | DoctorNotificationItem[]>>(`${notificationBaseUrl.value}/paged`, {
       params: { page: page.value, pageSize },
     })
     if (Array.isArray(notificationsResponse.data.data)) {
@@ -58,7 +79,7 @@ async function loadNotifications() {
   } catch (e: any) {
     if (e.response?.status === 404) {
       try {
-        const fallback = await api.get<ApiResponse<DoctorNotificationItem[]>>('/Notification/doctor/my', {
+        const fallback = await api.get<ApiResponse<DoctorNotificationItem[]>>(notificationBaseUrl.value, {
           params: { page: page.value, pageSize },
         })
         items.value = fallback.data.data
@@ -81,7 +102,7 @@ function changePage() {
 async function markAsRead(item: DoctorNotificationItem) {
   if (item.readAt) return
   try {
-    const r = await api.post<ApiResponse<object>>(`/Notification/doctor/my/${item.id}/read`)
+    const r = await api.post<ApiResponse<object>>(`${notificationBaseUrl.value}/${item.id}/read`)
     showSuccess(r.data.message)
     await loadNotifications()
   } catch (e) { showError(getErrorMessage(e)) }
@@ -103,7 +124,7 @@ onUnmounted(() => {
     <div class="page-top">
       <div>
         <p class="page-kicker">مركز التنبيهات</p>
-        <h1 class="page-title">إشعارات الطبيب</h1>
+        <h1 class="page-title">{{ pageTitle }}</h1>
       </div>
       <div class="page-actions">
         <v-chip v-if="unreadCount > 0" color="error" variant="tonal" size="small">
