@@ -12,8 +12,6 @@ const loading = ref(false)
 const form = ref({
   title: '',
   description: '',
-  reporterName: '',
-  reporterPhone: '',
 })
 
 const canSubmit = computed(() => form.value.title.trim().length >= 3 && form.value.description.trim().length >= 10)
@@ -30,7 +28,7 @@ async function submitReport() {
     }
     const response = await api.post<ApiResponse<ProblemReportItem>>('/ProblemReport/doctor/my', payload)
     showSuccess(response.data.message)
-    form.value = { title: '', description: '', reporterName: '', reporterPhone: '' }
+    form.value = { title: '', description: '' }
   } catch (e) {
     showError(getErrorMessage(e))
   } finally {
@@ -67,17 +65,6 @@ async function submitReport() {
               required
               placeholder="اشرح ما حدث والخطوات التي أدت للمشكلة"
             />
-          </div>
-
-          <div class="contact-grid">
-            <div class="form-field">
-              <label class="form-label">الاسم للتواصل</label>
-              <input v-model="form.reporterName" class="form-input" maxlength="200" />
-            </div>
-            <div class="form-field">
-              <label class="form-label">رقم الهاتف</label>
-              <input v-model="form.reporterPhone" class="form-input ltr-input" maxlength="30" dir="ltr" />
-            </div>
           </div>
 
           <div class="actions-row">
@@ -136,12 +123,6 @@ async function submitReport() {
   color: var(--color-error);
 }
 
-.contact-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--spacing-md);
-}
-
 .form-input,
 .form-textarea {
   width: 100%;
@@ -151,18 +132,8 @@ async function submitReport() {
   resize: vertical;
 }
 
-.ltr-input {
-  text-align: left;
-}
-
 .actions-row {
   display: flex;
   justify-content: flex-start;
-}
-
-@media (max-width: 900px) {
-  .contact-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
