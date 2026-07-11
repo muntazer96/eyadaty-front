@@ -3,12 +3,13 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useNotifications } from '../composables/useNotifications'
+import { requestBrowserNotificationPermission } from '../services/browserNotifications'
 import TextInput from '../components/forms/Textinput.vue'
 import CheckboxField from '../components/forms/Checkboxfield.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
-const { error: showError, success: showSuccess } = useNotifications()
+const { error: showError, success: showSuccess, warning: showWarning } = useNotifications()
 
 const phoneNumber = ref('')
 const password = ref('')
@@ -22,6 +23,8 @@ async function submit() {
     return
   }
 
+  const notificationPermission = requestBrowserNotificationPermission()
+
   try {
     await auth.login(phoneNumber.value.trim(), password.value)
     
@@ -32,6 +35,12 @@ async function submit() {
     }
 
     showSuccess('تم تسجيل الدخول بنجاح!')
+    const permission = await notificationPermission
+    if (permission === 'denied') {
+      showWarning('المتصفح مانع إشعارات سطح المكتب. فعلها من إعدادات الموقع.')
+    } else if (permission === 'unsupported') {
+      showWarning('إشعارات المتصفح تحتاج HTTPS أو localhost.')
+    }
     await router.push('/')
   } catch (error) {
     showError(auth.error || 'فشل تسجيل الدخول. حاول مرة أخرى.')

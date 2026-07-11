@@ -14,7 +14,6 @@ const form = ref({
   description: '',
   reporterName: '',
   reporterPhone: '',
-  reporterEmail: '',
 })
 
 const canSubmit = computed(() => form.value.title.trim().length >= 3 && form.value.description.trim().length >= 10)
@@ -31,7 +30,7 @@ async function submitReport() {
     }
     const response = await api.post<ApiResponse<ProblemReportItem>>('/ProblemReport/doctor/my', payload)
     showSuccess(response.data.message)
-    form.value = { title: '', description: '', reporterName: '', reporterPhone: '', reporterEmail: '' }
+    form.value = { title: '', description: '', reporterName: '', reporterPhone: '' }
   } catch (e) {
     showError(getErrorMessage(e))
   } finally {
@@ -78,10 +77,6 @@ async function submitReport() {
             <div class="form-field">
               <label class="form-label">رقم الهاتف</label>
               <input v-model="form.reporterPhone" class="form-input ltr-input" maxlength="30" dir="ltr" />
-            </div>
-            <div class="form-field">
-              <label class="form-label">البريد الإلكتروني</label>
-              <input v-model="form.reporterEmail" type="email" class="form-input ltr-input" maxlength="200" dir="ltr" />
             </div>
           </div>
 
@@ -143,7 +138,7 @@ async function submitReport() {
 
 .contact-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-md);
 }
 

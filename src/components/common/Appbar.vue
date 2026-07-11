@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useMessagesStore } from '../../stores/messages'
 import api from '../../services/api'
+import { requestBrowserNotificationPermission } from '../../services/browserNotifications'
 import { REALTIME_NOTIFICATION_EVENT } from '../../services/realtimeNotifications'
 import type { ApiResponse, DoctorNotificationItem, PageResult } from '../../types/api'
 
@@ -124,6 +125,12 @@ async function loadMoreNotifications() {
   await loadNotifications(false)
 }
 
+async function handleNotificationMenuChange(isOpen: boolean) {
+  if (!isOpen) return
+  requestBrowserNotificationPermission()
+  await loadNotifications()
+}
+
 async function markAsRead(item: DoctorNotificationItem) {
   if (item.readAt) return
   try {
@@ -209,7 +216,7 @@ onUnmounted(() => {
         :close-on-content-click="false"
         location="bottom end"
         max-width="380"
-        @update:model-value="(v) => v && loadNotifications()"
+        @update:model-value="handleNotificationMenuChange"
       >
         <template #activator="{ props }">
           <v-btn icon variant="text" size="large" v-bind="props">

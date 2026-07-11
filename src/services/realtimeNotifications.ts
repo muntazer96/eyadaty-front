@@ -1,5 +1,6 @@
 import * as signalR from '@microsoft/signalr'
 import api, { ACCESS_TOKEN_KEY } from './api'
+import { prepareBrowserNotifications, showBrowserNotification } from './browserNotifications'
 import { useNotificationsStore } from '../stores/notifications'
 
 export const REALTIME_NOTIFICATION_EVENT = 'clinic-realtime-notification'
@@ -56,6 +57,12 @@ function buildConnection() {
   hub.on('AppNotification', (payload: RealtimeNotificationPayload) => {
     const normalized = normalizePayload(payload)
     useNotificationsStore().info(normalized.message, { duration: 7000 })
+    showBrowserNotification({
+      title: normalized.title,
+      body: normalized.body || normalized.message,
+      message: normalized.message,
+      data: normalized.data,
+    })
     emitRealtimeNotification(payload)
   })
 
@@ -75,6 +82,7 @@ export async function startRealtimeNotifications() {
   if (connection?.state === signalR.HubConnectionState.Connected) return
   if (startPromise) return startPromise
 
+  prepareBrowserNotifications()
   if (!connection) connection = buildConnection()
 
   startPromise = connection

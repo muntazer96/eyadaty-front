@@ -661,7 +661,6 @@ export interface ProblemReportItem {
   doctorName?: string
   reporterName: string
   reporterPhone?: string
-  reporterEmail?: string
   source: string
   pageUrl?: string
   deviceInfo?: string
