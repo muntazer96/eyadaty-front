@@ -20,6 +20,7 @@ import MessagesView from '../views/MessagesView.vue'
 import OffersView from '../views/OffersView.vue'
 import PasswordResetView from '../views/PasswordResetView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import PrivacyPolicyView from '../views/PrivacyPolicyView.vue'
 import ProblemReportView from '../views/ProblemReportView.vue'
 
 import ReviewsView from '../views/ReviewsView.vue'
@@ -40,6 +41,8 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
     { path: '/password-reset', name: 'password-reset', component: PasswordResetView },
     { path: '/download', name: 'download-app', component: DownloadAppView },
+    { path: '/privacy-policy', name: 'privacy-policy', component: PrivacyPolicyView },
+    { path: '/privacy', redirect: '/privacy-policy' },
     { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView },
     { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView },
 
