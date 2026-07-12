@@ -26,6 +26,12 @@ const adminNavigation: NavItem[] = [
         roles: ['SuperAdmin'],
       },
       {
+        label: 'طلبات حذف الحساب',
+        to: '/pending-account-deletions',
+        icon: 'mdi-account-clock',
+        roles: ['SuperAdmin'],
+      },
+      {
         label: 'الأطباء',
         to: '/doctors',
         icon: 'mdi-stethoscope',

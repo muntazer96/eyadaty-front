@@ -23,6 +23,9 @@ export interface UserItem {
   isLocked: boolean
   isFirstLogin: boolean
   lastLoginDate?: string
+  deletionRequestedAt?: string
+  scheduledDeletionAt?: string
+  deletionFinalizedAt?: string
   roleId?: string
   roleName?: string
   linkedDoctor?: {

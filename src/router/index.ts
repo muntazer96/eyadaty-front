@@ -34,6 +34,8 @@ import AdminDoctorRequestListView from '../views/admin/DoctorRequestListView.vue
 import AdminDoctorRequestDetailView from '../views/admin/DoctorRequestDetailView.vue'
 import AdminNotificationSendView from '../views/AdminNotificationSendView.vue'
 import AdminProblemReportsView from '../views/admin/ProblemReportsView.vue'
+import AccountDeletionView from '../views/AccountDeletionView.vue'
+import PendingAccountDeletionsView from '../views/PendingAccountDeletionsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -43,6 +45,7 @@ const router = createRouter({
     { path: '/download', name: 'download-app', component: DownloadAppView },
     { path: '/privacy-policy', name: 'privacy-policy', component: PrivacyPolicyView },
     { path: '/privacy', redirect: '/privacy-policy' },
+    { path: '/account-deletion', name: 'account-deletion', component: AccountDeletionView },
     { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView },
     { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView },
 
@@ -54,6 +57,7 @@ const router = createRouter({
         { path: '', name: 'dashboard', component: DashboardView, meta: { title: 'الرئيسية' } },
         { path: 'analytics', name: 'analytics', component: AnalyticsView, meta: { title: 'الإحصائيات', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'users', name: 'users', component: UsersView, meta: { title: 'إدارة المستخدمين', roles: ['SuperAdmin'] } },
+        { path: 'pending-account-deletions', name: 'pending-account-deletions', component: PendingAccountDeletionsView, meta: { title: 'طلبات حذف الحساب', roles: ['SuperAdmin'] } },
         { path: 'doctors', name: 'doctors', component: DoctorsView, meta: { title: 'إدارة الأطباء', roles: ['SuperAdmin'] } },
         { path: 'doctors/create-with-clinic', name: 'doctor-create-with-clinic', component: DoctorCreateWithClinicView, meta: { title: 'إضافة طبيب مع عيادة', roles: ['SuperAdmin'] } },
         { path: 'doctors/:doctorId', name: 'doctor-details', component: DoctorDetailsView, meta: { title: 'تفاصيل الطبيب', roles: ['SuperAdmin'] } },
