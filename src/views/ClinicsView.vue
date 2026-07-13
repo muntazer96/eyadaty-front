@@ -3,7 +3,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { provinces } from '../constants/provinces'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
-import type { ApiResponse, ClinicAvailability, ClinicItem, DayItem } from '../types/api'
+import { useAuthStore } from '../stores/auth'
+import type { ApiResponse, ClinicAvailability, ClinicItem, DayItem, DoctorItem } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
 
@@ -15,8 +16,10 @@ interface ScheduleDay extends DayItem {
 }
 
 const { success: showSuccess, error: showError } = useNotifications()
+const auth = useAuthStore()
 
 const clinics       = ref<ClinicItem[]>([])
+const doctors       = ref<DoctorItem[]>([])
 const days          = ref<DayItem[]>([])
 const loading       = ref(false)
 const saving        = ref(false)
@@ -28,6 +31,9 @@ const deleteClinic  = ref<ClinicItem>()
 const scheduleDays  = ref<ScheduleDay[]>([])
 const page          = ref(1)
 const pageSize      = 6
+const selectedDoctorId = ref('')
+
+const isSuperAdmin = computed(() => auth.hasAnyRole(['SuperAdmin']))
 
 const form = reactive({
   id: 0, name: '', iraqiProvince: '0', address: '', latitude: '', longitude: '',
@@ -47,15 +53,36 @@ function nullableNumber(value: string) {
 }
 
 async function loadClinics() {
+  if (isSuperAdmin.value && !selectedDoctorId.value) {
+    clinics.value = []
+    page.value = 1
+    return
+  }
+
   loading.value = true
   try {
-    const r = await api.get<ApiResponse<ClinicItem[]>>('/Clinic/my')
+    const url = isSuperAdmin.value
+      ? `/Clinic/doctor/${selectedDoctorId.value}/admin`
+      : '/Clinic/my'
+    const r = await api.get<ApiResponse<ClinicItem[]>>(url)
     clinics.value = r.data.data
     normalizePage()
   } catch (e: any) {
     if (e.response?.status === 404) { clinics.value = []; page.value = 1 }
     else showError(getErrorMessage(e))
   } finally { loading.value = false }
+}
+
+async function loadDoctors() {
+  if (!isSuperAdmin.value) return
+
+  try {
+    const r = await api.get<ApiResponse<DoctorItem[]>>('/Doctor/items')
+    doctors.value = r.data.data
+    if (!selectedDoctorId.value && doctors.value.length) {
+      selectedDoctorId.value = String(doctors.value[0].id)
+    }
+  } catch (e) { showError(getErrorMessage(e)) }
 }
 
 async function loadDays() {
@@ -84,6 +111,11 @@ function openEditor(clinic?: ClinicItem) {
 }
 
 async function saveClinic() {
+  if (isSuperAdmin.value && !selectedDoctorId.value) {
+    showError('اختر الطبيب أولاً.')
+    return
+  }
+
   saving.value = true
   try {
     const body = {
@@ -97,8 +129,11 @@ async function saveClinic() {
       bookingWindowDays: Math.min(31, Math.max(1, Number(form.bookingWindowDays || 7))),
     }
     const r = form.id
-      ? await api.put<ApiResponse<object>>('/Clinic/my', body)
-      : await api.post<ApiResponse<object>>('/Clinic/my', body)
+      ? await api.put<ApiResponse<object>>(isSuperAdmin.value ? `/Clinic/admin/${form.id}` : '/Clinic/my', body)
+      : await api.post<ApiResponse<object>>(
+        isSuperAdmin.value ? `/Clinic/admin/doctor/${selectedDoctorId.value}` : '/Clinic/my',
+        body,
+      )
     showSuccess(r.data.message)
     editorOpen.value = false
     await loadClinics()
@@ -109,7 +144,10 @@ async function saveClinic() {
 async function confirmDelete() {
   if (!deleteClinic.value) return
   try {
-    const r = await api.delete<ApiResponse<object>>(`/Clinic/my/${deleteClinic.value.id}`)
+    const url = isSuperAdmin.value
+      ? `/Clinic/admin/${deleteClinic.value.id}`
+      : `/Clinic/my/${deleteClinic.value.id}`
+    const r = await api.delete<ApiResponse<object>>(url)
     showSuccess(r.data.message)
     deleteDialog.value = false
     deleteClinic.value = undefined
@@ -176,7 +214,15 @@ async function saveSingleDay(day: ScheduleDay) {
   finally { saving.value = false }
 }
 
-onMounted(() => Promise.all([loadClinics(), loadDays()]))
+async function selectDoctor() {
+  page.value = 1
+  await loadClinics()
+}
+
+onMounted(async () => {
+  await Promise.all([loadDoctors(), loadDays()])
+  await loadClinics()
+})
 </script>
 
 <template>
@@ -186,16 +232,36 @@ onMounted(() => Promise.all([loadClinics(), loadDays()]))
     <div class="page-top">
       <div>
         <p class="page-kicker">إدارة الفروع</p>
-        <h1 class="page-title">عياداتي</h1>
+        <h1 class="page-title">{{ isSuperAdmin ? 'إدارة العيادات' : 'عياداتي' }}</h1>
       </div>
       <div class="page-actions">
         <v-btn variant="outlined" color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="loadClinics">
           تحديث
         </v-btn>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openEditor()">
+        <v-btn color="primary" prepend-icon="mdi-plus" :disabled="isSuperAdmin && !selectedDoctorId" @click="openEditor()">
           إضافة عيادة
         </v-btn>
       </div>
+    </div>
+
+    <div v-if="isSuperAdmin" class="admin-doctor-bar">
+      <div class="form-field">
+        <label class="form-label">الطبيب</label>
+        <v-autocomplete
+          v-model="selectedDoctorId"
+          :items="doctors.map(d => ({ value: String(d.id), label: `${d.name} - ${d.specialization?.name ?? ''}` }))"
+          item-title="label"
+          item-value="value"
+          density="compact"
+          variant="outlined"
+          hide-details
+          placeholder="اختر الطبيب لإدارة عياداته"
+          @update:model-value="selectDoctor"
+        />
+      </div>
+      <v-btn variant="outlined" color="primary" prepend-icon="mdi-refresh" :loading="loading" :disabled="!selectedDoctorId" @click="loadClinics">
+        تحميل العيادات
+      </v-btn>
     </div>
 
     <!-- Loading -->
@@ -211,7 +277,7 @@ onMounted(() => Promise.all([loadClinics(), loadDays()]))
       description="أنشئ أول فرع ثم أضف جدول الدوام الأسبوعي الخاص به"
     >
       <template #action>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openEditor()">إضافة عيادة</v-btn>
+        <v-btn color="primary" prepend-icon="mdi-plus" :disabled="isSuperAdmin && !selectedDoctorId" @click="openEditor()">إضافة عيادة</v-btn>
       </template>
     </EmptyState>
 
@@ -543,6 +609,21 @@ onMounted(() => Promise.all([loadClinics(), loadDays()]))
   color: var(--color-text);
 }
 .page-actions { display: flex; gap: var(--spacing-md); }
+
+.admin-doctor-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.admin-doctor-bar .form-field {
+  flex: 1;
+  min-width: 240px;
+}
 
 /* Grid */
 .clinics-grid {

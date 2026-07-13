@@ -1,4 +1,4 @@
-const specializationIcons: Record<string, string> = {
+export const specializationIcons: Record<string, string> = {
   'internal-medicine': 'mdi-briefcase-medical',
   ent: 'mdi-ear-hearing',
   cardiology: 'mdi-heart-pulse',
@@ -29,7 +29,41 @@ const specializationIcons: Record<string, string> = {
   physiotherapy: 'mdi-human-cane',
   nutrition: 'mdi-food-apple',
   'speech-therapy': 'mdi-message-text-outline',
+  urology: 'mdi-water-pump',
+  'vascular-surgery': 'mdi-blood-bag',
+  'thoracic-surgery': 'mdi-lungs',
+  'cardiac-surgery': 'mdi-heart-plus',
+  dentistry: 'mdi-tooth',
+  orthodontics: 'mdi-tooth-outline',
+  'oral-surgery': 'mdi-toothbrush',
+  'allergy-immunology': 'mdi-shield-check',
+  'nuclear-medicine': 'mdi-atom',
+  'intensive-care': 'mdi-hospital-box',
+  rehabilitation: 'mdi-wheelchair-accessibility',
+  geriatrics: 'mdi-human-cane',
+  'forensic-medicine': 'mdi-file-search',
+  'medical-genetics': 'mdi-dna',
+  pharmacy: 'mdi-pill',
+  laboratory: 'mdi-test-tube',
+  vaccination: 'mdi-needle',
+  ambulance: 'mdi-ambulance',
+  hospital: 'mdi-hospital-building',
+  'medical-bag': 'mdi-medical-bag',
+  surgery: 'mdi-doctor',
+  'health-check': 'mdi-clipboard-pulse',
+  'mental-health': 'mdi-head-heart',
+  'womens-health': 'mdi-gender-female',
+  'mens-health': 'mdi-gender-male',
+  'primary-care': 'mdi-account-heart',
+  'pain-management': 'mdi-bandage',
+  'sleep-medicine': 'mdi-sleep',
+  'public-health': 'mdi-earth',
 }
+
+export const specializationIconOptions = Object.entries(specializationIcons).map(([value, icon]) => ({
+  value,
+  icon,
+}))
 
 export function specializationIcon(iconName?: string): string {
   return specializationIcons[iconName ?? ''] ?? 'mdi-stethoscope'

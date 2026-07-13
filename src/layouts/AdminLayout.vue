@@ -16,7 +16,7 @@ const router = useRouter()
 const { mdAndUp } = useDisplay()
 
 const pageTitle = computed(() => (route.meta.title as string | undefined) ?? 'لوحة التحكم')
-const navItems = computed<NavItem[]>(() => getNavigationItems(auth.primaryRole))
+const navItems = computed<NavItem[]>(() => getNavigationItems(auth.roles))
 const isPermanentSidebar = computed(() => mdAndUp.value)
 
 const handleNavItemClick = (_item: NavItem): void => {

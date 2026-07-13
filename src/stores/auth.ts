@@ -41,6 +41,10 @@ function asArray(value?: string | string[]) {
   return Array.isArray(value) ? value : [value]
 }
 
+function normalizeRole(role: string) {
+  return role.trim().toLowerCase()
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem(TOKEN_KEY) ?? '')
   const refreshToken = ref(localStorage.getItem(REFRESH_TOKEN_KEY) ?? '')
@@ -66,7 +70,9 @@ export const useAuthStore = defineStore('auth', () => {
   const primaryRole = computed(() => roles.value[0] ?? '')
 
   function hasAnyRole(allowedRoles: string[]) {
-    return allowedRoles.length === 0 || allowedRoles.some((role) => roles.value.includes(role))
+    if (allowedRoles.length === 0) return true
+    const normalizedRoles = roles.value.map(normalizeRole)
+    return allowedRoles.some((role) => normalizedRoles.includes(normalizeRole(role)))
   }
 
   async function login(phoneNumber: string, password: string) {

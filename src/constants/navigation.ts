@@ -38,6 +38,12 @@ const adminNavigation: NavItem[] = [
         roles: ['SuperAdmin'],
       },
       {
+        label: 'الاختصاصات',
+        to: '/specializations',
+        icon: 'mdi-shape-plus',
+        roles: ['SuperAdmin'],
+      },
+      {
         label: 'الاشتراكات',
         to: '/subscriptions',
         icon: 'mdi-receipt',
@@ -122,10 +128,10 @@ const adminNavigation: NavItem[] = [
     roles: ['DoctorUser'],
   },
   {
-    label: 'عياداتي',
+    label: 'العيادات',
     to: '/clinics',
     icon: 'mdi-hospital-box',
-    roles: ['DoctorUser'],
+    roles: ['SuperAdmin', 'DoctorUser'],
   },
   {
     label: 'مميزات الاشتراك',
@@ -188,16 +194,18 @@ export function getNavigationItems(userRole: string | string[] | undefined): Nav
  * Filter navigation items recursively based on user roles
  */
 function filterNavItemsByRole(items: NavItem[], userRoles: string[]): NavItem[] {
+  const normalizedUserRoles = userRoles.map((role) => role.trim().toLowerCase())
+
   return items
     .filter((item) => {
       // If divider, check roles
       if (item.divider) {
-        return !item.roles || item.roles.some((role) => userRoles.includes(role))
+        return !item.roles || item.roles.some((role) => normalizedUserRoles.includes(role.trim().toLowerCase()))
       }
 
       // Regular item - check if user has required role
       if (!item.roles || item.roles.length === 0) return true
-      return item.roles.some((role) => userRoles.includes(role))
+      return item.roles.some((role) => normalizedUserRoles.includes(role.trim().toLowerCase()))
     })
     .map((item) => {
       // Recursively filter children

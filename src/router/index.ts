@@ -24,6 +24,7 @@ import PrivacyPolicyView from '../views/PrivacyPolicyView.vue'
 import ProblemReportView from '../views/ProblemReportView.vue'
 
 import ReviewsView from '../views/ReviewsView.vue'
+import SpecializationsView from '../views/SpecializationsView.vue'
 import SubscriptionsView from '../views/SubscriptionsView.vue'
 import UsersView from '../views/UsersView.vue'
 import WhatsAppView from '../views/WhatsAppView.vue'
@@ -59,6 +60,7 @@ const router = createRouter({
         { path: 'users', name: 'users', component: UsersView, meta: { title: 'إدارة المستخدمين', roles: ['SuperAdmin'] } },
         { path: 'pending-account-deletions', name: 'pending-account-deletions', component: PendingAccountDeletionsView, meta: { title: 'طلبات حذف الحساب', roles: ['SuperAdmin'] } },
         { path: 'doctors', name: 'doctors', component: DoctorsView, meta: { title: 'إدارة الأطباء', roles: ['SuperAdmin'] } },
+        { path: 'specializations', name: 'specializations', component: SpecializationsView, meta: { title: 'إدارة الاختصاصات', roles: ['SuperAdmin'] } },
         { path: 'doctors/create-with-clinic', name: 'doctor-create-with-clinic', component: DoctorCreateWithClinicView, meta: { title: 'إضافة طبيب مع عيادة', roles: ['SuperAdmin'] } },
         { path: 'doctors/:doctorId', name: 'doctor-details', component: DoctorDetailsView, meta: { title: 'تفاصيل الطبيب', roles: ['SuperAdmin'] } },
         { path: 'subscriptions', name: 'subscriptions', component: SubscriptionsView, meta: { title: 'الاشتراكات والباقات', roles: ['SuperAdmin'] } },
@@ -71,7 +73,7 @@ const router = createRouter({
         { path: 'problem-reports', name: 'problem-reports', component: AdminProblemReportsView, meta: { title: 'بلاغات المشاكل', roles: ['SuperAdmin'] } },
         { path: 'admin-notifications/send', name: 'admin-notifications-send', component: AdminNotificationSendView, meta: { title: 'إرسال إشعار', roles: ['SuperAdmin'] } },
         { path: 'offers', name: 'offers', component: OffersView, meta: { title: 'العروض', roles: ['SuperAdmin', 'DoctorUser'] } },
-        { path: 'clinics', name: 'clinics', component: ClinicsView, meta: { title: 'عياداتي', roles: ['DoctorUser'] } },
+        { path: 'clinics', name: 'clinics', component: ClinicsView, meta: { title: 'العيادات', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'appointments', name: 'appointments', component: AppointmentsView, meta: { title: 'الحجوزات اليومية', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'features', name: 'features', component: FeaturesView, meta: { title: 'مميزات الاشتراك', roles: ['DoctorUser'] } },
         { path: 'exceptions', name: 'exceptions', component: ExceptionsView, meta: { title: 'الإجازات والاستثناءات', roles: ['DoctorUser'] } },
