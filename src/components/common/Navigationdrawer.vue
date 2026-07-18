@@ -155,13 +155,13 @@ function handleNavigation(item: NavItem): void {
     </div>
 
     <!-- Footer -->
-    <template #append>
+    <!-- <template #append>
       <v-divider />
       <div class="drawer-footer">
         <p class="footer-row"><span>النسخة</span><strong>1.0.0</strong></p>
         <p class="footer-row"><span>الدور</span><strong>{{ auth.primaryRole }}</strong></p>
       </div>
-    </template>
+    </template> -->
   </v-navigation-drawer>
 </template>
 

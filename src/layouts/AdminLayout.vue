@@ -94,13 +94,20 @@ watch(isPermanentSidebar, (isPermanent) => {
 
 .content-container {
   flex: 1 0 auto;
+  padding-bottom: 70px !important;
 }
 
 .app-footer {
-  margin-top: auto;
-  padding: var(--spacing-lg) var(--spacing-xl);
+  position: fixed;
+  right: var(--v-layout-right, 0px);
+  bottom: 0;
+  left: var(--v-layout-left, 0px);
+  z-index: 900;
+  min-height: 52px;
+  padding: 8px var(--spacing-xl);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-surface);
+  box-shadow: 0 -4px 14px rgba(22, 49, 45, 0.06);
 }
 
 .footer-content {
@@ -122,11 +129,11 @@ watch(isPermanentSidebar, (isPermanent) => {
   font-size: 12px;
   color: var(--color-text-muted);
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.2;
 }
 
 .godev-logo {
-  width: 58px;
+  width: 48px;
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
@@ -149,7 +156,8 @@ watch(isPermanentSidebar, (isPermanent) => {
   }
 
   .app-footer {
-    padding: var(--spacing-lg) var(--spacing-md);
+    min-height: 50px;
+    padding: 7px var(--spacing-md);
   }
 
   .footer-content {
