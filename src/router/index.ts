@@ -22,6 +22,7 @@ import PasswordResetView from '../views/PasswordResetView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import PrivacyPolicyView from '../views/PrivacyPolicyView.vue'
 import ProblemReportView from '../views/ProblemReportView.vue'
+import PublicDoctorLinkView from '../views/PublicDoctorLinkView.vue'
 
 import ReviewsView from '../views/ReviewsView.vue'
 import SpecializationsView from '../views/SpecializationsView.vue'
@@ -47,6 +48,7 @@ const router = createRouter({
     { path: '/privacy-policy', name: 'privacy-policy', component: PrivacyPolicyView },
     { path: '/privacy', redirect: '/privacy-policy' },
     { path: '/account-deletion', name: 'account-deletion', component: AccountDeletionView },
+    { path: '/d/:doctorId', name: 'public-doctor-deep-link', component: PublicDoctorLinkView },
     { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView },
     { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView },
 

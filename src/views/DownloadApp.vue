@@ -4,7 +4,11 @@ import api from '../services/api'
 import type { ApiResponse, AppReleaseResponse } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 
-const iosAppStoreUrl = ""
+const iosAppStoreUrl = import.meta.env.VITE_IOS_APP_STORE_URL || ""
+const androidPackageName = 'com.clinicbooking.clinic_app'
+const androidPlayStoreUrl =
+  import.meta.env.VITE_ANDROID_PLAY_STORE_URL ||
+  `https://play.google.com/store/apps/details?id=${androidPackageName}`
 
 type DeviceType = 'android' | 'ios' | 'desktop'
 
@@ -68,31 +72,29 @@ async function fetchLatestRelease() {
   }
 }
 
-function handleDownload() {
-  if (!downloadUrl.value) return
-
-  if (device.value === 'android') {
-    trackDownload('android')
-    window.location.href = downloadUrl.value
-  } else if (device.value === 'ios') {
-    if (iosAppStoreUrl) {
-      trackDownload('ios')
-      window.location.href = iosAppStoreUrl
-    } else {
-      showIosMessage.value = true
-    }
-  }
-}
-
 function downloadAndroid() {
   if (!downloadUrl.value) return
   trackDownload('android')
   window.location.href = downloadUrl.value
 }
 
+function openGooglePlay() {
+  trackDownload('google-play')
+  window.location.href = androidPlayStoreUrl
+}
+
 function downloadIos() {
   if (iosAppStoreUrl) {
     trackDownload('ios')
+    window.location.href = iosAppStoreUrl
+  } else {
+    showIosMessage.value = true
+  }
+}
+
+function openItunes() {
+  if (iosAppStoreUrl) {
+    trackDownload('itunes')
     window.location.href = iosAppStoreUrl
   } else {
     showIosMessage.value = true
@@ -157,37 +159,42 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Main Download Button (Android / iOS) -->
-        <div v-if="device !== 'desktop'" class="dl-section-center">
+        <!-- Download Options -->
+        <div class="dl-section-center">
+          <p class="dl-prompt">اختر طريقة تحميل التطبيق:</p>
+
+          <div class="dl-store-grid">
+            <button
+              class="dl-btn-primary dl-btn-block"
+              @click="openGooglePlay"
+            >
+              <v-icon icon="mdi-google-play" size="20" />
+              تحميل من Google Play
+            </button>
+
+            <button
+              class="dl-btn-outline dl-btn-block"
+              @click="openItunes"
+            >
+              <v-icon icon="mdi-apple" size="20" />
+              <span v-if="iosAppStoreUrl">تحميل من iTunes</span>
+              <span v-else class="dl-inline-group">
+                iTunes
+                <span class="dl-chip-soon">قريباً</span>
+              </span>
+            </button>
+          </div>
+
+          <div class="dl-divider-line dl-divider-line--compact">
+            <span class="dl-divider-label">تحميل مباشر</span>
+          </div>
+
           <button
-            class="dl-btn-primary dl-btn-lg"
-            :disabled="!downloadUrl"
-            @click="handleDownload"
-          >
-            <v-icon icon="mdi-download" size="22" />
-            {{ downloadUrl ? 'تحميل التطبيق' : 'لا يوجد إصدار متاح' }}
-          </button>
-
-          <Transition name="ios-msg">
-            <div v-if="showIosMessage" class="dl-msg-ios">
-              <span>إصدار آيفون قريباً جداً — تابعنا للحصول على الإشعار!</span>
-              <button class="dl-btn-close" @click="showIosMessage = false">
-                <v-icon icon="mdi-close" size="16" />
-              </button>
-            </div>
-          </Transition>
-        </div>
-
-        <!-- Desktop: Both Options -->
-        <div v-else class="dl-section-center">
-          <p class="dl-prompt">اختر النظام الذي تريد تحميل التطبيق له:</p>
-
-          <button
-            class="dl-btn-primary dl-btn-block"
+            class="dl-btn-outline dl-btn-block"
             :disabled="!downloadUrl"
             @click="downloadAndroid"
           >
-            <v-icon icon="mdi-cellphone" size="20" />
+            <v-icon icon="mdi-android" size="20" />
             {{ downloadUrl ? 'تحميل نسخة أندرويد (APK)' : 'لا يوجد إصدار متاح' }}
           </button>
 
@@ -196,9 +203,9 @@ onMounted(async () => {
             @click="downloadIos"
           >
             <v-icon icon="mdi-apple" size="20" />
-            <span v-if="iosAppStoreUrl">تحميل من App Store</span>
+            <span v-if="iosAppStoreUrl">تحميل نسخة الآيفون</span>
             <span v-else class="dl-inline-group">
-              إصدار آيفون — قريباً
+              إصدار آيفون
               <span class="dl-chip-soon">قريباً</span>
             </span>
           </button>
@@ -560,6 +567,16 @@ onMounted(async () => {
   margin-top: 12px;
 }
 
+.dl-store-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .dl-store-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
 .dl-section {
   margin-top: 32px;
 }
@@ -607,6 +624,10 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   margin: 24px 0;
+}
+
+.dl-divider-line--compact {
+  margin: 18px 0;
 }
 
 .dl-divider-line::before,
