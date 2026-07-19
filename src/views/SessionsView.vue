@@ -58,6 +58,11 @@ async function revokeSession(session: UserSession) {
   try {
     await api.delete(`/User/sessions/${session.sessionId}`)
     showSuccess('تم تسجيل خروج الجلسة.')
+    if (session.isCurrent) {
+      auth.logout()
+      await router.push('/login')
+      return
+    }
     await loadSessions()
   } catch (error) {
     showError(getErrorMessage(error))
