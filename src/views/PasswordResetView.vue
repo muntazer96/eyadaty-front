@@ -8,10 +8,13 @@ import type { ApiResponse } from '../types/api'
 import TextInput from '../components/forms/Textinput.vue'
 
 type ResetStep = 'phone' | 'otp' | 'password'
+type VerificationMethod = 'Otp' | 'Authenticator'
 
 interface PasswordResetOtpResult {
   phoneNumber: string
   resetToken: string
+  requiresTwoFactor?: boolean
+  verificationMethod?: VerificationMethod | string
 }
 
 interface AuthTokenResult {
@@ -26,6 +29,7 @@ const loading = ref(false)
 const done = ref(false)
 const step = ref<ResetStep>('phone')
 const resetToken = ref('')
+const verificationMethod = ref<VerificationMethod>('Otp')
 
 const form = reactive({
   phoneNumber: '',
@@ -44,7 +48,10 @@ const normalizedPhone = computed(() => normalizeDigits(form.phoneNumber).trim())
 const normalizedOtp = computed(() => normalizeDigits(form.otpCode).trim())
 
 const isPhoneValid = computed(() => /^07\d{9}$/.test(normalizedPhone.value))
-const isOtpValid = computed(() => /^\d{6}$/.test(normalizedOtp.value))
+const isOtpValid = computed(() => {
+  if (verificationMethod.value === 'Authenticator') return normalizedOtp.value.length >= 6
+  return /^\d{6}$/.test(normalizedOtp.value)
+})
 
 const passwordScore = computed(() => {
   let score = 0
@@ -119,7 +126,7 @@ function confirmPasswordError() {
   return ''
 }
 
-async function sendOtp() {
+async function sendOtp(useWhatsAppFallback = false) {
   if (!canSendOtp.value) {
     showError('أدخل رقم هاتف عراقي صحيح يبدأ بـ 07.')
     return
@@ -127,9 +134,13 @@ async function sendOtp() {
 
   loading.value = true
   try {
-    const response = await api.post<ApiResponse<string>>('/User/password/forgot/send-otp', {
+    const response = await api.post<ApiResponse<PasswordResetOtpResult | string>>('/User/password/forgot/send-otp', {
       phoneNumber: normalizedPhone.value,
+      useWhatsAppFallback,
     })
+    const data = response.data.data
+    const requiresTwoFactor = typeof data === 'object' && Boolean(data?.requiresTwoFactor)
+    verificationMethod.value = requiresTwoFactor ? 'Authenticator' : 'Otp'
     step.value = 'otp'
     showSuccess(response.data.message || 'تم إرسال رمز التحقق إلى رقم الهاتف.')
   } catch (error) {
@@ -208,6 +219,7 @@ function backToPhone() {
   step.value = 'phone'
   form.otpCode = ''
   resetToken.value = ''
+  verificationMethod.value = 'Otp'
 }
 
 function handleSubmit() {
@@ -329,10 +341,10 @@ function handleSubmit() {
           <template v-else-if="step === 'otp'">
             <TextInput
               v-model="form.otpCode"
-              label="رمز التحقق OTP"
+              :label="verificationMethod === 'Authenticator' ? 'كود المصادقة الثنائية' : 'رمز التحقق OTP'"
               type="tel"
               icon="mdi-message-processing"
-              placeholder="أدخل الرمز المكون من 6 أرقام"
+              :placeholder="verificationMethod === 'Authenticator' ? 'أدخل كود التطبيق أو رمز استرداد' : 'أدخل الرمز المكون من 6 أرقام'"
               :error="otpError()"
               :disabled="loading"
               required
@@ -341,7 +353,7 @@ function handleSubmit() {
 
             <p class="helper-text">
               <v-icon icon="mdi-information" size="14" />
-              تم إرسال الرمز إلى {{ normalizedPhone }}
+              {{ verificationMethod === 'Authenticator' ? 'استخدم كود تطبيق المصادقة. إذا عندك مشكلة، اطلب رمز واتساب كخيار بديل.' : `تم إرسال الرمز إلى ${normalizedPhone}` }}
             </p>
 
             <v-btn
@@ -357,8 +369,8 @@ function handleSubmit() {
             </v-btn>
 
             <div class="form-actions">
-              <v-btn variant="text" color="primary" :disabled="loading" @click="sendOtp">
-                إعادة إرسال الرمز
+              <v-btn variant="text" color="primary" :disabled="loading" @click="sendOtp(verificationMethod === 'Authenticator')">
+                {{ verificationMethod === 'Authenticator' ? 'إرسال رمز واتساب بديل' : 'إعادة إرسال الرمز' }}
               </v-btn>
               <v-btn variant="text" color="secondary" :disabled="loading" @click="backToPhone">
                 تغيير رقم الهاتف

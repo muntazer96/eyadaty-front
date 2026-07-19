@@ -20,6 +20,8 @@ import MessagesView from '../views/MessagesView.vue'
 import OffersView from '../views/OffersView.vue'
 import PasswordResetView from '../views/PasswordResetView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import SessionsView from '../views/SessionsView.vue'
+import TwoFactorSettingsView from '../views/TwoFactorSettingsView.vue'
 import PrivacyPolicyView from '../views/PrivacyPolicyView.vue'
 import ProblemReportView from '../views/ProblemReportView.vue'
 import PublicDoctorLinkView from '../views/PublicDoctorLinkView.vue'
@@ -84,6 +86,10 @@ const router = createRouter({
         { path: 'reviews', name: 'reviews', component: ReviewsView, meta: { title: 'التقييمات', roles: ['DoctorUser'] } },
         { path: 'profile', name: 'profile', component: ProfileView, meta: { title: 'الملف الشخصي', roles: ['DoctorUser'] } },
         { path: 'problem-report', name: 'problem-report', component: ProblemReportView, meta: { title: 'الإبلاغ عن مشكلة', roles: ['DoctorUser'] } },
+        { path: 'profile/2fa', name: 'profile-2fa', component: TwoFactorSettingsView, meta: { title: 'المصادقة الثنائية', roles: ['DoctorUser'] } },
+        { path: 'profile/sessions', name: 'profile-sessions', component: SessionsView, meta: { title: 'الأجهزة والجلسات', roles: ['DoctorUser'] } },
+        { path: 'account/2fa', name: 'account-2fa', component: TwoFactorSettingsView, meta: { title: 'المصادقة الثنائية', roles: ['SuperAdmin', 'DoctorUser'] } },
+        { path: 'account/sessions', name: 'account-sessions', component: SessionsView, meta: { title: 'الأجهزة والجلسات', roles: ['SuperAdmin', 'DoctorUser'] } },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },

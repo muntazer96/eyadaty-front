@@ -14,8 +14,12 @@ const { error: showError, success: showSuccess, warning: showWarning } = useNoti
 const phoneNumber = ref('')
 const password = ref('')
 const rememberMe = ref(false)
+const challengeId = ref('')
+const twoFactorCode = ref('')
 
-const canSubmit = computed(() => Boolean(phoneNumber.value.trim() && password.value && !auth.loading))
+const isTwoFactorStep = computed(() => Boolean(challengeId.value))
+const canSubmit = computed(() => Boolean(phoneNumber.value.trim() && password.value && !auth.loading && !isTwoFactorStep.value))
+const canSubmitTwoFactor = computed(() => Boolean(challengeId.value && twoFactorCode.value.trim() && !auth.loading))
 
 async function submit() {
   if (!canSubmit.value) {
@@ -26,7 +30,13 @@ async function submit() {
   const notificationPermission = requestBrowserNotificationPermission()
 
   try {
-    await auth.login(phoneNumber.value.trim(), password.value)
+    const loginResult = await auth.login(phoneNumber.value.trim(), password.value)
+    if (loginResult.requiresTwoFactor) {
+      challengeId.value = loginResult.challengeId ?? ''
+      twoFactorCode.value = ''
+      showSuccess('تم التحقق من كلمة المرور. أدخل رمز المصادقة الثنائية.')
+      return
+    }
     
     if (!auth.hasAnyRole(['SuperAdmin', 'DoctorUser'])) {
       auth.logout()
@@ -47,12 +57,52 @@ async function submit() {
   }
 }
 
+async function submitTwoFactor() {
+  if (!canSubmitTwoFactor.value) {
+    showError('أدخل رمز المصادقة الثنائية أو رمز الاسترداد.')
+    return
+  }
+
+  const notificationPermission = requestBrowserNotificationPermission()
+
+  try {
+    await auth.completeTwoFactorLogin(challengeId.value, twoFactorCode.value.trim())
+
+    if (!auth.hasAnyRole(['SuperAdmin', 'DoctorUser'])) {
+      auth.logout()
+      showError('هذا الحساب لا يملك صلاحية الدخول إلى لوحة التحكم.')
+      return
+    }
+
+    challengeId.value = ''
+    twoFactorCode.value = ''
+    showSuccess('تم تسجيل الدخول بنجاح!')
+    const permission = await notificationPermission
+    if (permission === 'denied') {
+      showWarning('المتصفح مانع إشعارات سطح المكتب. فعلها من إعدادات الموقع.')
+    } else if (permission === 'unsupported') {
+      showWarning('إشعارات المتصفح تحتاج HTTPS أو localhost.')
+    }
+    await router.push('/')
+  } catch (error) {
+    showError(auth.error || 'تعذر التحقق من رمز المصادقة الثنائية.')
+  }
+}
+
+function backToPasswordStep() {
+  challengeId.value = ''
+  twoFactorCode.value = ''
+  auth.error = ''
+}
+
 const goToPasswordReset = (): void => {
   router.push('/password-reset')
 }
 
 const handleKeyPress = (event: KeyboardEvent): void => {
-  if (event.key === 'Enter' && canSubmit.value) {
+  if (event.key === 'Enter' && canSubmitTwoFactor.value) {
+    submitTwoFactor()
+  } else if (event.key === 'Enter' && canSubmit.value) {
     submit()
   }
 }
@@ -125,6 +175,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
         <form class="login-form" @submit.prevent="submit" @keypress="handleKeyPress">
           <!-- Phone Number -->
           <TextInput
+            v-if="!isTwoFactorStep"
             v-model="phoneNumber"
             label="رقم الهاتف أو اسم المستخدم"
             type="text"
@@ -139,6 +190,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
 
           <!-- Password -->
           <TextInput
+            v-if="!isTwoFactorStep"
             v-model="password"
             label="كلمة المرور"
             type="password"
@@ -151,7 +203,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
           />
 
           <!-- Remember Me & Forgot Password -->
-          <div class="login-options">
+          <div v-if="!isTwoFactorStep" class="login-options">
             <CheckboxField
               v-model="rememberMe"
               label="تذكرني"
@@ -168,8 +220,27 @@ const handleKeyPress = (event: KeyboardEvent): void => {
             </v-btn>
           </div>
 
+          <v-alert v-if="isTwoFactorStep" type="info" variant="tonal" density="compact" icon="mdi-shield-key">
+            أدخل رمز تطبيق المصادقة الثنائية المكوّن من 6 أرقام، أو أحد رموز الاسترداد.
+          </v-alert>
+
+          <TextInput
+            v-if="isTwoFactorStep"
+            v-model="twoFactorCode"
+            label="رمز المصادقة الثنائية"
+            type="text"
+            dir="ltr"
+            inputmode="text"
+            autocomplete="one-time-code"
+            icon="mdi-shield-key"
+            placeholder="123456 أو رمز الاسترداد"
+            :disabled="auth.loading"
+            clearable
+          />
+
           <!-- Submit Button -->
           <v-btn
+            v-if="!isTwoFactorStep"
             type="submit"
             color="primary"
             size="large"
@@ -179,6 +250,31 @@ const handleKeyPress = (event: KeyboardEvent): void => {
             :disabled="!canSubmit"
           >
             {{ auth.loading ? 'جاري تسجيل الدخول...' : 'دخول إلى لوحة التحكم' }}
+          </v-btn>
+
+          <v-btn
+            v-if="isTwoFactorStep"
+            type="button"
+            color="primary"
+            size="large"
+            block
+            class="login-button"
+            :loading="auth.loading"
+            :disabled="!canSubmitTwoFactor"
+            @click="submitTwoFactor"
+          >
+            تحقق وأكمل تسجيل الدخول
+          </v-btn>
+
+          <v-btn
+            v-if="isTwoFactorStep"
+            type="button"
+            variant="text"
+            color="primary"
+            :disabled="auth.loading"
+            @click="backToPasswordStep"
+          >
+            الرجوع لتسجيل الدخول
           </v-btn>
 
           <!-- Note -->

@@ -23,6 +23,8 @@ export interface UserItem {
   isLocked: boolean
   isFirstLogin: boolean
   lastLoginDate?: string
+  isTwoFactorAuthenticatorEnabled: boolean
+  twoFactorEnabledAt?: string
   deletionRequestedAt?: string
   scheduledDeletionAt?: string
   deletionFinalizedAt?: string

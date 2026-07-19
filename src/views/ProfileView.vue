@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { provinces } from '../constants/provinces'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
@@ -8,6 +9,7 @@ import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
 
 const { success: showSuccess, error: showError } = useNotifications()
+const router = useRouter()
 
 const profile         = ref<DoctorItem>()
 const specializations = ref<SpecializationItem[]>([])
@@ -177,6 +179,15 @@ onBeforeUnmount(() => {
           تعديل الملف
         </v-btn>
       </div>
+    </div>
+
+    <div v-if="profile" class="security-actions">
+        <v-btn variant="outlined" color="primary" prepend-icon="mdi-shield-key" @click="router.push('/profile/2fa')">
+          المصادقة الثنائية
+        </v-btn>
+        <v-btn variant="outlined" color="primary" prepend-icon="mdi-devices" @click="router.push('/profile/sessions')">
+          الأجهزة والجلسات
+        </v-btn>
     </div>
 
     <!-- Loading -->
@@ -422,6 +433,7 @@ onBeforeUnmount(() => {
 .page-kicker { margin: 0 0 4px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted); }
 .page-title { margin: 0; font-size: 28px; font-weight: 800; color: var(--color-text); }
 .page-actions { display: flex; gap: var(--spacing-md); }
+.security-actions { display: flex; gap: var(--spacing-md); flex-wrap: wrap; }
 
 /* Hero Card */
 .hero-card {

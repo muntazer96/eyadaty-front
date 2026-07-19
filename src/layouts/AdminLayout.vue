@@ -26,7 +26,7 @@ const handleNavItemClick = (_item: NavItem): void => {
 const handleMenuToggle = (): void => layout.toggleSidebar()
 
 const handleSettingsClick = (): void => {
-  router.push('/profile')
+  router.push(auth.hasAnyRole(['DoctorUser']) ? '/profile' : '/account/2fa')
 }
 
 onMounted(() => {

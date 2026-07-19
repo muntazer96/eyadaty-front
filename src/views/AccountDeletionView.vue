@@ -7,6 +7,7 @@ import type { ApiResponse } from '../types/api'
 import TextInput from '../components/forms/Textinput.vue'
 
 type Step = 'phone' | 'otp' | 'done'
+type VerificationMethod = 'Otp' | 'Authenticator'
 
 interface AccountDeletionScheduled {
   userId: string
@@ -15,11 +16,18 @@ interface AccountDeletionScheduled {
   scheduledDeletionAt: string
 }
 
+interface AccountDeletionChallenge {
+  phoneNumber: string
+  requiresTwoFactor?: boolean
+  verificationMethod?: VerificationMethod | string
+}
+
 const { error: showError, success: showSuccess } = useNotifications()
 
 const loading = ref(false)
 const step = ref<Step>('phone')
 const result = ref<AccountDeletionScheduled>()
+const verificationMethod = ref<VerificationMethod>('Otp')
 
 const form = reactive({
   phoneNumber: '',
@@ -29,7 +37,10 @@ const form = reactive({
 const normalizedPhone = computed(() => normalizeDigits(form.phoneNumber).trim())
 const normalizedOtp = computed(() => normalizeDigits(form.otpCode).trim())
 const isPhoneValid = computed(() => /^07\d{9}$/.test(normalizedPhone.value))
-const isOtpValid = computed(() => /^\d{6}$/.test(normalizedOtp.value))
+const isOtpValid = computed(() => {
+  if (verificationMethod.value === 'Authenticator') return normalizedOtp.value.length >= 6
+  return /^\d{6}$/.test(normalizedOtp.value)
+})
 
 const deletionDate = computed(() => {
   if (!result.value?.scheduledDeletionAt) return ''
@@ -52,11 +63,21 @@ function phoneError() {
 
 function otpError() {
   if (!form.otpCode) return ''
-  if (!isOtpValid.value) return 'رمز OTP يجب أن يتكون من 6 أرقام'
+  if (!isOtpValid.value) return verificationMethod.value === 'Authenticator'
+    ? 'أدخل كود المصادقة الثنائية أو رمز استرداد صالح'
+    : 'رمز OTP يجب أن يتكون من 6 أرقام'
   return ''
 }
 
-async function sendOtp() {
+function isScheduledDeletion(value: AccountDeletionScheduled | AccountDeletionChallenge | string | undefined): value is AccountDeletionScheduled {
+  return typeof value === 'object' && value !== null && 'scheduledDeletionAt' in value && Boolean(value.scheduledDeletionAt)
+}
+
+function isTwoFactorChallenge(value: AccountDeletionScheduled | AccountDeletionChallenge | string | undefined): value is AccountDeletionChallenge {
+  return typeof value === 'object' && value !== null && 'requiresTwoFactor' in value && Boolean(value.requiresTwoFactor)
+}
+
+async function sendOtp(useWhatsAppFallback = false) {
   if (!isPhoneValid.value || loading.value) {
     showError('أدخل رقم هاتف عراقي صحيح يبدأ بـ 07.')
     return
@@ -64,14 +85,18 @@ async function sendOtp() {
 
   loading.value = true
   try {
-    const response = await api.post<ApiResponse<AccountDeletionScheduled | string>>('/User/account-deletion/send-otp', {
+    const response = await api.post<ApiResponse<AccountDeletionScheduled | AccountDeletionChallenge | string>>('/User/account-deletion/send-otp', {
       phoneNumber: normalizedPhone.value,
+      useWhatsAppFallback,
     })
 
-    if (typeof response.data.data === 'object' && response.data.data?.scheduledDeletionAt) {
-      result.value = response.data.data
+    const data = response.data.data
+    if (isScheduledDeletion(data)) {
+      result.value = data
       step.value = 'done'
     } else {
+      const requiresTwoFactor = isTwoFactorChallenge(data)
+      verificationMethod.value = requiresTwoFactor ? 'Authenticator' : 'Otp'
       step.value = 'otp'
     }
 
@@ -85,7 +110,7 @@ async function sendOtp() {
 
 async function confirmDeletion() {
   if (!isOtpValid.value || loading.value) {
-    showError('أدخل رمز OTP المكون من 6 أرقام.')
+    showError(verificationMethod.value === 'Authenticator' ? 'أدخل كود المصادقة الثنائية أو رمز استرداد صالح.' : 'أدخل رمز OTP المكون من 6 أرقام.')
     return
   }
 
@@ -110,6 +135,7 @@ function backToPhone() {
   if (loading.value) return
   step.value = 'phone'
   form.otpCode = ''
+  verificationMethod.value = 'Otp'
 }
 </script>
 
@@ -168,10 +194,10 @@ function backToPhone() {
           <template v-if="step === 'otp'">
             <TextInput
               v-model="form.otpCode"
-              label="رمز OTP"
+              :label="verificationMethod === 'Authenticator' ? 'كود المصادقة الثنائية' : 'رمز OTP'"
               type="tel"
               icon="mdi-message-processing"
-              placeholder="أدخل الرمز المكون من 6 أرقام"
+              :placeholder="verificationMethod === 'Authenticator' ? 'أدخل كود التطبيق أو رمز استرداد' : 'أدخل الرمز المكون من 6 أرقام'"
               :error="otpError()"
               :disabled="loading"
               required
@@ -179,7 +205,7 @@ function backToPhone() {
             />
             <p class="helper-text">
               <v-icon icon="mdi-information" size="14" />
-              تم إرسال الرمز إلى {{ normalizedPhone }}
+              {{ verificationMethod === 'Authenticator' ? 'استخدم كود تطبيق المصادقة. إذا عندك مشكلة، اطلب رمز واتساب كخيار بديل.' : `تم إرسال الرمز إلى ${normalizedPhone}` }}
             </p>
           </template>
 
@@ -200,7 +226,9 @@ function backToPhone() {
           </v-btn>
 
           <div v-if="step === 'otp'" class="form-actions">
-            <v-btn variant="text" color="primary" :disabled="loading" @click="sendOtp">إعادة إرسال الرمز</v-btn>
+            <v-btn variant="text" color="primary" :disabled="loading" @click="sendOtp(verificationMethod === 'Authenticator')">
+              {{ verificationMethod === 'Authenticator' ? 'إرسال رمز واتساب بديل' : 'إعادة إرسال الرمز' }}
+            </v-btn>
             <v-btn variant="text" color="secondary" :disabled="loading" @click="backToPhone">تغيير رقم الهاتف</v-btn>
           </div>
         </form>

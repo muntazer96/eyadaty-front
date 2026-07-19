@@ -115,6 +115,15 @@ async function toggleLock(user: UserItem) {
   } catch (e) { showError(getErrorMessage(e)) }
 }
 
+async function disableTwoFactor(user: UserItem) {
+  if (isProtected(user) || !user.isTwoFactorAuthenticatorEnabled) return
+  try {
+    const r = await api.post<ApiResponse<string>>(`/User/${user.id}/2fa/disable`)
+    showSuccess(r.data.message)
+    await loadUsers()
+  } catch (e) { showError(getErrorMessage(e)) }
+}
+
 async function deleteUser() {
   if (!selectedUser.value || isProtected(selectedUser.value)) return
   try {
@@ -186,6 +195,7 @@ onMounted(loadUsers)
               <th>الطبيب المرتبط</th>
               <th>آخر دخول</th>
               <th>الحالة</th>
+              <th>2FA</th>
               <th></th>
             </tr>
           </thead>
@@ -241,6 +251,12 @@ onMounted(loadUsers)
                   {{ user.isLocked ? 'موقوف' : 'فعّال' }}
                 </v-chip>
               </td>
+              <td data-label="2FA">
+                <v-chip size="small" :color="user.isTwoFactorAuthenticatorEnabled ? 'success' : 'default'" variant="tonal">
+                  <v-icon :icon="user.isTwoFactorAuthenticatorEnabled ? 'mdi-shield-check' : 'mdi-shield-off'" size="12" start />
+                  {{ user.isTwoFactorAuthenticatorEnabled ? 'مفعلة' : 'غير مفعلة' }}
+                </v-chip>
+              </td>
               <!-- Actions -->
               <td>
                 <div class="row-actions">
@@ -249,6 +265,14 @@ onMounted(loadUsers)
                   </v-btn>
                   <v-btn icon size="small" variant="text" color="primary" aria-label="تعديل" :disabled="isProtected(user)" @click="openEdit(user)">
                     <v-icon icon="mdi-pencil" size="16" />
+                  </v-btn>
+                  <v-btn
+                    icon size="small" variant="text" color="error"
+                    aria-label="تعطيل المصادقة الثنائية"
+                    :disabled="isProtected(user) || !user.isTwoFactorAuthenticatorEnabled"
+                    @click="disableTwoFactor(user)"
+                  >
+                    <v-icon icon="mdi-shield-remove" size="16" />
                   </v-btn>
                   <v-btn
                     icon size="small" variant="text"
@@ -415,6 +439,13 @@ onMounted(loadUsers)
             <div class="detail-item">
               <p class="detail-label">آخر تسجيل دخول</p>
               <strong>{{ formatDate(detailsUser.lastLoginDate) }}</strong>
+            </div>
+            <div class="detail-item">
+              <p class="detail-label">2FA</p>
+              <v-chip size="small" :color="detailsUser.isTwoFactorAuthenticatorEnabled ? 'success' : 'default'" variant="tonal">
+                <v-icon :icon="detailsUser.isTwoFactorAuthenticatorEnabled ? 'mdi-shield-check' : 'mdi-shield-off'" size="12" start />
+                {{ detailsUser.isTwoFactorAuthenticatorEnabled ? 'مفعلة' : 'غير مفعلة' }}
+              </v-chip>
             </div>
             <!-- Linked Doctor -->
             <div class="detail-item">
