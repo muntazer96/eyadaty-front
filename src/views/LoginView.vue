@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useNotifications } from '../composables/useNotifications'
@@ -15,11 +15,62 @@ const phoneNumber = ref('')
 const password = ref('')
 const rememberMe = ref(false)
 const challengeId = ref('')
+const approvalChallengeId = ref('')
+const canUseTwoFactorFallback = ref(false)
 const twoFactorCode = ref('')
+let approvalPollTimer: ReturnType<typeof window.setInterval> | undefined
 
 const isTwoFactorStep = computed(() => Boolean(challengeId.value))
-const canSubmit = computed(() => Boolean(phoneNumber.value.trim() && password.value && !auth.loading && !isTwoFactorStep.value))
+const isApprovalStep = computed(() => Boolean(approvalChallengeId.value))
+const canSubmit = computed(() => Boolean(phoneNumber.value.trim() && password.value && !auth.loading && !isTwoFactorStep.value && !isApprovalStep.value))
 const canSubmitTwoFactor = computed(() => Boolean(challengeId.value && twoFactorCode.value.trim() && !auth.loading))
+
+async function finishAuthenticatedLogin(notificationPermission: Promise<NotificationPermission | 'unsupported'>) {
+  if (!auth.hasAnyRole(['SuperAdmin', 'DoctorUser'])) {
+    auth.logout()
+    showError('هذا الحساب لا يملك صلاحية الدخول إلى لوحة التحكم.')
+    return
+  }
+
+  showSuccess('تم تسجيل الدخول بنجاح!')
+  const permission = await notificationPermission
+  if (permission === 'denied') {
+    showWarning('المتصفح مانع إشعارات سطح المكتب. فعلها من إعدادات الموقع.')
+  } else if (permission === 'unsupported') {
+    showWarning('إشعارات المتصفح تحتاج HTTPS أو localhost.')
+  }
+  await router.push('/')
+}
+
+function stopApprovalPolling() {
+  if (approvalPollTimer) {
+    window.clearInterval(approvalPollTimer)
+    approvalPollTimer = undefined
+  }
+}
+
+function startApprovalPolling(notificationPermission: Promise<NotificationPermission | 'unsupported'>) {
+  stopApprovalPolling()
+  approvalPollTimer = window.setInterval(async () => {
+    if (!approvalChallengeId.value) return
+    try {
+      const status = await auth.getLoginApprovalStatus(approvalChallengeId.value)
+      if (status === 'Approved') {
+        stopApprovalPolling()
+        approvalChallengeId.value = ''
+        await finishAuthenticatedLogin(notificationPermission)
+      } else if (status === 'Rejected') {
+        stopApprovalPolling()
+        approvalChallengeId.value = ''
+        showError('تم رفض طلب تسجيل الدخول من الجهاز النشط.')
+      }
+    } catch (error) {
+      stopApprovalPolling()
+      approvalChallengeId.value = ''
+      showError(auth.error || 'تعذر متابعة طلب الموافقة أو انتهت صلاحيته.')
+    }
+  }, 2500)
+}
 
 async function submit() {
   if (!canSubmit.value) {
@@ -31,27 +82,22 @@ async function submit() {
 
   try {
     const loginResult = await auth.login(phoneNumber.value.trim(), password.value)
+    if (loginResult.requiresLoginApproval) {
+      approvalChallengeId.value = loginResult.challengeId ?? ''
+      canUseTwoFactorFallback.value = loginResult.canUseTwoFactor === true
+      twoFactorCode.value = ''
+      showSuccess('تم التحقق من كلمة المرور. بانتظار موافقة جهازك النشط.')
+      startApprovalPolling(notificationPermission)
+      return
+    }
     if (loginResult.requiresTwoFactor) {
       challengeId.value = loginResult.challengeId ?? ''
       twoFactorCode.value = ''
       showSuccess('تم التحقق من كلمة المرور. أدخل رمز المصادقة الثنائية.')
       return
     }
-    
-    if (!auth.hasAnyRole(['SuperAdmin', 'DoctorUser'])) {
-      auth.logout()
-      showError('هذا الحساب لا يملك صلاحية الدخول إلى لوحة التحكم.')
-      return
-    }
 
-    showSuccess('تم تسجيل الدخول بنجاح!')
-    const permission = await notificationPermission
-    if (permission === 'denied') {
-      showWarning('المتصفح مانع إشعارات سطح المكتب. فعلها من إعدادات الموقع.')
-    } else if (permission === 'unsupported') {
-      showWarning('إشعارات المتصفح تحتاج HTTPS أو localhost.')
-    }
-    await router.push('/')
+    await finishAuthenticatedLogin(notificationPermission)
   } catch (error) {
     showError(auth.error || 'فشل تسجيل الدخول. حاول مرة أخرى.')
   }
@@ -67,33 +113,31 @@ async function submitTwoFactor() {
 
   try {
     await auth.completeTwoFactorLogin(challengeId.value, twoFactorCode.value.trim())
-
-    if (!auth.hasAnyRole(['SuperAdmin', 'DoctorUser'])) {
-      auth.logout()
-      showError('هذا الحساب لا يملك صلاحية الدخول إلى لوحة التحكم.')
-      return
-    }
-
     challengeId.value = ''
     twoFactorCode.value = ''
-    showSuccess('تم تسجيل الدخول بنجاح!')
-    const permission = await notificationPermission
-    if (permission === 'denied') {
-      showWarning('المتصفح مانع إشعارات سطح المكتب. فعلها من إعدادات الموقع.')
-    } else if (permission === 'unsupported') {
-      showWarning('إشعارات المتصفح تحتاج HTTPS أو localhost.')
-    }
-    await router.push('/')
+    await finishAuthenticatedLogin(notificationPermission)
   } catch (error) {
     showError(auth.error || 'تعذر التحقق من رمز المصادقة الثنائية.')
   }
 }
 
 function backToPasswordStep() {
+  stopApprovalPolling()
   challengeId.value = ''
+  approvalChallengeId.value = ''
+  canUseTwoFactorFallback.value = false
   twoFactorCode.value = ''
   auth.error = ''
 }
+
+function useTwoFactorFallback() {
+  stopApprovalPolling()
+  challengeId.value = approvalChallengeId.value
+  approvalChallengeId.value = ''
+  twoFactorCode.value = ''
+}
+
+onBeforeUnmount(stopApprovalPolling)
 
 const goToPasswordReset = (): void => {
   router.push('/password-reset')
@@ -110,7 +154,6 @@ const handleKeyPress = (event: KeyboardEvent): void => {
 
 <template>
   <div class="login-container">
-    <!-- Left Side - Branding (Desktop Only) -->
     <div class="login-intro">
       <div class="intro-content">
         <div class="brand-intro">
@@ -143,23 +186,19 @@ const handleKeyPress = (event: KeyboardEvent): void => {
       </div>
     </div>
 
-    <!-- Right Side - Login Form -->
     <div class="login-panel">
       <v-card class="login-card" elevation="0">
-        <!-- Mobile Brand -->
         <div class="mobile-brand">
           <v-icon icon="mdi-heart-pulse" size="28" class="brand-icon-mobile" />
           <h2>عيادتي</h2>
         </div>
 
-        <!-- Header -->
         <div class="login-header">
           <span class="login-kicker">أهلاً بعودتك</span>
           <h2 class="login-title">تسجيل الدخول</h2>
           <p class="login-subtitle">أدخل بيانات حسابك للوصول إلى لوحة التحكم</p>
         </div>
 
-        <!-- Error Message -->
         <v-alert
           v-if="auth.error"
           type="error"
@@ -171,11 +210,9 @@ const handleKeyPress = (event: KeyboardEvent): void => {
           {{ auth.error }}
         </v-alert>
 
-        <!-- Form -->
         <form class="login-form" @submit.prevent="submit" @keypress="handleKeyPress">
-          <!-- Phone Number -->
           <TextInput
-            v-if="!isTwoFactorStep"
+            v-if="!isTwoFactorStep && !isApprovalStep"
             v-model="phoneNumber"
             label="رقم الهاتف أو اسم المستخدم"
             type="text"
@@ -188,9 +225,8 @@ const handleKeyPress = (event: KeyboardEvent): void => {
             clearable
           />
 
-          <!-- Password -->
           <TextInput
-            v-if="!isTwoFactorStep"
+            v-if="!isTwoFactorStep && !isApprovalStep"
             v-model="password"
             label="كلمة المرور"
             type="password"
@@ -202,8 +238,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
             clearable
           />
 
-          <!-- Remember Me & Forgot Password -->
-          <div v-if="!isTwoFactorStep" class="login-options">
+          <div v-if="!isTwoFactorStep && !isApprovalStep" class="login-options">
             <CheckboxField
               v-model="rememberMe"
               label="تذكرني"
@@ -218,6 +253,15 @@ const handleKeyPress = (event: KeyboardEvent): void => {
             >
               هل نسيت كلمة المرور؟
             </v-btn>
+          </div>
+
+          <v-alert v-if="isApprovalStep" type="info" variant="tonal" density="compact" icon="mdi-cellphone-check">
+            تم إرسال طلب موافقة إلى جهازك النشط. وافق من الجهاز النشط أو استخدم رمز المصادقة الثنائية بدلاً من الموافقة.
+          </v-alert>
+
+          <div v-if="isApprovalStep" class="approval-waiting">
+            <v-progress-circular indeterminate color="primary" size="34" width="3" />
+            <span>بانتظار الموافقة...</span>
           </div>
 
           <v-alert v-if="isTwoFactorStep" type="info" variant="tonal" density="compact" icon="mdi-shield-key">
@@ -238,9 +282,8 @@ const handleKeyPress = (event: KeyboardEvent): void => {
             clearable
           />
 
-          <!-- Submit Button -->
           <v-btn
-            v-if="!isTwoFactorStep"
+            v-if="!isTwoFactorStep && !isApprovalStep"
             type="submit"
             color="primary"
             size="large"
@@ -267,7 +310,19 @@ const handleKeyPress = (event: KeyboardEvent): void => {
           </v-btn>
 
           <v-btn
-            v-if="isTwoFactorStep"
+            v-if="isApprovalStep && canUseTwoFactorFallback"
+            type="button"
+            color="primary"
+            variant="outlined"
+            block
+            :disabled="auth.loading"
+            @click="useTwoFactorFallback"
+          >
+            استخدام رمز المصادقة الثنائية بدلاً من الموافقة
+          </v-btn>
+
+          <v-btn
+            v-if="isTwoFactorStep || isApprovalStep"
             type="button"
             variant="text"
             color="primary"
@@ -277,13 +332,11 @@ const handleKeyPress = (event: KeyboardEvent): void => {
             الرجوع لتسجيل الدخول
           </v-btn>
 
-          <!-- Note -->
           <p class="login-note">
             لوحة التحكم مخصصة لمدير النظام والطبيب المسجل فقط.
           </p>
         </form>
 
-        <!-- Footer -->
         <div class="login-footer">
           <p>برمجة وتطوير</p>
           <img src="../assets/godev_logo.png" alt="GoDev" class="godev-logo" />
@@ -510,6 +563,16 @@ const handleKeyPress = (event: KeyboardEvent): void => {
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0;
+}
+
+.approval-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  min-height: 64px;
+  color: var(--color-text);
+  font-weight: 700;
 }
 
 .login-note {

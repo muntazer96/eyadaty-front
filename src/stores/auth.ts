@@ -17,14 +17,19 @@ interface LoginResponse {
     token?: string
     refreshToken?: string
     requiresTwoFactor?: boolean
+    requiresLoginApproval?: boolean
+    canUseTwoFactor?: boolean
     challengeId?: string
     trustedDeviceToken?: string
     trustedDeviceTokenExpiresAt?: string
+    status?: string
   }
 }
 
 interface LoginResult {
   requiresTwoFactor: boolean
+  requiresLoginApproval?: boolean
+  canUseTwoFactor?: boolean
   challengeId?: string
 }
 
@@ -140,6 +145,15 @@ export const useAuthStore = defineStore('auth', () => {
         ...getWebDeviceInfo(),
       })
       const data = response.data.data
+      if (data?.requiresLoginApproval) {
+        if (!data.challengeId) throw new Error('لم يرجع الخادم تحدي موافقة تسجيل الدخول.')
+        return {
+          requiresTwoFactor: false,
+          requiresLoginApproval: true,
+          canUseTwoFactor: data.canUseTwoFactor,
+          challengeId: data.challengeId,
+        }
+      }
       if (data?.requiresTwoFactor) {
         if (!data.challengeId) throw new Error('لم يرجع الخادم تحدي المصادقة الثنائية.')
         return { requiresTwoFactor: true, challengeId: data.challengeId }
@@ -176,6 +190,26 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  async function getLoginApprovalStatus(challengeId: string) {
+    const response = await api.post<LoginResponse>('/User/signin/approval/status', { challengeId })
+    const data = response.data.data
+    if (data?.status === 'Approved') {
+      const newToken = data.token
+      const newRefreshToken = data.refreshToken
+      if (!newToken) throw new Error('لم يرجع الخادم رمز دخول صالحا بعد الموافقة.')
+      storeTokens(newToken, newRefreshToken, data.trustedDeviceToken, data.trustedDeviceTokenExpiresAt)
+    }
+    return data?.status ?? 'Pending'
+  }
+
+  async function approveLogin(challengeId: string) {
+    await api.post('/User/signin/approval/approve', { challengeId })
+  }
+
+  async function rejectLogin(challengeId: string) {
+    await api.post('/User/signin/approval/reject', { challengeId })
   }
 
   async function ensureSession() {
@@ -220,6 +254,9 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     error,
     login,
+    getLoginApprovalStatus,
+    approveLogin,
+    rejectLogin,
     completeTwoFactorLogin,
     applyTokens,
     logout,

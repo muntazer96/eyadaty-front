@@ -1,9 +1,10 @@
-import * as signalR from '@microsoft/signalr'
+﻿import * as signalR from '@microsoft/signalr'
 import api, { ACCESS_TOKEN_KEY } from './api'
 import { prepareBrowserNotifications, showBrowserNotification } from './browserNotifications'
 import { useNotificationsStore } from '../stores/notifications'
 
 export const REALTIME_NOTIFICATION_EVENT = 'clinic-realtime-notification'
+export const LOGIN_APPROVAL_REQUEST_EVENT = 'clinic-login-approval-request'
 
 export interface RealtimeNotificationPayload {
   type?: string
@@ -35,7 +36,7 @@ function normalizePayload(payload: RealtimeNotificationPayload) {
   const body = payload.body ?? payload.Body ?? payload.message ?? payload.Message ?? ''
   const type = payload.type ?? payload.Type ?? 'notification'
   const data = payload.data ?? payload.Data ?? {}
-  const message = title && body ? `${title}: ${body}` : body || title || 'وصل إشعار جديد'
+  const message = title && body ? `${title}: ${body}` : body || title || 'ÙˆØµÙ„ Ø¥Ø´Ø¹Ø§Ø± Ø¬Ø¯ÙŠØ¯'
 
   return { title, body, type, data, message }
 }
@@ -44,6 +45,12 @@ function emitRealtimeNotification(payload: RealtimeNotificationPayload) {
   window.dispatchEvent(new CustomEvent(REALTIME_NOTIFICATION_EVENT, { detail: payload }))
 }
 
+async function handleLoginApprovalRequest(normalized: ReturnType<typeof normalizePayload>) {
+  const challengeId = normalized.data.challengeId
+  if (!challengeId) return
+
+  window.dispatchEvent(new CustomEvent(LOGIN_APPROVAL_REQUEST_EVENT, { detail: normalized }))
+}
 function buildConnection() {
   const hub = new signalR.HubConnectionBuilder()
     .withUrl(getHubUrl(), {
@@ -56,7 +63,13 @@ function buildConnection() {
 
   hub.on('AppNotification', (payload: RealtimeNotificationPayload) => {
     const normalized = normalizePayload(payload)
-    useNotificationsStore().info(normalized.message, { duration: 7000 })
+    if (normalized.type === 'login_approval_request') {
+      handleLoginApprovalRequest(normalized).catch(() => {
+        useNotificationsStore().error('ØªØ¹Ø°Ø± Ù…Ø¹Ø§Ù„Ø¬Ø© Ø·Ù„Ø¨ Ù…ÙˆØ§ÙÙ‚Ø© ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„.')
+      })
+    } else {
+      useNotificationsStore().info(normalized.message, { duration: 7000 })
+    }
     showBrowserNotification({
       title: normalized.title,
       body: normalized.body || normalized.message,
@@ -106,3 +119,4 @@ export async function stopRealtimeNotifications() {
     await activeConnection.stop().catch(() => {})
   }
 }
+
