@@ -29,6 +29,7 @@ import SpecializationsView from '../views/SpecializationsView.vue'
 import SubscriptionsView from '../views/SubscriptionsView.vue'
 import UsersView from '../views/UsersView.vue'
 import WhatsAppView from '../views/WhatsAppView.vue'
+import OtpiqTestView from '../views/OtpiqTestView.vue'
 import BackupRestoreView from '../views/BackupRestoreView.vue'
 import DoctorRequestFlowView from '../views/DoctorRequestFlowView.vue'
 import DoctorRequestStatusView from '../views/DoctorRequestStatusView.vue'
@@ -69,6 +70,7 @@ const router = createRouter({
         { path: 'app-versions', name: 'app-versions', component: AppVersionsView, meta: { title: 'سياسات التحديث', roles: ['SuperAdmin'] } },
         { path: 'app-releases', name: 'app-releases', component: AppVersionManagementView, meta: { title: 'إصدارات APK', roles: ['SuperAdmin'] } },
         { path: 'whatsapp', name: 'whatsapp', component: WhatsAppView, meta: { title: 'WhatsApp OTP', roles: ['SuperAdmin'] } },
+        { path: 'otpiq-test', name: 'otpiq-test', component: OtpiqTestView, meta: { title: 'اختبار واتساب', roles: ['SuperAdmin'] } },
         { path: 'backup-restore', name: 'backup-restore', component: BackupRestoreView, meta: { title: 'النسخ الاحتياطي', roles: ['SuperAdmin'] } },
         { path: 'doctor-requests', name: 'doctor-requests', component: AdminDoctorRequestListView, meta: { title: 'طلبات التحويل', roles: ['SuperAdmin'] } },
         { path: 'doctor-requests/:id', name: 'doctor-request-detail', component: AdminDoctorRequestDetailView, meta: { title: 'تفاصيل الطلب', roles: ['SuperAdmin'] } },

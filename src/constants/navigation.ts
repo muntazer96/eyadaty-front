@@ -56,6 +56,12 @@ const adminNavigation: NavItem[] = [
         roles: ['SuperAdmin'],
       },
       {
+        label: 'اختبار واتساب',
+        to: '/otpiq-test',
+        icon: 'mdi-message-lock',
+        roles: ['SuperAdmin'],
+      },
+      {
         label: 'النسخ الاحتياطي',
         to: '/backup-restore',
         icon: 'mdi-database',
