@@ -291,6 +291,46 @@ export interface QueueAvailabilityItem {
   closureReason?: string
 }
 
+export interface WaitingRoomAppointment {
+  id: number
+  code: string
+  patientName: string
+  queueNumber?: number
+  status: number
+  appointmentDate: string
+  clinicId: number
+  clinicName: string
+}
+
+export interface WaitingRoomDisplay {
+  generatedAt: string
+  displayDate: string
+  doctorId: number
+  doctorName: string
+  doctorDescription: string
+  doctorImageName?: string
+  specializationName: string
+  clinicId?: number
+  clinicName?: string
+  clinicAddress?: string
+  clinicPhoneNumber?: string
+  mapUrl?: string
+  displayMessage: string
+  showDoctorInfo: boolean
+  showLinks: boolean
+  currentQueueNumber?: number
+  announcementRepeatCount: number
+  announcementSerial: number
+  totalBookings: number
+  pendingBookings: number
+  confirmedBookings: number
+  completedBookings: number
+  previousAppointment?: WaitingRoomAppointment
+  currentAppointment?: WaitingRoomAppointment
+  nextAppointment?: WaitingRoomAppointment
+  todayQueue: WaitingRoomAppointment[]
+}
+
 export interface ClinicExceptionItem {
   id: number
   clinicId: number

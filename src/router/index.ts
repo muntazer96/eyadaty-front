@@ -23,6 +23,8 @@ import ProfileView from '../views/ProfileView.vue'
 import PrivacyPolicyView from '../views/PrivacyPolicyView.vue'
 import ProblemReportView from '../views/ProblemReportView.vue'
 import PublicDoctorLinkView from '../views/PublicDoctorLinkView.vue'
+import WaitingRoomControlView from '../views/WaitingRoomControlView.vue'
+import WaitingRoomDisplayView from '../views/WaitingRoomDisplayView.vue'
 
 import ReviewsView from '../views/ReviewsView.vue'
 import SpecializationsView from '../views/SpecializationsView.vue'
@@ -50,6 +52,7 @@ const router = createRouter({
     { path: '/privacy', redirect: '/privacy-policy' },
     { path: '/account-deletion', name: 'account-deletion', component: AccountDeletionView },
     { path: '/d/:doctorId', name: 'public-doctor-deep-link', component: PublicDoctorLinkView },
+    { path: '/waiting-room/:doctorId', name: 'waiting-room-display', component: WaitingRoomDisplayView },
     { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView },
     { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView },
 
@@ -79,6 +82,7 @@ const router = createRouter({
         { path: 'offers', name: 'offers', component: OffersView, meta: { title: 'العروض', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'clinics', name: 'clinics', component: ClinicsView, meta: { title: 'العيادات', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'appointments', name: 'appointments', component: AppointmentsView, meta: { title: 'الحجوزات اليومية', roles: ['SuperAdmin', 'DoctorUser'] } },
+        { path: 'waiting-room-control', name: 'waiting-room-control', component: WaitingRoomControlView, meta: { title: 'شاشة الانتظار', roles: ['DoctorUser'] } },
         { path: 'features', name: 'features', component: FeaturesView, meta: { title: 'مميزات الاشتراك', roles: ['DoctorUser'] } },
         { path: 'exceptions', name: 'exceptions', component: ExceptionsView, meta: { title: 'الإجازات والاستثناءات', roles: ['DoctorUser'] } },
         { path: 'notifications', name: 'notifications', component: NotificationsView, meta: { title: 'الإشعارات', roles: ['SuperAdmin', 'DoctorUser'] } },

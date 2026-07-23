@@ -127,6 +127,12 @@ const adminNavigation: NavItem[] = [
         icon: 'mdi-calendar',
         roles: ['SuperAdmin', 'DoctorUser'],
       },
+      {
+        label: 'شاشة الانتظار',
+        to: '/waiting-room-control',
+        icon: 'mdi-monitor-dashboard',
+        roles: ['DoctorUser'],
+      },
     ],
   },
   {
