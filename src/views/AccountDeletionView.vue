@@ -118,7 +118,7 @@ function backToPhone() {
     <section class="delete-intro">
       <div class="intro-content">
         <div class="brand-intro">
-          <v-icon icon="mdi-heart-pulse" size="40" class="brand-icon" />
+          <img src="/app-logo.png" alt="Eyadaty" class="brand-mark brand-mark--intro" />
           <div>
             <h1 class="brand-title">عيادتي</h1>
             <p class="brand-subtitle">إدارة طلب حذف الحساب</p>
@@ -214,6 +214,8 @@ function backToPhone() {
 .delete-intro { display: flex; align-items: center; justify-content: center; padding: var(--spacing-3xl); background: linear-gradient(140deg, #0a5149, #13796b 58%, #42a799); color: white; }
 .intro-content { max-width: 520px; }
 .brand-intro { display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-3xl); }
+.brand-mark { object-fit: contain; background: #ffffff; flex-shrink: 0; }
+.brand-mark--intro { width: 56px; height: 56px; border-radius: 16px; box-shadow: 0 12px 30px rgba(0, 0, 0, .18); }
 .brand-title { margin: 0; font-size: 44px; font-weight: 800; color: white; }
 .brand-subtitle { margin: 6px 0 0; color: #d7fffa; }
 .intro-description h2 { margin: 0 0 var(--spacing-md); font-size: 32px; color: white; }

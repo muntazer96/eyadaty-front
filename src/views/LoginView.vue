@@ -64,7 +64,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
     <div class="login-intro">
       <div class="intro-content">
         <div class="brand-intro">
-          <v-icon icon="mdi-heart-pulse" size="40" class="brand-icon" />
+          <img src="/app-logo.png" alt="Eyadaty" class="brand-mark brand-mark--intro" />
           <h1 class="brand-title">عيادتي</h1>
           <p class="brand-subtitle">لوحة التحكم الطبية</p>
         </div>
@@ -98,7 +98,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
       <v-card class="login-card" elevation="0">
         <!-- Mobile Brand -->
         <div class="mobile-brand">
-          <v-icon icon="mdi-heart-pulse" size="28" class="brand-icon-mobile" />
+          <img src="/app-logo.png" alt="Eyadaty" class="brand-mark brand-mark--mobile" />
           <h2>عيادتي</h2>
         </div>
 
@@ -241,8 +241,17 @@ const handleKeyPress = (event: KeyboardEvent): void => {
   margin-bottom: var(--spacing-3xl);
 }
 
-.brand-icon {
-  color: #d7fffa;
+.brand-mark {
+  object-fit: contain;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.brand-mark--intro {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
 }
 
 .brand-title {
@@ -354,8 +363,11 @@ const handleKeyPress = (event: KeyboardEvent): void => {
   font-weight: 700;
 }
 
-.brand-icon-mobile {
-  color: var(--color-primary);
+.brand-mark--mobile {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
 }
 
 .login-header {

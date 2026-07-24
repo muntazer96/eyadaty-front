@@ -71,8 +71,8 @@ export async function showBrowserNotification(payload: BrowserNotificationPayloa
   const url = getNotificationUrl(payload.data)
   const options: NotificationOptions = {
     body,
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+    icon: '/app-logo.png',
+    badge: '/app-logo.png',
     tag: `eyadaty-${Date.now()}`,
     data: { url },
   }

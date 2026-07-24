@@ -337,7 +337,7 @@ onUnmounted(() => {
 
       <section v-else class="idle-layout">
         <div class="idle-brand">
-          <div class="brand-mark">عيادتي</div>
+          <img src="/app-logo.png" alt="عيادتي" class="brand-mark" />
           <span>بانتظار استدعاء المراجع التالي</span>
         </div>
         <div class="idle-info">
@@ -868,15 +868,12 @@ onUnmounted(() => {
 }
 
 .brand-mark {
-  display: grid;
   width: min(210px, 17vw, 25vh);
   aspect-ratio: 1;
-  place-items: center;
-  border-radius: 50%;
-  background: #13796b;
-  color: #ffffff;
-  font-size: clamp(30px, 3.4vw, 48px);
-  font-weight: 900;
+  border-radius: 22%;
+  object-fit: contain;
+  background: #ffffff;
+  box-shadow: 0 20px 52px rgba(19, 121, 107, 0.18);
 }
 
 .idle-brand span,

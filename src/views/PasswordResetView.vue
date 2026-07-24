@@ -222,7 +222,7 @@ function handleSubmit() {
     <div class="reset-intro">
       <div class="intro-content">
         <div class="brand-intro">
-          <v-icon icon="mdi-heart-pulse" size="40" class="brand-icon" />
+          <img src="/app-logo.png" alt="Eyadaty" class="brand-mark brand-mark--intro" />
           <div>
             <h1 class="brand-title">عيادتي</h1>
             <p class="brand-subtitle">لوحة التحكم الطبية</p>
@@ -254,7 +254,7 @@ function handleSubmit() {
     <div class="reset-panel">
       <v-card class="reset-card" elevation="0">
         <div class="mobile-brand">
-          <v-icon icon="mdi-heart-pulse" size="28" class="brand-icon-mobile" />
+          <img src="/app-logo.png" alt="Eyadaty" class="brand-mark brand-mark--mobile" />
           <h2>عيادتي</h2>
         </div>
 
@@ -476,8 +476,17 @@ function handleSubmit() {
   margin-bottom: var(--spacing-3xl);
 }
 
-.brand-icon {
-  color: #d7fffa;
+.brand-mark {
+  object-fit: contain;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.brand-mark--intro {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
 }
 
 .brand-title {
@@ -580,8 +589,11 @@ function handleSubmit() {
   font-weight: 700;
 }
 
-.brand-icon-mobile {
-  color: var(--color-primary);
+.brand-mark--mobile {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
 }
 
 .reset-header {

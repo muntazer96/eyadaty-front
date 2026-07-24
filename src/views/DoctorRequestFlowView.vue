@@ -210,7 +210,7 @@ function goBack() {
         <!-- Header band -->
         <div class="dr-header">
           <div class="dr-logo">
-            <v-icon icon="mdi-heart-pulse" size="28" />
+            <img src="/app-logo.png" alt="Eyadaty" class="dr-logo-img" />
           </div>
           <h1 class="dr-title">تقديم طلب التحويل إلى طبيب</h1>
           <p class="dr-subtitle">قم بتعبئة البيانات التالية لتحويل حسابك إلى حساب طبيب معتمد</p>
@@ -598,6 +598,14 @@ function goBack() {
   color: #fff;
   margin-bottom: 16px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.dr-logo-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: #ffffff;
 }
 
 .dr-title {

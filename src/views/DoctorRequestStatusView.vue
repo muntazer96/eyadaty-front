@@ -70,7 +70,7 @@ async function handleSearch() {
         <!-- Header band -->
         <div class="sr-header">
           <div class="sr-logo">
-            <v-icon icon="mdi-heart-pulse" size="28" />
+            <img src="/app-logo.png" alt="Eyadaty" class="sr-logo-img" />
           </div>
           <h1 class="sr-title">متابعة حالة الطلب</h1>
           <p class="sr-subtitle">أدخل رقم الهاتف وكود المتابعة لعرض حالة طلبك</p>
@@ -270,6 +270,14 @@ async function handleSearch() {
   color: #fff;
   margin-bottom: 16px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.sr-logo-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: #ffffff;
 }
 
 .sr-title {

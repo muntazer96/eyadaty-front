@@ -142,9 +142,7 @@ onMounted(async () => {
 
         <!-- Brand -->
         <div class="dl-brand">
-          <div class="dl-logo-circle">
-            <v-icon icon="mdi-heart-pulse" size="40" />
-          </div>
+          <img src="/app-logo.png" alt="Eyadaty" class="dl-logo" />
           <h1 class="dl-title">{{ appName }}</h1>
           <p class="dl-tagline">{{ appTagline }}</p>
           <p class="dl-description">{{ appDescription }}</p>
@@ -377,15 +375,12 @@ onMounted(async () => {
   padding-top: 8px;
 }
 
-.dl-logo-circle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.dl-logo {
   width: 80px;
   height: 80px;
   border-radius: 16px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  object-fit: contain;
+  background: #ffffff;
   margin-bottom: 20px;
   box-shadow: var(--shadow-sm);
 }

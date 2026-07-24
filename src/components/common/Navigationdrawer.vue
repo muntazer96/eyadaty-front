@@ -91,9 +91,7 @@ function handleNavigation(item: NavItem): void {
     <!-- Header -->
     <div class="drawer-header">
       <div class="brand-logo">
-        <v-avatar color="primary" size="40">
-          <v-icon icon="mdi-heart-pulse" size="22" color="white" />
-        </v-avatar>
+        <img src="/app-logo.png" alt="Eyadaty" class="brand-mark" />
         <div>
           <p class="brand-name">عيادتي</p>
           <p class="brand-subtitle">لوحة التحكم</p>
@@ -183,6 +181,16 @@ function handleNavigation(item: NavItem): void {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: contain;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
 }
 
 .brand-name {

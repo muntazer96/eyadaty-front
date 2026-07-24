@@ -182,6 +182,7 @@ onUnmounted(() => {
       >
         <v-icon icon="mdi-menu" />
       </v-btn>
+      <img src="/app-logo.png" alt="Eyadaty" class="app-logo" />
     </template>
 
     <v-app-bar-title v-if="title" class="app-bar-title">
@@ -409,6 +410,17 @@ onUnmounted(() => {
   font-weight: 600;
   font-size: 18px;
   min-width: 0;
+}
+
+.app-logo {
+  width: 30px;
+  height: 30px;
+  margin-inline-start: 4px;
+  border-radius: 9px;
+  object-fit: contain;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
 }
 
 :deep(.app-bar-title .v-toolbar-title__placeholder) {
