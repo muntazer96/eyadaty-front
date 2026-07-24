@@ -26,7 +26,6 @@ const controls = reactive({
 
 const fixedDisplayMessage = 'يرجى متابعة رقم الحجز الظاهر على الشاشة، شكرا لانتظاركم.'
 const announcementRepeatCount = 2
-const waitingRoomSessionKey = `waiting-room-control-started-${new Date().toISOString().slice(0, 10)}`
 
 const selectedQueueNumber = computed(() => {
   const number = Number(controls.currentQueueNumber)
@@ -156,7 +155,7 @@ async function saveDisplayState(reloadAfter = true, forceAnnounce = false) {
   }
 }
 
-async function showQueue(queueNumber: number, forceAnnounce = true) {
+async function showQueue(queueNumber: number, forceAnnounce = true, allowCompleted = false) {
   const appointment = findQueueByNumber(queueNumber)
   if (!appointment) {
     showError('هذا الرقم غير موجود ضمن حجوزات اليوم.')
@@ -170,6 +169,10 @@ async function showQueue(queueNumber: number, forceAnnounce = true) {
     showError('لا يمكن استدعاء حجز ملغي.')
     return
   }
+  if (appointment.status === 3 && !allowCompleted) {
+    showError('الحجز المكتمل يستدعى فقط من قائمة استدعاء حجز موجود.')
+    return
+  }
   controls.currentQueueNumber = String(queueNumber)
   await saveDisplayState(true, forceAnnounce)
 }
@@ -180,7 +183,7 @@ async function recallSelectedQueue() {
     showError('اختر رقم حجز من القائمة.')
     return
   }
-  await showQueue(queueNumber, true)
+  await showQueue(queueNumber, true, true)
 }
 
 async function repeatAnnouncement() {
@@ -189,7 +192,7 @@ async function repeatAnnouncement() {
     showError('لا يوجد حجز حالي لإعادة النداء.')
     return
   }
-  await showQueue(queueNumber, true)
+  await showQueue(queueNumber, true, true)
 }
 
 async function requestMove(direction: 'previous' | 'next') {
@@ -285,14 +288,9 @@ async function changeClinic() {
 
 onMounted(async () => {
   await loadClinics()
-  if (!sessionStorage.getItem(waitingRoomSessionKey)) {
-    controls.currentQueueNumber = ''
-    controls.recallQueueNumber = ''
-    sessionStorage.setItem(waitingRoomSessionKey, '1')
-    await saveDisplayState(true, false)
-    return
-  }
-  await loadDisplay()
+  controls.currentQueueNumber = ''
+  controls.recallQueueNumber = ''
+  await saveDisplayState(true, false)
 })
 </script>
 
@@ -491,7 +489,7 @@ onMounted(async () => {
           <button
             class="queue-main"
             type="button"
-            :disabled="!appointment.queueNumber || appointment.status === 0 || appointment.status === 2"
+            :disabled="!appointment.queueNumber || appointment.status !== 1"
             @click="appointment.queueNumber && showQueue(appointment.queueNumber)"
           >
             <strong>#{{ appointment.queueNumber ?? '-' }}</strong>
