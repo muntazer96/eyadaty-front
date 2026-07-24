@@ -318,6 +318,7 @@ export interface WaitingRoomDisplay {
   displayMessage: string
   showDoctorInfo: boolean
   showLinks: boolean
+  showPatientNames: boolean
   currentQueueNumber?: number
   announcementRepeatCount: number
   announcementSerial: number

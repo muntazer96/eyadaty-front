@@ -22,6 +22,7 @@ const controls = reactive({
   clinicId: '',
   currentQueueNumber: '',
   recallQueueNumber: '',
+  showPatientNames: true,
 })
 
 const fixedDisplayMessage = 'يرجى متابعة رقم الحجز الظاهر على الشاشة، شكرا لانتظاركم.'
@@ -61,8 +62,11 @@ const callableQueueItems = computed(() =>
 const currentAppointment = computed(() => display.value?.currentAppointment)
 const previousAppointment = computed(() => display.value?.previousAppointment)
 const nextAppointment = computed(() => display.value?.nextAppointment)
-const hasPrevious = computed(() => Boolean(previousAppointment.value?.queueNumber))
-const hasNext = computed(() => Boolean(nextAppointment.value?.queueNumber))
+const currentMoveReference = computed(() =>
+  selectedQueueNumber.value ?? display.value?.currentAppointment?.queueNumber ?? display.value?.currentQueueNumber,
+)
+const hasPrevious = computed(() => Boolean(targetForMove('previous')?.queueNumber))
+const hasNext = computed(() => Boolean(targetForMove('next')?.queueNumber))
 const pendingAppointments = computed(() => orderedQueue.value.filter((item) => item.status === 0))
 
 function statusLabel(status?: number) {
@@ -88,9 +92,16 @@ function findQueueByNumber(queueNumber?: number) {
 }
 
 function targetForMove(direction: 'previous' | 'next') {
-  const selected = selectedQueueNumber.value ?? display.value?.currentQueueNumber
+  const selected = currentMoveReference.value
   if (!activeQueue.value.length) return undefined
   if (!selected) return direction === 'next' ? activeQueue.value[0] : undefined
+
+  const currentIndex = activeQueue.value.findIndex((item) => Number(item.queueNumber) === selected)
+  if (currentIndex >= 0) {
+    return direction === 'next'
+      ? activeQueue.value[currentIndex + 1]
+      : activeQueue.value[currentIndex - 1]
+  }
 
   return direction === 'next'
     ? activeQueue.value.find((item) => Number(item.queueNumber) > selected)
@@ -121,6 +132,7 @@ async function loadDisplay() {
     })
     display.value = response.data.data
     if (response.data.data.clinicId) controls.clinicId = String(response.data.data.clinicId)
+    controls.showPatientNames = response.data.data.showPatientNames !== false
     if (response.data.data.currentQueueNumber) {
       controls.currentQueueNumber = String(response.data.data.currentQueueNumber)
     } else if (response.data.data.currentAppointment?.queueNumber) {
@@ -144,6 +156,7 @@ async function saveDisplayState(reloadAfter = true, forceAnnounce = false) {
       displayMessage: fixedDisplayMessage,
       showDoctorInfo: false,
       showLinks: true,
+      showPatientNames: controls.showPatientNames,
       announcementRepeatCount,
       forceAnnounce,
     })
@@ -193,6 +206,17 @@ async function repeatAnnouncement() {
     return
   }
   await showQueue(queueNumber, true, true)
+}
+
+async function clearCurrentCall() {
+  if (!currentMoveReference.value) {
+    showError('لا يوجد حجز حالي لإلغاء استدعائه.')
+    return
+  }
+
+  controls.currentQueueNumber = ''
+  await saveDisplayState(true, false)
+  showSuccess('تم إلغاء الاستدعاء الحالي من شاشة العرض.')
 }
 
 async function requestMove(direction: 'previous' | 'next') {
@@ -286,6 +310,10 @@ async function changeClinic() {
   await saveDisplayState(true, false)
 }
 
+async function changePatientNameVisibility() {
+  await saveDisplayState(true, false)
+}
+
 onMounted(async () => {
   await loadClinics()
   controls.currentQueueNumber = ''
@@ -360,6 +388,31 @@ onMounted(async () => {
           >
             إكمال الحجز الحالي
           </v-btn>
+          <v-btn
+            v-else-if="currentMoveReference"
+            variant="tonal"
+            color="error"
+            prepend-icon="mdi-close-circle-outline"
+            :loading="saving"
+            @click="clearCurrentCall"
+          >
+            إلغاء الاستدعاء الحالي
+          </v-btn>
+        </div>
+
+        <div class="visibility-box">
+          <div>
+            <strong>عرض اسم المراجع على شاشة العرض</strong>
+            <span>عند الإيقاف تظهر أرقام الحجوزات فقط للمرضى.</span>
+          </div>
+          <v-switch
+            v-model="controls.showPatientNames"
+            color="primary"
+            hide-details
+            inset
+            :disabled="saving"
+            @update:model-value="changePatientNameVisibility"
+          />
         </div>
         <div class="secondary-actions">
           <v-btn
@@ -610,6 +663,7 @@ onMounted(async () => {
 
 .clinic-row,
 .recall-box,
+.visibility-box,
 .display-link-box {
   display: flex;
   flex-direction: column;
@@ -657,6 +711,35 @@ onMounted(async () => {
   color: var(--color-primary);
   font-size: clamp(54px, 8vw, 96px);
   line-height: 1;
+}
+
+.visibility-box {
+  margin-top: var(--spacing-md);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+}
+
+.visibility-box strong,
+.visibility-box span {
+  display: block;
+}
+
+.visibility-box strong {
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.visibility-box span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .main-actions,

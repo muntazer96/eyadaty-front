@@ -23,16 +23,21 @@ const alertAudioUrl = '/audio/waiting-room-alert.mp3'
 const doctorId = computed(() => Number(route.params.doctorId))
 const clinicId = computed(() => optionalNumber(route.query.clinicId))
 const currentQueueNumber = computed(() => optionalNumber(route.query.currentQueueNumber))
-const fixedDisplayMessage = 'يرجى متابعة رقم الحجز الظاهر على الشاشة، شكرا لانتظاركم.'
+const tickerMessages = [
+  'يرجى التوجه إلى غرفة الطبيب عند ظهور رقمكم. - يرجى الحضور قبل الموعد بـ10 دقائق. - يمكن الحجز عبر QR Code. - شكراً لتعاونكم.',
+  // '',
+  // '',
+  // '',
+]
 
 const bookingLink = computed(() => absoluteUrl(`/d/${display.value?.doctorId ?? doctorId.value}`))
-const websiteDownloadLink = computed(() => {
-  const url = new URL('/download', window.location.origin)
-  url.searchParams.set('doctorId', String(display.value?.doctorId ?? doctorId.value))
-  return url.toString()
-})
 const bookingQr = computed(() => qrSvgDataUrl(bookingLink.value, 5))
-const downloadQr = computed(() => qrSvgDataUrl(websiteDownloadLink.value, 5))
+const hasCurrentAppointment = computed(() => Boolean(display.value?.currentAppointment))
+const shouldShowPatientNames = computed(() => display.value?.showPatientNames !== false)
+const currentDisplayNumber = computed(() => display.value?.currentAppointment?.queueNumber ?? display.value?.currentQueueNumber)
+const currentPatientName = computed(() => patientNameFor(display.value?.currentAppointment, currentDisplayNumber.value))
+const currentTransitionKey = computed(() => `${currentDisplayNumber.value ?? 'idle'}-${display.value?.announcementSerial ?? 0}`)
+const flashSerial = ref(0)
 
 const dateLabel = computed(() =>
   new Intl.DateTimeFormat('ar-IQ', { weekday: 'long', day: 'numeric', month: 'long' }).format(now.value),
@@ -60,6 +65,21 @@ function numberLabel(value?: number) {
   return value ? String(value).padStart(2, '0') : '--'
 }
 
+function patientNameFor(appointment?: WaitingRoomAppointment, queueNumber?: number) {
+  const directName = appointment?.patientName?.trim()
+  if (directName) return directName
+  if (!queueNumber) return ''
+
+  return display.value?.todayQueue
+    ?.find((item) => item.queueNumber === queueNumber)
+    ?.patientName
+    ?.trim() ?? ''
+}
+
+function triggerCurrentFlash() {
+  flashSerial.value += 1
+}
+
 function getWaitingRoomHubUrl() {
   const apiBase = String(api.defaults.baseURL ?? '')
   return apiBase.replace(/\/api\/?$/i, '').replace(/\/$/, '') + '/hubs/waiting-room'
@@ -70,6 +90,9 @@ async function speakAnnouncement(_queueNumber: number, repeatCount: number) {
 
   speaking = true
   audioWarning.value = ''
+
+  await playPreAlertTone()
+  await new Promise((resolve) => window.setTimeout(resolve, 260))
 
   const count = Math.max(1, Math.min(repeatCount || 2, 5))
   for (let index = 0; index < count; index += 1) {
@@ -95,12 +118,38 @@ async function speakAnnouncement(_queueNumber: number, repeatCount: number) {
   speaking = false
 }
 
+async function playPreAlertTone() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioContextClass) return
+    const audioContext = new AudioContextClass()
+    const oscillator = audioContext.createOscillator()
+    const gain = audioContext.createGain()
+    oscillator.type = 'sine'
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime)
+    oscillator.frequency.setValueAtTime(660, audioContext.currentTime + 0.16)
+    gain.gain.setValueAtTime(0.001, audioContext.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.24, audioContext.currentTime + 0.03)
+    gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.42)
+    oscillator.connect(gain)
+    gain.connect(audioContext.destination)
+    oscillator.start()
+    oscillator.stop(audioContext.currentTime + 0.45)
+    await new Promise((resolve) => window.setTimeout(resolve, 480))
+    await audioContext.close()
+  } catch {
+    // Browser audio policies can block generated tones before user activation.
+  }
+}
+
 function handleDisplayUpdate(payload: WaitingRoomDisplay) {
   const previousSerial = lastAnnouncementSerial
+  const previousQueueNumber = display.value?.currentAppointment?.queueNumber ?? display.value?.currentQueueNumber
   display.value = payload
   lastAnnouncementSerial = payload.announcementSerial ?? 0
 
   const queueNumber = payload.currentAppointment?.queueNumber ?? payload.currentQueueNumber
+  if (queueNumber && queueNumber !== previousQueueNumber) triggerCurrentFlash()
   if (queueNumber && payload.announcementSerial && payload.announcementSerial !== previousSerial) {
     void speakAnnouncement(queueNumber, 2)
   }
@@ -203,44 +252,71 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <div class="top-grid">
-        <div class="current-panel">
-          <span class="panel-kicker">الحجز الحالي</span>
-          <strong class="current-number">{{ numberLabel(display.currentAppointment?.queueNumber ?? display.currentQueueNumber) }}</strong>
-          <p v-if="display.currentAppointment?.patientName" class="patient-name">{{ display.currentAppointment.patientName }}</p>
-          <p v-else class="no-current-label">لا يوجد حجز حالي</p>
+      <template v-if="hasCurrentAppointment">
+        <div class="queue-row">
+          <div class="side-card previous">
+            <span>الحجز السابق</span>
+            <strong>{{ queueLabel(display.previousAppointment) }}</strong>
+            <small v-if="shouldShowPatientNames && patientNameFor(display.previousAppointment, display.previousAppointment?.queueNumber)">
+              {{ patientNameFor(display.previousAppointment, display.previousAppointment?.queueNumber) }}
+            </small>
+          </div>
+
+          <Transition name="queue-pop" mode="out-in">
+            <div
+              :key="currentTransitionKey"
+              class="current-panel"
+              :class="{ flashing: flashSerial }"
+            >
+              <span class="panel-kicker">الحجز الحالي</span>
+              <div class="current-number-frame">
+                <strong class="current-number">{{ numberLabel(currentDisplayNumber) }}</strong>
+              </div>
+              <div class="current-meta">
+                <p v-if="shouldShowPatientNames && currentPatientName" class="patient-name">{{ currentPatientName }}</p>
+                <!-- <small v-if="display.clinicName">{{ display.clinicName }}</small> -->
+              </div>
+            </div>
+          </Transition>
+
+          <div class="side-card next">
+            <span>الحجز التالي</span>
+            <strong>{{ queueLabel(display.nextAppointment) }}</strong>
+            <small v-if="shouldShowPatientNames && patientNameFor(display.nextAppointment, display.nextAppointment?.queueNumber)">
+              {{ patientNameFor(display.nextAppointment, display.nextAppointment?.queueNumber) }}
+            </small>
+          </div>
+        </div>
+      </template>
+
+      <section v-else class="idle-layout">
+        <div class="idle-brand">
+          <div class="brand-mark">عيادتي</div>
+          <span>بانتظار استدعاء المراجع التالي</span>
+        </div>
+        <div class="idle-info">
+          <h2>{{ display.doctorName }}</h2>
+          <p>{{ display.specializationName }}</p>
           <small v-if="display.clinicName">{{ display.clinicName }}</small>
         </div>
-
-        <div class="side-card previous">
-          <span>الحجز السابق</span>
-          <strong>{{ queueLabel(display.previousAppointment) }}</strong>
-          <small v-if="display.previousAppointment?.patientName">{{ display.previousAppointment.patientName }}</small>
-        </div>
-
-        <div class="side-card next">
-          <span>الحجز التالي</span>
-          <strong>{{ queueLabel(display.nextAppointment) }}</strong>
-          <small v-if="display.nextAppointment?.patientName">{{ display.nextAppointment.patientName }}</small>
-        </div>
-
-        <section class="links-panel">
-          <!-- <div class="section-title">
-            <v-icon icon="mdi-qrcode-scan" size="22" />
-            <h2>الروابط</h2>
-          </div> -->
-          <div class="qr-grid">
-            <div class="qr-card">
-              <img v-if="bookingQr" :src="bookingQr" alt="باركود الحجز" />
-              <strong>احجز من هنا</strong>
-            </div>
-            <div class="qr-card">
-              <img v-if="downloadQr" :src="downloadQr" alt="باركود تحميل التطبيق" />
-              <strong>تحميل التطبيق</strong>
-            </div>
+        <div class="idle-grid">
+          <div>
+            <v-icon icon="mdi-clock-outline" size="28" />
+            <strong>ساعات الدوام</strong>
+            <span>حسب جدول العيادة اليومي</span>
           </div>
-        </section>
-      </div>
+          <div>
+            <v-icon icon="mdi-sale" size="28" />
+            <strong>عروض العيادة</strong>
+            <span>تابعوا الإعلانات داخل العيادة</span>
+          </div>
+          <div>
+            <v-icon icon="mdi-heart-pulse" size="28" />
+            <strong>نصيحة صحية</strong>
+            <span>احرصوا على شرب الماء والالتزام بتعليمات الطبيب</span>
+          </div>
+        </div>
+      </section>
 
       <div class="stats-row">
         <div class="stat-box">
@@ -261,9 +337,28 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <section class="booking-qr-panel">
+        <div>
+          <v-icon icon="mdi-qrcode-scan" size="24" />
+          <strong>احجز من هنا</strong>
+          <span>امسح الكود لفتح صفحة الطبيب مباشرة</span>
+        </div>
+        <img v-if="bookingQr" :src="bookingQr" alt="باركود الحجز" />
+      </section>
+
       <footer class="display-footer">
-        <p>{{ fixedDisplayMessage }}</p>
-        <span>آخر تحديث: {{ new Intl.DateTimeFormat('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(display.generatedAt)) }}</span>
+        <div class="ticker-track">
+          <div class="ticker-group">
+            <template v-for="copy in 6" :key="`first-${copy}`">
+              <span v-for="(message, index) in tickerMessages" :key="`first-${copy}-${index}`">{{ message }}</span>
+            </template>
+          </div>
+          <div class="ticker-group" aria-hidden="true">
+            <template v-for="copy in 6" :key="`second-${copy}`">
+              <span v-for="(message, index) in tickerMessages" :key="`second-${copy}-${index}`">{{ message }}</span>
+            </template>
+          </div>
+        </div>
       </footer>
     </section>
   </main>
@@ -315,7 +410,7 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .sound-enable {
@@ -362,7 +457,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 24px;
+  gap: 18px;
 }
 
 .eyebrow,
@@ -377,14 +472,14 @@ onUnmounted(() => {
 }
 
 .display-header h1 {
-  margin: 4px 0;
-  font-size: clamp(24px, 3.2vw, 38px);
+  margin: 2px 0;
+  font-size: clamp(22px, 2.8vw, 34px);
   line-height: 1.15;
 }
 
 .clock-panel {
-  min-width: 210px;
-  padding: 12px 18px;
+  min-width: 190px;
+  padding: 10px 16px;
   border: 1px solid #d8e7e4;
   border-radius: 8px;
   background: #ffffff;
@@ -394,7 +489,7 @@ onUnmounted(() => {
 
 .clock-panel strong {
   display: block;
-  font-size: clamp(28px, 3vw, 40px);
+  font-size: clamp(26px, 2.7vw, 36px);
   color: #13796b;
 }
 
@@ -403,20 +498,25 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
-.top-grid {
+.queue-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.32fr) minmax(260px, 0.4fr);
-  grid-template-rows: repeat(2, 1fr);
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.9fr) minmax(180px, 0.7fr);
   gap: 12px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
+.queue-row > * {
+  min-width: 0;
+  min-height: 0;
+}
+
 .current-panel,
 .side-card,
 .stat-box,
-.links-panel {
+.booking-qr-panel,
+.idle-layout {
   border: 1px solid #d8e7e4;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.92);
@@ -424,33 +524,58 @@ onUnmounted(() => {
 }
 
 .current-panel {
-  grid-row: 1 / span 2;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
-  padding: 18px;
+  justify-items: center;
+  gap: 8px;
+  padding: 14px 16px 16px;
   border-color: rgba(19, 121, 107, 0.36);
   min-height: 0;
+  overflow: hidden;
+}
+
+.current-number-frame {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  justify-self: stretch;
+  overflow: hidden;
 }
 
 .current-number {
-  font-size: clamp(120px, 17vw, 230px);
-  line-height: 0.95;
+  min-height: 0;
+  font-size: clamp(96px, min(15vw, 24vh), 220px);
+  line-height: 1;
   color: #13796b;
   font-weight: 900;
 }
 
+.current-meta {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
 .current-panel p {
-  margin: 4px 0;
-  font-size: clamp(20px, 2.5vw, 32px);
+  margin: 0;
+  font-size: clamp(17px, 1.9vw, 28px);
   font-weight: 900;
 }
 
 .patient-name {
-  max-width: 100%;
+  max-width: min(100%, 520px);
   overflow: hidden;
+  padding: 7px 18px;
+  border-radius: 8px;
+  background: rgba(19, 121, 107, 0.1);
   color: #102421;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -460,22 +585,29 @@ onUnmounted(() => {
 }
 
 .current-panel small {
-  font-size: clamp(16px, 1.7vw, 22px);
+  max-width: 100%;
+  overflow: hidden;
+  font-size: clamp(14px, 1.4vw, 20px);
   color: #55706b;
   font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .side-card {
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 16px;
+  padding: 14px;
   min-height: 0;
+  text-align: center;
 }
 
 .side-card strong {
-  font-size: clamp(54px, 6vw, 82px);
+  font-size: clamp(70px, 8vw, 120px);
   line-height: 1;
 }
 
@@ -501,119 +633,217 @@ onUnmounted(() => {
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .stat-box {
-  padding: 10px 14px;
+  padding: 8px 12px;
 }
 
 .stat-box strong {
   display: block;
   margin-top: 2px;
-  font-size: clamp(26px, 3.2vw, 40px);
+  font-size: clamp(24px, 2.8vw, 34px);
   color: #13796b;
 }
 
-.links-panel {
-  grid-column: 3;
-  grid-row: 1 / span 2;
-  min-height: 0;
-  padding: 14px;
-  overflow: hidden;
-}
-
-.section-title {
+.booking-qr-panel {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #13796b;
-}
-
-.section-title h2 {
-  margin: 0;
-  font-size: 20px;
-}
-
-.links-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.qr-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  min-height: 0;
-  flex: 1;
-}
-
-.qr-card {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
   justify-content: center;
-  padding: 10px;
-  border: 1px solid #d8e7e4;
-  border-radius: 8px;
-  background: #ffffff;
+  gap: 14px;
+  padding: 8px 14px;
 }
 
-.qr-card img {
-  width: min(100%, 150px, 18vh);
+.booking-qr-panel div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booking-qr-panel strong {
+  color: #13796b;
+  font-size: clamp(17px, 1.8vw, 22px);
+  font-weight: 900;
+}
+
+.booking-qr-panel span {
+  color: #55706b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.booking-qr-panel img {
+  width: min(132px, 15vh);
   aspect-ratio: 1;
   border: 8px solid #ffffff;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
-.qr-card strong {
-  color: #13796b;
-  font-size: clamp(14px, 1.5vw, 18px);
+.idle-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(170px, 0.42fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 18px;
+  overflow: hidden;
+}
+
+.idle-brand {
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.brand-mark {
+  display: grid;
+  width: min(210px, 17vw, 25vh);
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: #13796b;
+  color: #ffffff;
+  font-size: clamp(30px, 3.4vw, 48px);
   font-weight: 900;
 }
 
-.qr-card span {
-  display: none;
-  direction: ltr;
-  overflow-wrap: anywhere;
-  text-align: center;
+.idle-brand span,
+.idle-info p,
+.idle-info small,
+.idle-grid span {
   color: #55706b;
-  font-size: 12px;
   font-weight: 800;
+}
+
+.idle-info h2 {
+  margin: 0;
+  color: #102421;
+  font-size: clamp(30px, 4vw, 52px);
+  line-height: 1.1;
+}
+
+.idle-info p {
+  margin: 4px 0;
+  font-size: clamp(17px, 1.8vw, 24px);
+}
+
+.idle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  min-height: 0;
+}
+
+.idle-grid div {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #d8e7e4;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.idle-grid strong {
+  color: #13796b;
+  font-size: clamp(16px, 1.6vw, 21px);
+  font-weight: 900;
+}
+
+.idle-grid span {
+  font-size: clamp(12px, 1.2vw, 15px);
+  line-height: 1.5;
+}
+
+.queue-pop-enter-active,
+.queue-pop-leave-active {
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.queue-pop-enter-from {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.96);
+}
+
+.queue-pop-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.96);
+}
+
+.current-panel.flashing {
+  animation: current-flash 2s ease;
+}
+
+@keyframes current-flash {
+  0%, 100% {
+    border-color: rgba(19, 121, 107, 0.36);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  }
+  15%, 45%, 75% {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.18), 0 24px 56px rgba(15, 23, 42, 0.16);
+  }
+  30%, 60% {
+    border-color: #13796b;
+    box-shadow: 0 0 0 8px rgba(19, 121, 107, 0.16), 0 24px 56px rgba(15, 23, 42, 0.16);
+  }
 }
 
 .display-footer {
   flex-shrink: 0;
   min-width: 0;
+  overflow: hidden;
+  min-height: 58px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 12px 16px;
   border-radius: 8px;
   background: #102421;
   color: #ffffff;
+  direction: ltr;
 }
 
-.display-footer p {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.ticker-track {
+  display: flex;
+  width: max-content;
   white-space: nowrap;
+  will-change: transform;
+  animation: ticker-move 120s linear infinite;
+}
+
+.ticker-group {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 72px;
+  min-width: max-content;
+  padding-inline: 36px;
+}
+
+.ticker-track span {
+  color: #ffffff;
+  direction: rtl;
   font-size: clamp(16px, 1.8vw, 22px);
   font-weight: 900;
 }
 
-.display-footer span {
-  flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.72);
-  white-space: nowrap;
+@keyframes ticker-move {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 @media (max-width: 900px) {
@@ -621,28 +851,32 @@ onUnmounted(() => {
     padding: 16px;
   }
 
-  .display-header,
-  .display-footer {
+  .display-header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .top-grid,
+  .queue-row,
   .stats-row {
     grid-template-columns: 1fr;
   }
 
-  .current-panel {
+  .idle-layout,
+  .idle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .idle-brand {
     grid-row: auto;
   }
 
-  .links-panel {
-    grid-column: auto;
-    grid-row: auto;
+  .current-number {
+    font-size: clamp(120px, 32vw, 210px);
   }
 
-  .qr-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .booking-qr-panel {
+    flex-direction: column;
+    text-align: center;
   }
 }
 </style>
