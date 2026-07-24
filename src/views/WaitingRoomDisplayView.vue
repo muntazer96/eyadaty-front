@@ -38,6 +38,8 @@ const currentDisplayNumber = computed(() => display.value?.currentAppointment?.q
 const currentPatientName = computed(() => patientNameFor(display.value?.currentAppointment, currentDisplayNumber.value))
 const currentTransitionKey = computed(() => `${currentDisplayNumber.value ?? 'idle'}-${display.value?.announcementSerial ?? 0}`)
 const flashSerial = ref(0)
+const clinicUnavailable = computed(() => display.value?.isClinicAvailableToday === false)
+const clinicSchedule = computed(() => display.value?.clinicSchedule ?? [])
 
 const dateLabel = computed(() =>
   new Intl.DateTimeFormat('ar-IQ', { weekday: 'long', day: 'numeric', month: 'long' }).format(now.value),
@@ -74,6 +76,18 @@ function patientNameFor(appointment?: WaitingRoomAppointment, queueNumber?: numb
     ?.find((item) => item.queueNumber === queueNumber)
     ?.patientName
     ?.trim() ?? ''
+}
+
+function formatScheduleDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('ar-IQ', { day: 'numeric', month: 'short' }).format(date)
+}
+
+function formatScheduleTime(value?: string) {
+  if (!value) return '-'
+  const [hours = '00', minutes = '00'] = value.split(':')
+  return `${hours}:${minutes}`
 }
 
 function triggerCurrentFlash() {
@@ -252,7 +266,39 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <template v-if="hasCurrentAppointment">
+      <section v-if="clinicUnavailable" class="unavailable-layout">
+        <div class="unavailable-message">
+          <v-icon icon="mdi-calendar-remove" size="46" />
+          <span>العيادة غير متوفرة اليوم</span>
+          <strong>{{ display.clinicUnavailableMessage || 'الطبيب غير متوفر في هذه العيادة اليوم' }}</strong>
+          <small v-if="display.clinicName">{{ display.clinicName }}</small>
+        </div>
+
+        <div class="schedule-panel">
+          <div class="schedule-title">
+            <v-icon icon="mdi-calendar-clock" size="24" />
+            <strong>جدول العيادة</strong>
+          </div>
+          <div class="schedule-grid">
+            <article
+              v-for="day in clinicSchedule"
+              :key="day.date"
+              class="schedule-day"
+              :class="{ available: day.isAvailable, closed: !day.isAvailable }"
+            >
+              <span>{{ day.dayName }}</span>
+              <strong>{{ formatScheduleDate(day.date) }}</strong>
+              <small v-if="day.startTime && day.endTime">
+                {{ formatScheduleTime(day.startTime) }} - {{ formatScheduleTime(day.endTime) }}
+              </small>
+              <small v-else>لا يوجد دوام</small>
+              <b>{{ day.isAvailable ? `${day.remainingAppointments} متاح` : 'غير متوفر' }}</b>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <template v-else-if="hasCurrentAppointment">
         <div class="queue-row">
           <div class="side-card previous">
             <span>الحجز السابق</span>
@@ -516,11 +562,129 @@ onUnmounted(() => {
 .side-card,
 .stat-box,
 .booking-qr-panel,
-.idle-layout {
+.idle-layout,
+.unavailable-layout {
   border: 1px solid #d8e7e4;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.unavailable-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.55fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.unavailable-message {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid rgba(183, 121, 31, 0.28);
+  border-radius: 8px;
+  background: #fffbeb;
+  text-align: center;
+}
+
+.unavailable-message span {
+  color: #b7791f;
+  font-size: clamp(20px, 2.4vw, 34px);
+  font-weight: 900;
+}
+
+.unavailable-message strong {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0 18px;
+  color: #102421;
+  font-size: clamp(24px, 3.4vw, 48px);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+.unavailable-message small {
+  color: #55706b;
+  font-size: clamp(16px, 1.6vw, 22px);
+  font-weight: 800;
+}
+
+.schedule-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-title {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #13796b;
+  font-size: clamp(18px, 2vw, 26px);
+  font-weight: 900;
+}
+
+.schedule-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.schedule-day {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: 1px solid #d8e7e4;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.schedule-day.available {
+  border-color: rgba(19, 121, 107, 0.34);
+  background: rgba(19, 121, 107, 0.07);
+}
+
+.schedule-day.closed {
+  border-color: rgba(100, 116, 139, 0.22);
+  background: #f8fafc;
+}
+
+.schedule-day span,
+.schedule-day small {
+  color: #55706b;
+  font-weight: 800;
+}
+
+.schedule-day strong {
+  color: #102421;
+  font-size: clamp(15px, 1.4vw, 20px);
+  font-weight: 900;
+}
+
+.schedule-day b {
+  color: #13796b;
+  font-size: clamp(13px, 1.2vw, 16px);
+  font-weight: 900;
+}
+
+.schedule-day.closed b {
+  color: #b7791f;
 }
 
 .current-panel {

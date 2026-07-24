@@ -319,6 +319,8 @@ export interface WaitingRoomDisplay {
   showDoctorInfo: boolean
   showLinks: boolean
   showPatientNames: boolean
+  isClinicAvailableToday: boolean
+  clinicUnavailableMessage?: string
   currentQueueNumber?: number
   announcementRepeatCount: number
   announcementSerial: number
@@ -330,6 +332,7 @@ export interface WaitingRoomDisplay {
   currentAppointment?: WaitingRoomAppointment
   nextAppointment?: WaitingRoomAppointment
   todayQueue: WaitingRoomAppointment[]
+  clinicSchedule: QueueAvailabilityItem[]
 }
 
 export interface ClinicExceptionItem {
