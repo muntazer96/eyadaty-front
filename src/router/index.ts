@@ -25,6 +25,7 @@ import ProblemReportView from '../views/ProblemReportView.vue'
 import PublicDoctorLinkView from '../views/PublicDoctorLinkView.vue'
 import WaitingRoomControlView from '../views/WaitingRoomControlView.vue'
 import WaitingRoomDisplayView from '../views/WaitingRoomDisplayView.vue'
+import KioskBookingView from '../views/KioskBookingView.vue'
 
 import ReviewsView from '../views/ReviewsView.vue'
 import SpecializationsView from '../views/SpecializationsView.vue'
@@ -53,6 +54,7 @@ const router = createRouter({
     { path: '/account-deletion', name: 'account-deletion', component: AccountDeletionView },
     { path: '/d/:doctorId', name: 'public-doctor-deep-link', component: PublicDoctorLinkView },
     { path: '/waiting-room/:accessToken', name: 'waiting-room-display', component: WaitingRoomDisplayView },
+    { path: '/clinic-kiosk/:accessToken', name: 'clinic-kiosk', component: KioskBookingView },
     { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView },
     { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView },
 

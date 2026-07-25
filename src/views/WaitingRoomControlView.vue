@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/signalr'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
 import type {
@@ -23,10 +24,15 @@ const saving = ref(false)
 const copied = ref(false)
 const completionDialog = ref(false)
 const regenerateLinkDialog = ref(false)
+const kioskDialog = ref(false)
 const manualBookingDialog = ref(false)
 const queueAvailability = ref<QueueAvailabilityItem>()
 const queueLoading = ref(false)
 const pendingMoveTarget = ref<WaitingRoomAppointment | null>(null)
+let waitingRoomConnection: HubConnection | undefined
+let joinedWaitingRoomToken = ''
+const kioskLink = ref<{ accessToken?: string; clinicId?: number; clinicName?: string; expiresAt?: string; isActive: boolean }>()
+const kioskForm = reactive({ clinicId: '', durationMinutes: '60' })
 
 const controls = reactive({
   clinicId: '',
@@ -55,6 +61,8 @@ const displayUrl = computed(() => {
   if (!display.value?.accessToken) return ''
   return new URL(`/waiting-room/${display.value.accessToken}`, window.location.origin).toString()
 })
+const kioskUrl = computed(() => kioskLink.value?.accessToken
+  ? new URL(`/clinic-kiosk/${kioskLink.value.accessToken}`, window.location.origin).toString() : '')
 
 const orderedQueue = computed(() =>
   [...(display.value?.todayQueue ?? [])]
@@ -181,6 +189,7 @@ async function loadDisplay() {
       },
     })
     display.value = response.data.data
+    void syncControlRealtimeRoom()
     if (response.data.data.clinicId) controls.clinicId = String(response.data.data.clinicId)
     controls.showPatientNames = response.data.data.showPatientNames !== false
     if (response.data.data.currentQueueNumber) {
@@ -420,6 +429,85 @@ async function confirmRegenerateDisplayLink() {
   }
 }
 
+async function loadKioskLink() {
+  try {
+    const response = await api.get<ApiResponse<typeof kioskLink.value>>('/Appointment/doctor/kiosk-link')
+    kioskLink.value = response.data.data
+  } catch (error) { showError(getErrorMessage(error)) }
+}
+async function generateKioskLink() {
+  if (!kioskForm.clinicId) return
+  saving.value = true
+  try {
+    const response = await api.post<ApiResponse<typeof kioskLink.value>>('/Appointment/doctor/kiosk-link', {
+      clinicId: Number(kioskForm.clinicId), durationMinutes: Number(kioskForm.durationMinutes),
+    })
+    kioskLink.value = response.data.data
+    kioskDialog.value = false
+    showSuccess('تم توليد رابط الحجز الذاتي وإبطال أي رابط سابق.')
+  } catch (error) { showError(getErrorMessage(error)) }
+  finally { saving.value = false }
+}
+async function disableKioskLink() {
+  saving.value = true
+  try {
+    await api.delete('/Appointment/doctor/kiosk-link')
+    kioskLink.value = { isActive: false }
+    showSuccess('تم إيقاف رابط الحجز الذاتي.')
+  } catch (error) { showError(getErrorMessage(error)) }
+  finally { saving.value = false }
+}
+async function copyKioskLink() {
+  if (!kioskUrl.value) return
+  await navigator.clipboard.writeText(kioskUrl.value)
+  showSuccess('تم نسخ رابط الحجز الذاتي.')
+}
+function openKioskLink() {
+  if (kioskUrl.value) window.open(kioskUrl.value, '_blank', 'noopener,noreferrer')
+}
+
+function waitingRoomHubUrl() {
+  const apiBase = String(api.defaults.baseURL || '')
+  return apiBase.replace(/\/api\/?$/i, '').replace(/\/$/, '') + '/hubs/waiting-room'
+}
+
+async function syncControlRealtimeRoom() {
+  const token = display.value?.accessToken || ''
+  if (!waitingRoomConnection || waitingRoomConnection.state !== 'Connected' || !token ||
+      token === joinedWaitingRoomToken) return
+  if (joinedWaitingRoomToken) {
+    await waitingRoomConnection.invoke('LeaveDoctorWaitingRoom', joinedWaitingRoomToken).catch(() => undefined)
+  }
+  await waitingRoomConnection.invoke('JoinDoctorWaitingRoom', token)
+  joinedWaitingRoomToken = token
+}
+
+async function connectControlRealtime() {
+  if (!display.value?.accessToken || waitingRoomConnection) return
+  waitingRoomConnection = new HubConnectionBuilder()
+    .withUrl(waitingRoomHubUrl(), { withCredentials: false })
+    .withAutomaticReconnect()
+    .configureLogging(LogLevel.Warning)
+    .build()
+  waitingRoomConnection.on('WaitingRoomQueueChanged', () => void loadDisplay())
+  waitingRoomConnection.onreconnected(() => {
+    joinedWaitingRoomToken = ''
+    void syncControlRealtimeRoom()
+  })
+  try {
+    await waitingRoomConnection.start()
+    await syncControlRealtimeRoom()
+  } catch {
+    waitingRoomConnection = undefined
+  }
+}
+function openKioskDialog() {
+  kioskForm.clinicId = kioskLink.value?.clinicId
+    ? String(kioskLink.value.clinicId)
+    : controls.clinicId || (clinics.value[0]?.id ? String(clinics.value[0].id) : '')
+  kioskDialog.value = true
+}
+
 function openDisplay() {
   if (!displayUrl.value) return
   window.open(displayUrl.value, '_blank', 'noopener,noreferrer')
@@ -440,6 +528,14 @@ onMounted(async () => {
   controls.clinicId = ''
   controls.recallQueueNumber = ''
   await loadDisplay()
+  await connectControlRealtime()
+  await loadKioskLink()
+})
+
+onBeforeUnmount(() => {
+  void waitingRoomConnection?.stop()
+  waitingRoomConnection = undefined
+  joinedWaitingRoomToken = ''
 })
 </script>
 
@@ -472,7 +568,7 @@ onMounted(async () => {
           :disabled="!displayUrl"
           @click="regenerateLinkDialog = true"
         >
-          توليد رابط جديد
+          توليد رابط جديد لشاشة العرض
         </v-btn>
       </template>
     </PageHeader>
@@ -654,6 +750,39 @@ onMounted(async () => {
         </template>
       </section>
     </div>
+
+    <section class="panel kiosk-control-panel" :class="{ active: kioskLink?.isActive }">
+      <div class="kiosk-summary">
+        <div class="kiosk-summary-icon">
+          <v-icon icon="mdi-tablet" color="primary" size="30" />
+          <span v-if="kioskLink?.isActive" class="kiosk-icon-status">
+            <v-icon icon="mdi-check" color="white" size="11" />
+          </span>
+        </div>
+        <div class="kiosk-summary-copy">
+          <div class="kiosk-title-row">
+            <h2>محطة الحجز الذاتي</h2>
+            <span class="kiosk-status" :class="{ active: kioskLink?.isActive }">
+              {{ kioskLink?.isActive ? 'فعّالة' : 'متوقفة' }}
+            </span>
+          </div>
+          <p v-if="kioskLink?.isActive">
+            رابط التابلت فعال لغاية
+            <strong>{{ kioskLink.expiresAt ? new Date(kioskLink.expiresAt).toLocaleString('ar-IQ') : '' }}</strong>
+          </p>
+          <p v-else>فعّل رابطاً مؤقتاً لاستقبال الحجوزات من شاشة اللمس داخل العيادة.</p>
+        </div>
+        <div class="kiosk-summary-actions">
+          <template v-if="kioskLink?.isActive">
+            <v-btn icon="mdi-content-copy" variant="tonal" color="primary" title="نسخ الرابط" @click="copyKioskLink" />
+            <v-btn icon="mdi-open-in-new" variant="tonal" color="primary" title="فتح المحطة" @click="openKioskLink" />
+            <v-btn variant="outlined" color="primary" prepend-icon="mdi-refresh" @click="openKioskDialog">تغيير الرابط</v-btn>
+            <v-btn icon="mdi-power" variant="tonal" color="error" title="إيقاف الرابط" :loading="saving" @click="disableKioskLink" />
+          </template>
+          <v-btn v-else color="primary" prepend-icon="mdi-link-plus" @click="openKioskDialog">إنشاء رابط</v-btn>
+        </div>
+      </div>
+    </section>
 
     <section class="panel queue-panel">
       <div class="panel-title queue-title">
@@ -842,6 +971,51 @@ onMounted(async () => {
             @click="createManualBooking"
           >
             تثبيت الحجز
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="kioskDialog" max-width="520" persistent>
+      <v-card class="confirm-card">
+        <v-card-title class="dialog-title">
+          <v-icon icon="mdi-tablet-cellphone" color="primary" />
+          <div>
+            <strong>{{ kioskLink?.isActive ? 'تغيير رابط المحطة' : 'إنشاء محطة حجز ذاتي' }}</strong>
+            <small>حدد العيادة ومدة عمل الرابط</small>
+          </div>
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="dialog-body">
+          <v-alert v-if="kioskLink?.isActive" type="warning" variant="tonal" density="compact" class="mb-4">
+            عند التأكيد سيتوقف الرابط الحالي مباشرة ويُنشأ رابط جديد.
+          </v-alert>
+          <div class="manual-form-fields">
+            <div class="manual-form-field">
+              <label>العيادة</label>
+              <select v-model="kioskForm.clinicId" class="manual-input">
+                <option value="" disabled>اختر العيادة</option>
+                <option v-for="clinic in clinics" :key="clinic.id" :value="String(clinic.id)">{{ clinic.name }}</option>
+              </select>
+            </div>
+            <div class="manual-form-field">
+              <label>مدة صلاحية الرابط</label>
+              <select v-model="kioskForm.durationMinutes" class="manual-input">
+                <option value="15">15 دقيقة</option>
+                <option value="30">30 دقيقة</option>
+                <option value="60">ساعة واحدة</option>
+                <option value="240">4 ساعات</option>
+                <option value="720">12 ساعة</option>
+              </select>
+            </div>
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="dialog-actions">
+          <v-btn variant="text" :disabled="saving" @click="kioskDialog = false">تراجع</v-btn>
+          <v-btn color="primary" prepend-icon="mdi-shield-check" :loading="saving"
+            :disabled="!kioskForm.clinicId" @click="generateKioskLink">
+            {{ kioskLink?.isActive ? 'توليد وتبديل الرابط' : 'إنشاء الرابط الآمن' }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1296,6 +1470,88 @@ onMounted(async () => {
   color: var(--color-error);
   font-size: 0.78rem;
   line-height: 1.5;
+}
+
+.kiosk-control-panel {
+  margin-top: var(--spacing-lg);
+  padding: 18px 20px;
+  overflow: hidden;
+  position: relative;
+}
+
+.kiosk-control-panel.active {
+  border-color: rgba(19, 121, 107, 0.24);
+  background: linear-gradient(110deg, #fff 0%, #f4fbf9 100%);
+}
+
+.kiosk-control-panel.active::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 4px;
+  background: var(--color-primary);
+}
+
+.kiosk-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.kiosk-summary-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--color-primary);
+  background: rgba(19, 121, 107, 0.1);
+  position: relative;
+}
+
+.kiosk-icon-status {
+  position: absolute;
+  inset-inline-end: -3px;
+  inset-block-end: -3px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--color-success, #16856f);
+}
+
+.kiosk-summary-copy { min-width: 0; }
+.kiosk-title-row { display: flex; align-items: center; gap: 10px; }
+.kiosk-title-row h2 { margin: 0; font-size: 17px; color: var(--color-text); }
+.kiosk-summary-copy p { margin: 5px 0 0; color: var(--color-text-muted); font-size: 13px; }
+.kiosk-summary-copy p strong { color: var(--color-text); }
+
+.kiosk-status {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #edf1f0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.kiosk-status.active { color: #08765f; background: #dff6ee; }
+.kiosk-summary-actions { display: flex; align-items: center; gap: 8px; }
+
+@media (max-width: 850px) {
+  .kiosk-summary { grid-template-columns: auto 1fr; }
+  .kiosk-summary-actions { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
+@media (max-width: 560px) {
+  .kiosk-control-panel { padding: 16px; }
+  .kiosk-summary-icon { width: 44px; height: 44px; border-radius: 13px; }
+  .kiosk-summary-actions { justify-content: stretch; flex-wrap: wrap; }
+  .kiosk-summary-actions .v-btn:not(.v-btn--icon) { flex: 1; }
 }
 
 .manual-input:disabled {
