@@ -3,6 +3,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
 import { REALTIME_NOTIFICATION_EVENT } from '../services/realtimeNotifications'
+import {
+  NOTIFICATION_READ_STATE_EVENT,
+  publishNotificationReadState,
+  type NotificationReadState,
+} from '../services/notificationSync'
 import type { ApiResponse, DoctorNotificationItem, PageResult } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
@@ -104,16 +109,39 @@ async function markAsRead(item: DoctorNotificationItem) {
   try {
     const r = await api.post<ApiResponse<object>>(`${notificationBaseUrl.value}/${item.id}/read`)
     showSuccess(r.data.message)
-    await loadNotifications()
+    publishNotificationReadState({
+      action: 'read',
+      notificationId: item.id,
+      readAt: new Date().toISOString(),
+    })
   } catch (e) { showError(getErrorMessage(e)) }
+}
+
+function handleNotificationReadState(event: Event) {
+  const state = (event as CustomEvent<NotificationReadState>).detail
+
+  if (state.action === 'read-all') {
+    items.value = items.value.map((item) =>
+      item.readAt ? item : { ...item, readAt: state.readAt },
+    )
+    unreadCount.value = 0
+    return
+  }
+
+  const item = items.value.find((notification) => notification.id === state.notificationId)
+  if (item?.readAt) return
+  if (item) item.readAt = state.readAt
+  unreadCount.value = Math.max(0, unreadCount.value - 1)
 }
 
 onMounted(loadNotifications)
 
 window.addEventListener(REALTIME_NOTIFICATION_EVENT, loadNotifications)
+window.addEventListener(NOTIFICATION_READ_STATE_EVENT, handleNotificationReadState)
 
 onUnmounted(() => {
   window.removeEventListener(REALTIME_NOTIFICATION_EVENT, loadNotifications)
+  window.removeEventListener(NOTIFICATION_READ_STATE_EVENT, handleNotificationReadState)
 })
 </script>
 

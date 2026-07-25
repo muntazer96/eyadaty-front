@@ -200,7 +200,7 @@ onMounted(loadStatus)
         <div class="form-body">
           <div class="form-field">
             <label class="form-label">رقم الهاتف</label>
-            <input v-model="otpForm.phoneNumber" class="form-input ltr" inputmode="numeric" placeholder="07701234567" dir="ltr" />
+            <input v-model="otpForm.phoneNumber" v-iraqi-phone class="form-input ltr" dir="ltr" />
           </div>
           <div class="form-field">
             <label class="form-label">كود التحقق</label>
@@ -220,7 +220,7 @@ onMounted(loadStatus)
         <div class="form-body">
           <div class="form-field">
             <label class="form-label">رقم الهاتف</label>
-            <input v-model="reminderForm.phoneNumber" class="form-input ltr" inputmode="numeric" placeholder="07701234567" dir="ltr" />
+            <input v-model="reminderForm.phoneNumber" v-iraqi-phone class="form-input ltr" dir="ltr" />
           </div>
           <div class="form-field">
             <label class="form-label">نص التذكير</label>

@@ -52,7 +52,7 @@ const router = createRouter({
     { path: '/privacy', redirect: '/privacy-policy' },
     { path: '/account-deletion', name: 'account-deletion', component: AccountDeletionView },
     { path: '/d/:doctorId', name: 'public-doctor-deep-link', component: PublicDoctorLinkView },
-    { path: '/waiting-room/:doctorId', name: 'waiting-room-display', component: WaitingRoomDisplayView },
+    { path: '/waiting-room/:accessToken', name: 'waiting-room-display', component: WaitingRoomDisplayView },
     { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView },
     { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView },
 

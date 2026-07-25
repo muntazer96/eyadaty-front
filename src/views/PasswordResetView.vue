@@ -303,6 +303,7 @@ function handleSubmit() {
           <template v-if="step === 'phone'">
             <TextInput
               v-model="form.phoneNumber"
+              iraqi-phone
               label="رقم الهاتف"
               type="tel"
               icon="mdi-phone"

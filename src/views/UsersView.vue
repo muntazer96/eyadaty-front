@@ -294,7 +294,7 @@ onMounted(loadUsers)
             </div>
             <div class="form-field">
               <label class="form-label">رقم الهاتف <span class="required">*</span></label>
-              <input v-model="createForm.phoneNumber" class="form-input" required maxlength="30" />
+              <input v-model="createForm.phoneNumber" v-iraqi-phone class="form-input" required />
             </div>
             <div class="form-field">
               <label class="form-label">كلمة المرور <span class="required">*</span></label>
@@ -329,7 +329,7 @@ onMounted(loadUsers)
             </div>
             <div class="form-field">
               <label class="form-label">رقم الهاتف <span class="required">*</span></label>
-              <input v-model="editForm.phoneNumber" class="form-input" required maxlength="30" />
+              <input v-model="editForm.phoneNumber" v-iraqi-phone class="form-input" required />
             </div>
           </div>
         </v-card-text>

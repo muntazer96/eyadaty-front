@@ -691,7 +691,7 @@ onUnmounted(() => {
             <!-- Phone -->
             <div class="form-field">
               <label class="form-label">رقم الهاتف</label>
-              <input v-model="manualForm.patientPhoneNumber" class="form-input" required maxlength="30" placeholder="07XXXXXXXXX" />
+              <input v-model="manualForm.patientPhoneNumber" v-iraqi-phone class="form-input" required />
             </div>
 
             <!-- Notes -->

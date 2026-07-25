@@ -216,7 +216,7 @@ onMounted(() => { loadSettings(); checkStatus() })
         <div class="wa-form">
           <div class="form-field">
             <label class="form-label">رقم الهاتف</label>
-            <input v-model="phone" class="form-input ltr" placeholder="07701234567" dir="ltr" />
+            <input v-model="phone" v-iraqi-phone class="form-input ltr" dir="ltr" />
           </div>
           <div class="form-field">
             <label class="form-label">الرسالة</label>

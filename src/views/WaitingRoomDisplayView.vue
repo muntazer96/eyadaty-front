@@ -20,9 +20,8 @@ let speaking = false
 const soundEnabled = ref(localStorage.getItem('waiting_room_sound_enabled') === '1')
 const alertAudioUrl = '/audio/waiting-room-alert.mp3'
 
-const doctorId = computed(() => Number(route.params.doctorId))
+const accessToken = computed(() => String(route.params.accessToken ?? '').trim())
 const clinicId = computed(() => optionalNumber(route.query.clinicId))
-const currentQueueNumber = computed(() => optionalNumber(route.query.currentQueueNumber))
 const tickerMessages = [
   'يرجى التوجه إلى غرفة الطبيب عند ظهور رقمكم. - يرجى الحضور قبل الموعد بـ10 دقائق. - يمكن الحجز عبر QR Code. - شكراً لتعاونكم.',
   // '',
@@ -30,7 +29,7 @@ const tickerMessages = [
   // '',
 ]
 
-const bookingLink = computed(() => absoluteUrl(`/d/${display.value?.doctorId ?? doctorId.value}`))
+const bookingLink = computed(() => absoluteUrl(`/d/${display.value?.doctorId ?? ''}`))
 const bookingQr = computed(() => qrSvgDataUrl(bookingLink.value, 5))
 const hasCurrentAppointment = computed(() => Boolean(display.value?.currentAppointment))
 const shouldShowPatientNames = computed(() => display.value?.showPatientNames !== false)
@@ -165,7 +164,7 @@ function handleDisplayUpdate(payload: WaitingRoomDisplay) {
   const queueNumber = payload.currentAppointment?.queueNumber ?? payload.currentQueueNumber
   if (queueNumber && queueNumber !== previousQueueNumber) triggerCurrentFlash()
   if (queueNumber && payload.announcementSerial && payload.announcementSerial !== previousSerial) {
-    void speakAnnouncement(queueNumber, 2)
+    void speakAnnouncement(queueNumber, payload.announcementRepeatCount)
   }
 }
 
@@ -173,18 +172,17 @@ function enableSound() {
   soundEnabled.value = true
   localStorage.setItem('waiting_room_sound_enabled', '1')
   const queueNumber = display.value?.currentAppointment?.queueNumber ?? display.value?.currentQueueNumber
-  if (queueNumber) void speakAnnouncement(queueNumber, 2)
+  if (queueNumber) void speakAnnouncement(queueNumber, display.value?.announcementRepeatCount ?? 2)
 }
 
 async function loadDisplay() {
-  if (!doctorId.value) return
+  if (!accessToken.value) return
   loading.value = true
   error.value = ''
   try {
-    const response = await api.get<ApiResponse<WaitingRoomDisplay>>(`/Appointment/waiting-room/${doctorId.value}`, {
+    const response = await api.get<ApiResponse<WaitingRoomDisplay>>(`/Appointment/waiting-room/${accessToken.value}`, {
       params: {
         clinicId: clinicId.value,
-        currentQueueNumber: currentQueueNumber.value,
       },
     })
     display.value = response.data.data
@@ -197,7 +195,7 @@ async function loadDisplay() {
 }
 
 async function startWaitingRoomRealtime() {
-  if (!doctorId.value || waitingRoomConnection?.state === signalR.HubConnectionState.Connected) return
+  if (!accessToken.value || waitingRoomConnection?.state === signalR.HubConnectionState.Connected) return
 
   waitingRoomConnection = new signalR.HubConnectionBuilder()
     .withUrl(getWaitingRoomHubUrl(), { withCredentials: false })
@@ -206,12 +204,17 @@ async function startWaitingRoomRealtime() {
     .build()
 
   waitingRoomConnection.on('WaitingRoomUpdated', handleDisplayUpdate)
+  waitingRoomConnection.on('WaitingRoomAccessRevoked', () => {
+    error.value = 'تم تعطيل رابط شاشة الانتظار. اطلب الرابط الجديد من الطبيب.'
+    display.value = null
+    void waitingRoomConnection?.stop()
+  })
   waitingRoomConnection.onreconnected(() => {
-    void waitingRoomConnection?.invoke('JoinDoctorWaitingRoom', doctorId.value)
+    void waitingRoomConnection?.invoke('JoinDoctorWaitingRoom', accessToken.value)
   })
 
   await waitingRoomConnection.start()
-  await waitingRoomConnection.invoke('JoinDoctorWaitingRoom', doctorId.value)
+  await waitingRoomConnection.invoke('JoinDoctorWaitingRoom', accessToken.value)
 }
 
 watch(() => route.fullPath, loadDisplay)
@@ -345,22 +348,36 @@ onUnmounted(() => {
           <p>{{ display.specializationName }}</p>
           <small v-if="display.clinicName">{{ display.clinicName }}</small>
         </div>
-        <div class="idle-grid">
-          <div>
-            <v-icon icon="mdi-clock-outline" size="28" />
-            <strong>ساعات الدوام</strong>
-            <span>حسب جدول العيادة اليومي</span>
+        <div class="schedule-panel idle-schedule">
+          <div class="schedule-title">
+            <v-icon icon="mdi-clock-outline" size="24" />
+            <strong>أوقات دوام الطبيب</strong>
           </div>
-          <div>
-            <v-icon icon="mdi-sale" size="28" />
-            <strong>عروض العيادة</strong>
-            <span>تابعوا الإعلانات داخل العيادة</span>
+          <div v-if="clinicSchedule.length" class="schedule-grid">
+            <article
+              v-for="day in clinicSchedule"
+              :key="day.date"
+              class="schedule-day"
+              :class="{ available: day.isAvailable, closed: !day.isAvailable }"
+            >
+              <span>{{ day.dayName }}</span>
+              <strong>{{ formatScheduleDate(day.date) }}</strong>
+              <small v-if="day.startTime && day.endTime">
+                {{ formatScheduleTime(day.startTime) }} - {{ formatScheduleTime(day.endTime) }}
+              </small>
+              <small v-else>لا يوجد دوام</small>
+              <b>
+                {{
+                  day.isAvailable
+                    ? 'متاح'
+                    : day.startTime && day.endTime
+                      ? 'مكتمل'
+                      : 'لا يوجد دوام'
+                }}
+              </b>
+            </article>
           </div>
-          <div>
-            <v-icon icon="mdi-heart-pulse" size="28" />
-            <strong>نصيحة صحية</strong>
-            <span>احرصوا على شرب الماء والالتزام بتعليمات الطبيب</span>
-          </div>
+          <div v-else class="schedule-empty">لم تُحدد أوقات دوام لهذه العيادة.</div>
         </div>
       </section>
 
@@ -878,8 +895,7 @@ onUnmounted(() => {
 
 .idle-brand span,
 .idle-info p,
-.idle-info small,
-.idle-grid span {
+.idle-info small {
   color: #55706b;
   font-weight: 800;
 }
@@ -896,35 +912,20 @@ onUnmounted(() => {
   font-size: clamp(17px, 1.8vw, 24px);
 }
 
-.idle-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  min-height: 0;
-}
-
-.idle-grid div {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
+.idle-schedule {
   padding: 12px;
   border: 1px solid #d8e7e4;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
 }
 
-.idle-grid strong {
-  color: #13796b;
-  font-size: clamp(16px, 1.6vw, 21px);
-  font-weight: 900;
-}
-
-.idle-grid span {
-  font-size: clamp(12px, 1.2vw, 15px);
-  line-height: 1.5;
+.schedule-empty {
+  display: grid;
+  min-height: 100px;
+  place-items: center;
+  color: #55706b;
+  font-size: clamp(15px, 1.4vw, 19px);
+  font-weight: 800;
 }
 
 .queue-pop-enter-active,
@@ -1022,8 +1023,7 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .idle-layout,
-  .idle-grid {
+  .idle-layout {
     grid-template-columns: 1fr;
   }
 

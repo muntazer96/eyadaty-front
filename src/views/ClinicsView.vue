@@ -422,7 +422,7 @@ onMounted(async () => {
             <!-- Phone -->
             <div class="form-field">
               <label class="form-label">رقم الهاتف</label>
-              <input v-model="form.phoneNumber" class="form-input" />
+              <input v-model="form.phoneNumber" v-iraqi-phone class="form-input" />
             </div>
 
             <!-- Address -->

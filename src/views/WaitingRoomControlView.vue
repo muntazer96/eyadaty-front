@@ -2,7 +2,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../services/api'
 import { useNotifications } from '../composables/useNotifications'
-import type { ApiResponse, ClinicItem, WaitingRoomAppointment, WaitingRoomDisplay } from '../types/api'
+import type {
+  ApiResponse,
+  ClinicItem,
+  QueueAvailabilityItem,
+  WaitingRoomAppointment,
+  WaitingRoomDisplay,
+} from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import PageHeader from '../components/common/Pageheader.vue'
 import EmptyState from '../components/common/Emptystate.vue'
@@ -16,6 +22,10 @@ const clinicsLoading = ref(false)
 const saving = ref(false)
 const copied = ref(false)
 const completionDialog = ref(false)
+const regenerateLinkDialog = ref(false)
+const manualBookingDialog = ref(false)
+const queueAvailability = ref<QueueAvailabilityItem>()
+const queueLoading = ref(false)
 const pendingMoveTarget = ref<WaitingRoomAppointment | null>(null)
 
 const controls = reactive({
@@ -23,6 +33,14 @@ const controls = reactive({
   currentQueueNumber: '',
   recallQueueNumber: '',
   showPatientNames: true,
+})
+
+const manualForm = reactive({
+  clinicId: '',
+  appointmentDate: today(),
+  patientName: '',
+  patientPhoneNumber: '',
+  notes: '',
 })
 
 const fixedDisplayMessage = 'يرجى متابعة رقم الحجز الظاهر على الشاشة، شكرا لانتظاركم.'
@@ -34,8 +52,8 @@ const selectedQueueNumber = computed(() => {
 })
 
 const displayUrl = computed(() => {
-  if (!display.value?.doctorId) return ''
-  return new URL(`/waiting-room/${display.value.doctorId}`, window.location.origin).toString()
+  if (!display.value?.accessToken) return ''
+  return new URL(`/waiting-room/${display.value.accessToken}`, window.location.origin).toString()
 })
 
 const orderedQueue = computed(() =>
@@ -68,6 +86,38 @@ const currentMoveReference = computed(() =>
 const hasPrevious = computed(() => Boolean(targetForMove('previous')?.queueNumber))
 const hasNext = computed(() => Boolean(targetForMove('next')?.queueNumber))
 const pendingAppointments = computed(() => orderedQueue.value.filter((item) => item.status === 0))
+const canCreateManual = computed(() => {
+  if (
+    !manualForm.clinicId ||
+    !manualForm.appointmentDate ||
+    !manualForm.patientName.trim() ||
+    !/^07\d{9}$/.test(manualForm.patientPhoneNumber)
+  ) {
+    return false
+  }
+  if (!queueAvailability.value) return true
+  return queueAvailability.value.isAvailable && queueAvailability.value.remainingAppointments > 0
+})
+
+const manualPhoneError = computed(() => {
+  if (!manualForm.patientPhoneNumber) return ''
+  return /^07\d{9}$/.test(manualForm.patientPhoneNumber)
+    ? ''
+    : 'رقم الهاتف يجب أن يكون 11 رقماً ويبدأ بـ 07.'
+})
+
+function updateManualPhone(event: Event) {
+  const input = event.target as HTMLInputElement
+  const value = input.value.replace(/\D/g, '').slice(0, 11)
+  manualForm.patientPhoneNumber = value
+  input.value = value
+}
+
+function today() {
+  const now = new Date()
+  const offset = now.getTimezoneOffset()
+  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10)
+}
 
 function statusLabel(status?: number) {
   return ['قيد الانتظار', 'مؤكد', 'ملغي', 'مكتمل'][status ?? -1] ?? 'غير معروف'
@@ -237,7 +287,8 @@ async function requestMove(direction: 'previous' | 'next') {
 
 async function confirmCompleteAndMove() {
   if (!currentAppointment.value?.id || !pendingMoveTarget.value?.queueNumber) return
-  await completeAppointment(currentAppointment.value, false)
+  const completed = await completeAppointment(currentAppointment.value, false)
+  if (!completed) return
   await showQueue(pendingMoveTarget.value.queueNumber, true)
   closeCompletionDialog()
 }
@@ -271,7 +322,7 @@ async function confirmAppointment(appointment: WaitingRoomAppointment) {
 }
 
 async function completeAppointment(appointment: WaitingRoomAppointment, reloadAfter = true) {
-  if (appointment.status !== 1) return
+  if (appointment.status !== 1) return false
   saving.value = true
   try {
     const response = await api.post<ApiResponse<object>>('/Appointment/complete', null, {
@@ -282,8 +333,10 @@ async function completeAppointment(appointment: WaitingRoomAppointment, reloadAf
       controls.currentQueueNumber = ''
       await saveDisplayState(true, false)
     }
+    return true
   } catch (error) {
     showError(getErrorMessage(error))
+    return false
   } finally {
     saving.value = false
   }
@@ -297,6 +350,74 @@ async function copyDisplayUrl() {
   window.setTimeout(() => {
     copied.value = false
   }, 1800)
+}
+
+function openManualBooking() {
+  Object.assign(manualForm, {
+    clinicId: controls.clinicId || (clinics.value[0]?.id ? String(clinics.value[0].id) : ''),
+    appointmentDate: today(),
+    patientName: '',
+    patientPhoneNumber: '',
+    notes: '',
+  })
+  manualBookingDialog.value = true
+  void loadManualQueueAvailability()
+}
+
+async function loadManualQueueAvailability() {
+  queueAvailability.value = undefined
+  if (!manualForm.clinicId || !manualForm.appointmentDate) return
+
+  queueLoading.value = true
+  try {
+    const response = await api.get<ApiResponse<QueueAvailabilityItem[]>>(
+      `/Appointment/queue-availability/${manualForm.clinicId}`,
+      { params: { fromDate: manualForm.appointmentDate, days: 1 } },
+    )
+    queueAvailability.value = response.data.data[0]
+  } catch (error) {
+    showError(getErrorMessage(error))
+  } finally {
+    queueLoading.value = false
+  }
+}
+
+async function createManualBooking() {
+  if (!canCreateManual.value) return
+
+  saving.value = true
+  try {
+    const response = await api.post<ApiResponse<object>>('/Appointment/manual', {
+      clinicId: Number(manualForm.clinicId),
+      appointmentDate: manualForm.appointmentDate,
+      patientName: manualForm.patientName.trim(),
+      patientPhoneNumber: manualForm.patientPhoneNumber.trim(),
+      notes: manualForm.notes.trim() || null,
+    })
+    manualBookingDialog.value = false
+    showSuccess(response.data.message)
+    await loadDisplay()
+  } catch (error) {
+    showError(getErrorMessage(error))
+  } finally {
+    saving.value = false
+  }
+}
+
+async function confirmRegenerateDisplayLink() {
+  saving.value = true
+  try {
+    const response = await api.post<ApiResponse<object>>(
+      '/Appointment/doctor/waiting-room/regenerate-link',
+    )
+    await loadDisplay()
+    regenerateLinkDialog.value = false
+    showSuccess(response.data.message)
+  } catch (error) {
+    showError(getErrorMessage(error))
+  } finally {
+    saving.value = false
+  }
 }
 
 function openDisplay() {
@@ -316,9 +437,9 @@ async function changePatientNameVisibility() {
 
 onMounted(async () => {
   await loadClinics()
-  controls.currentQueueNumber = ''
+  controls.clinicId = ''
   controls.recallQueueNumber = ''
-  await saveDisplayState(true, false)
+  await loadDisplay()
 })
 </script>
 
@@ -329,11 +450,29 @@ onMounted(async () => {
       subtitle="إدارة الدور الحالي والنداء الصوتي وحالات حجوزات اليوم"
     >
       <template #actions>
+        <v-btn
+          color="success"
+          prepend-icon="mdi-calendar-plus"
+          :disabled="!clinics.length"
+          @click="openManualBooking"
+        >
+          إضافة حجز يدوي
+        </v-btn>
         <v-btn variant="outlined" color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="loadDisplay">
           تحديث
         </v-btn>
         <v-btn color="primary" prepend-icon="mdi-open-in-new" :disabled="!displayUrl" @click="openDisplay">
           فتح الشاشة
+        </v-btn>
+        <v-btn
+          variant="tonal"
+          color="warning"
+          prepend-icon="mdi-link-variant-plus"
+          :loading="saving"
+          :disabled="!displayUrl"
+          @click="regenerateLinkDialog = true"
+        >
+          توليد رابط جديد
         </v-btn>
       </template>
     </PageHeader>
@@ -579,6 +718,135 @@ onMounted(async () => {
       </div>
     </section>
 
+    <v-dialog v-model="manualBookingDialog" max-width="520" persistent>
+      <v-card>
+        <v-card-title class="dialog-title">
+          <v-icon icon="mdi-calendar-plus" color="success" size="22" />
+          إضافة حجز يدوي
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="dialog-body">
+          <p class="dialog-desc">
+            أدخل بيانات المراجع القادم عبر الهاتف أو الاستقبال. يضاف الحجز مؤكداً مباشرة بدون رمز OTP.
+          </p>
+
+          <div class="manual-form-fields">
+            <div class="manual-form-field">
+              <label>العيادة</label>
+              <v-autocomplete
+                v-model="manualForm.clinicId"
+                :items="clinics.map(c => ({ value: String(c.id), label: c.name }))"
+                item-title="label"
+                item-value="value"
+                class="form-select"
+                density="compact"
+                variant="outlined"
+                hide-details
+                :disabled="saving"
+                @update:model-value="loadManualQueueAvailability"
+              />
+            </div>
+
+            <div class="manual-form-field">
+              <label>تاريخ الحجز</label>
+              <input
+                v-model="manualForm.appointmentDate"
+                type="date"
+                class="manual-input"
+                :min="today()"
+                :disabled="saving"
+                @change="loadManualQueueAvailability"
+              />
+            </div>
+
+            <div v-if="queueLoading" class="manual-queue-box">
+              <v-progress-circular size="16" width="2" indeterminate color="primary" />
+              جارِ فحص توفر الأدوار...
+            </div>
+            <div
+              v-else-if="queueAvailability"
+              class="manual-queue-box"
+              :class="{ unavailable: !queueAvailability.isAvailable }"
+            >
+              <v-icon
+                :icon="queueAvailability.isAvailable ? 'mdi-check-circle' : 'mdi-alert-circle'"
+                :color="queueAvailability.isAvailable ? 'success' : 'error'"
+                size="18"
+              />
+              <div>
+                <strong>
+                  {{ queueAvailability.isAvailable ? 'الأدوار المتاحة' : 'اليوم غير متاح' }}
+                </strong>
+                <p v-if="queueAvailability.isAvailable">
+                  {{ queueAvailability.remainingAppointments }} متبقي من
+                  {{ queueAvailability.maxAppointments }}
+                </p>
+                <p v-else>
+                  {{ queueAvailability.closureReason || 'لا يوجد دوام لهذا اليوم.' }}
+                </p>
+              </div>
+            </div>
+
+            <div class="manual-form-field">
+              <label>اسم المراجع</label>
+              <input
+                v-model="manualForm.patientName"
+                class="manual-input"
+                maxlength="200"
+                :disabled="saving"
+              />
+            </div>
+
+            <div class="manual-form-field">
+              <label>رقم الهاتف</label>
+              <input
+                :value="manualForm.patientPhoneNumber"
+                v-iraqi-phone
+                class="manual-input"
+                :class="{ invalid: manualPhoneError }"
+                inputmode="numeric"
+                maxlength="11"
+                placeholder="07XXXXXXXXX"
+                :disabled="saving"
+                @input="updateManualPhone"
+              />
+              <small v-if="manualPhoneError" class="manual-field-error">{{ manualPhoneError }}</small>
+            </div>
+
+            <div class="manual-form-field">
+              <label>ملاحظات</label>
+              <textarea
+                v-model="manualForm.notes"
+                class="manual-input manual-textarea"
+                rows="3"
+                maxlength="1000"
+                :disabled="saving"
+              />
+            </div>
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="dialog-actions">
+          <v-btn
+            variant="outlined"
+            :disabled="saving"
+            @click="manualBookingDialog = false"
+          >
+            تراجع
+          </v-btn>
+          <v-btn
+            color="success"
+            prepend-icon="mdi-check"
+            :loading="saving"
+            :disabled="saving || queueLoading || !canCreateManual"
+            @click="createManualBooking"
+          >
+            تثبيت الحجز
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-dialog v-model="completionDialog" max-width="460" persistent>
       <v-card>
         <v-card-title class="dialog-title">
@@ -599,6 +867,37 @@ onMounted(async () => {
           </v-btn>
           <v-btn color="primary" :loading="saving" @click="confirmCompleteAndMove">
             نعم، أكمل وانتقل
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="regenerateLinkDialog" max-width="480" persistent>
+      <v-card>
+        <v-card-title class="dialog-title">
+          <v-icon icon="mdi-link-variant-plus" color="warning" size="22" />
+          توليد رابط جديد؟
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="dialog-body">
+          <p>سيتم تعطيل الرابط السابق فوراً وتوليد رابط سري جديد لشاشة الانتظار.</p>
+          <small>أي شاشة مفتوحة على الرابط السابق ستتوقف عن استقبال التحديثات.</small>
+        </v-card-text>
+        <v-card-actions class="dialog-actions">
+          <v-btn
+            variant="tonal"
+            :disabled="saving"
+            @click="regenerateLinkDialog = false"
+          >
+            إلغاء
+          </v-btn>
+          <v-btn
+            color="warning"
+            prepend-icon="mdi-link-variant-plus"
+            :loading="saving"
+            @click="confirmRegenerateDisplayLink"
+          >
+            توليد الرابط
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -952,6 +1251,89 @@ onMounted(async () => {
 .dialog-actions {
   justify-content: flex-end;
   gap: var(--spacing-sm);
+}
+
+.manual-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.manual-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.manual-form-field label {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.manual-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.manual-input:focus {
+  border-color: var(--color-primary);
+}
+
+.manual-input.invalid {
+  border-color: var(--color-error);
+}
+
+.manual-field-error {
+  color: var(--color-error);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.manual-input:disabled {
+  opacity: 0.65;
+}
+
+.manual-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.manual-queue-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  border-radius: var(--radius-md);
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.manual-queue-box.unavailable {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.07);
+}
+
+.manual-queue-box strong {
+  display: block;
+  font-weight: 800;
+}
+
+.manual-queue-box p {
+  margin: 2px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 @media (max-width: 1100px) {

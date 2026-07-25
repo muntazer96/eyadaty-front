@@ -203,7 +203,7 @@ onBeforeUnmount(clearImagePreview)
         </div>
         <div class="form-field">
           <label class="form-label">رقم هاتف الطبيب <span class="required">*</span></label>
-          <input v-model="form.phoneNumber" class="form-input" />
+          <input v-model="form.phoneNumber" v-iraqi-phone class="form-input" />
         </div>
         <div class="form-field form-field--full">
           <label class="form-label">موقع الطبيب <span class="required">*</span></label>
@@ -236,7 +236,7 @@ onBeforeUnmount(clearImagePreview)
       <div class="form-grid">
         <div class="form-field form-field--full">
           <label class="form-label">رقم هاتف العيادة أو الحجز <span class="required">*</span></label>
-          <input v-model="form.clinicPhoneNumber" class="form-input" />
+          <input v-model="form.clinicPhoneNumber" v-iraqi-phone class="form-input" />
         </div>
         <div class="form-field form-field--full">
           <label class="form-label">عنوان العيادة النصي <span class="required">*</span></label>

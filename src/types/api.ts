@@ -306,6 +306,7 @@ export interface WaitingRoomDisplay {
   generatedAt: string
   displayDate: string
   doctorId: number
+  accessToken?: string
   doctorName: string
   doctorDescription: string
   doctorImageName?: string

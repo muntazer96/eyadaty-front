@@ -261,6 +261,7 @@ function goBack() {
                 <v-icon icon="mdi-phone" size="18" class="dr-input-icon" />
                 <input
                   v-model="phoneNumber"
+                  iraqi-phone
                   type="tel"
                   class="dr-input"
                   placeholder="07XXXXXXXXX"

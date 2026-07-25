@@ -360,7 +360,7 @@ onBeforeUnmount(() => {
             <!-- Phone -->
             <div class="form-field">
               <label class="form-label">رقم الهاتف <span class="required">*</span></label>
-              <input v-model="form.phoneNumber" class="form-input" required maxlength="30" />
+              <input v-model="form.phoneNumber" v-iraqi-phone class="form-input" required />
             </div>
             <!-- Birth Day -->
             <div class="form-field">

@@ -85,6 +85,7 @@ async function handleSearch() {
                 <v-icon icon="mdi-phone" size="17" class="sr-input-icon" />
                 <input
                   v-model="phone"
+                  iraqi-phone
                   type="tel"
                   class="sr-input"
                   placeholder="07XXXXXXXXX"

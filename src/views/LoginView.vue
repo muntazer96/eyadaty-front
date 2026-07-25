@@ -126,6 +126,7 @@ const handleKeyPress = (event: KeyboardEvent): void => {
           <!-- Phone Number -->
           <TextInput
             v-model="phoneNumber"
+            iraqi-phone
             label="رقم الهاتف أو اسم المستخدم"
             type="text"
             dir="rtl"

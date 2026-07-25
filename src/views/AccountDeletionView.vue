@@ -155,6 +155,7 @@ function backToPhone() {
         <form v-else class="delete-form" @submit.prevent="step === 'phone' ? sendOtp() : confirmDeletion()">
           <TextInput
             v-model="form.phoneNumber"
+            iraqi-phone
             label="رقم الهاتف"
             type="tel"
             icon="mdi-phone"

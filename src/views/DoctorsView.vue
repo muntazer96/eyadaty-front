@@ -449,7 +449,7 @@ onBeforeUnmount(clearImagePreview)
             </div>
             <div class="form-field">
               <label class="form-label">رقم الهاتف <span class="required">*</span></label>
-              <input v-model="form.phoneNumber" class="form-input" required />
+              <input v-model="form.phoneNumber" v-iraqi-phone class="form-input" required />
             </div>
             <div class="form-field form-field--full">
               <label class="form-label">موقع الطبيب <span class="required">*</span></label>

@@ -6,6 +6,11 @@ import { useMessagesStore } from '../../stores/messages'
 import api from '../../services/api'
 import { requestBrowserNotificationPermission } from '../../services/browserNotifications'
 import { REALTIME_NOTIFICATION_EVENT } from '../../services/realtimeNotifications'
+import {
+  NOTIFICATION_READ_STATE_EVENT,
+  publishNotificationReadState,
+  type NotificationReadState,
+} from '../../services/notificationSync'
 import type { ApiResponse, DoctorNotificationItem, PageResult } from '../../types/api'
 
 interface Props {
@@ -135,17 +140,36 @@ async function markAsRead(item: DoctorNotificationItem) {
   if (item.readAt) return
   try {
     await api.post<ApiResponse<object>>(`${notificationBaseUrl.value}/${item.id}/read`)
-    item.readAt = new Date().toISOString()
-    notifUnreadCount.value = Math.max(0, notifUnreadCount.value - 1)
+    publishNotificationReadState({
+      action: 'read',
+      notificationId: item.id,
+      readAt: new Date().toISOString(),
+    })
   } catch { /* silent */ }
 }
 
 async function markAllRead() {
   try {
     await api.post<ApiResponse<object>>(`${notificationBaseUrl.value}/read-all`)
-    notifItems.value = notifItems.value.map((item) => item.readAt ? item : { ...item, readAt: new Date().toISOString() })
-    notifUnreadCount.value = 0
+    publishNotificationReadState({ action: 'read-all', readAt: new Date().toISOString() })
   } catch { /* silent */ }
+}
+
+function handleNotificationReadState(event: Event) {
+  const state = (event as CustomEvent<NotificationReadState>).detail
+
+  if (state.action === 'read-all') {
+    notifItems.value = notifItems.value.map((item) =>
+      item.readAt ? item : { ...item, readAt: state.readAt },
+    )
+    notifUnreadCount.value = 0
+    return
+  }
+
+  const item = notifItems.value.find((notification) => notification.id === state.notificationId)
+  if (item?.readAt) return
+  if (item) item.readAt = state.readAt
+  notifUnreadCount.value = Math.max(0, notifUnreadCount.value - 1)
 }
 function handleLogout() {
   userMenuOpen.value = false
@@ -166,9 +190,11 @@ async function handleRealtimeNotification() {
 onMounted(loadNotifications)
 
 window.addEventListener(REALTIME_NOTIFICATION_EVENT, handleRealtimeNotification)
+window.addEventListener(NOTIFICATION_READ_STATE_EVENT, handleNotificationReadState)
 
 onUnmounted(() => {
   window.removeEventListener(REALTIME_NOTIFICATION_EVENT, handleRealtimeNotification)
+  window.removeEventListener(NOTIFICATION_READ_STATE_EVENT, handleNotificationReadState)
 })
 </script>
 

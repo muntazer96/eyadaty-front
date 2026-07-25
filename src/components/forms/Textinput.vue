@@ -20,6 +20,7 @@ interface Props {
   suffix?: string
   icon?: string
   rules?: ((v: string) => boolean | string)[]
+  iraqiPhone?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -41,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
   suffix: '',
   icon: '',
   rules: () => [],
+  iraqiPhone: false,
 })
 
 const emit = defineEmits<{
@@ -58,6 +60,13 @@ const inputType = computed(() => {
 })
 
 const handleInput = (value: string) => {
+  if (props.iraqiPhone) {
+    value = value
+      .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+      .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+      .replace(/\D/g, '')
+      .slice(0, 11)
+  }
   emit('update:modelValue', value)
   emit('change', value)
 }
@@ -91,6 +100,9 @@ const togglePassword = () => {
         :disabled="disabled"
         :readonly="readonly"
         :required="required"
+        :maxlength="iraqiPhone ? 11 : undefined"
+        :pattern="iraqiPhone ? '07[0-9]{9}' : undefined"
+        :title="iraqiPhone ? 'رقم الهاتف يجب أن يكون 11 رقماً ويبدأ بـ 07.' : undefined"
         class="input-field"
         :class="{ 'has-leading-icon': !!icon, 'has-trailing-icon': type === 'password' }"
         @input="handleInput(($event.target as HTMLInputElement).value)"
