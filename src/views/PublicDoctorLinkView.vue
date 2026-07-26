@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
+const showManualActions = ref(false)
 
 const doctorId = computed(() => String(route.params.doctorId ?? '').trim())
 const downloadLocation = computed(() => {
@@ -36,7 +37,7 @@ onMounted(() => {
     openAndroidApp()
     window.setTimeout(() => {
       if (document.visibilityState === 'visible') {
-        window.location.replace(downloadLocation.value)
+        showManualActions.value = true
       }
     }, 1400)
     return
@@ -52,9 +53,14 @@ onMounted(() => {
       <v-icon icon="mdi-cellphone-arrow-down" size="44" />
       <h1>جاري فتح تطبيق عيادتي</h1>
       <p>إذا ما انفتح التطبيق خلال لحظات، راح نحولك تلقائياً إلى صفحة التحميل.</p>
-      <RouterLink :to="{ path: '/download', query: { doctorId } }" class="download-link">
-        تحميل التطبيق
-      </RouterLink>
+      <div v-if="showManualActions" class="deep-link-actions">
+        <button type="button" class="open-app-link" @click="openAndroidApp">
+          فتح التطبيق
+        </button>
+        <RouterLink :to="{ path: '/download', query: { doctorId } }" class="download-link">
+          تحميل التطبيق
+        </RouterLink>
+      </div>
     </section>
   </main>
 </template>
@@ -86,6 +92,14 @@ onMounted(() => {
   line-height: 1.7;
 }
 
+.deep-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.open-app-link,
 .download-link {
   display: inline-flex;
   align-items: center;
@@ -97,5 +111,14 @@ onMounted(() => {
   color: #fff;
   font-weight: 800;
   text-decoration: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.download-link {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid currentColor;
 }
 </style>
