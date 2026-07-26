@@ -591,12 +591,14 @@ export interface ConversionAnalytics {
 export interface DatabaseBackupResponse {
   id: string
   fileName: string
+  wwwrootFileName?: string
   status: string
   trigger: string
   createdAt: string
   completedAt?: string
   startedAt?: string
   sizeBytes?: number
+  wwwrootSizeBytes?: number
   errorMessage?: string
   requestedByUserId?: string
   requestedByUserName?: string

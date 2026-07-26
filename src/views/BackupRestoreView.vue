@@ -145,6 +145,29 @@ function formatSize(bytes?: number): string {
   return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`
 }
 
+async function downloadWwwroot(id: string) {
+  try {
+    const r = await api.get<Blob>(`/DatabaseBackups/${id}/download-wwwroot`, {
+      responseType: 'blob',
+    })
+    const url = window.URL.createObjectURL(new Blob([r.data], { type: 'application/zip' }))
+    const link = document.createElement('a')
+    link.href = url
+    const backup = backups.value.find(b => b.id === id)
+    link.setAttribute('download', backup?.wwwrootFileName ?? `wwwroot-${id}.zip`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    showError(getErrorMessage(e))
+  }
+}
+
+function totalBackupSize(backup: DatabaseBackupResponse): number {
+  return (backup.sizeBytes ?? 0) + (backup.wwwrootSizeBytes ?? 0)
+}
+
 function statusColor(status: string): string {
   switch (status) {
     case 'Completed': return 'success'
@@ -179,7 +202,7 @@ onMounted(fetchData)
 
 <template>
   <div class="backup-page">
-    <PageHeader title="النسخ الاحتياطي واستعادة البيانات" subtitle="إدارة النسخ الاحتياطية لقاعدة البيانات">
+    <PageHeader title="النسخ الاحتياطي واستعادة البيانات" subtitle="إدارة نسخ قاعدة البيانات وملفات النظام (wwwroot)">
       <template #actions>
         <v-btn
           variant="outlined"
@@ -244,8 +267,16 @@ onMounted(fetchData)
               <span class="info-value">{{ new Date(lastCompleted.completedAt ?? lastCompleted.createdAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</span>
             </div>
             <div class="last-backup-row">
-              <span class="info-label">الحجم</span>
+              <span class="info-label">قاعدة البيانات</span>
               <span class="info-value">{{ formatSize(lastCompleted.sizeBytes) }}</span>
+            </div>
+            <div class="last-backup-row">
+              <span class="info-label">ملفات النظام</span>
+              <span class="info-value">{{ lastCompleted.wwwrootFileName ? formatSize(lastCompleted.wwwrootSizeBytes) : '--' }}</span>
+            </div>
+            <div class="last-backup-row">
+              <span class="info-label">الحجم الكلي</span>
+              <span class="info-value">{{ formatSize(totalBackupSize(lastCompleted)) }}</span>
             </div>
             <div class="last-backup-row">
               <span class="info-label">المشغل</span>
@@ -296,7 +327,7 @@ onMounted(fetchData)
             <label class="form-label">اختر النسخة الاحتياطية</label>
             <v-autocomplete
               v-model="selectedBackupId"
-              :items="completedBackups.map(b => ({ value: b.id, label: `${b.fileName} - ${new Date(b.completedAt ?? b.createdAt).toLocaleDateString('ar-IQ')} - ${formatSize(b.sizeBytes)}` }))"
+              :items="completedBackups.map(b => ({ value: b.id, label: `${b.fileName} - ${new Date(b.completedAt ?? b.createdAt).toLocaleDateString('ar-IQ')} - ${formatSize(totalBackupSize(b))}` }))"
               item-title="label"
               item-value="value"
               class="form-select"
@@ -358,7 +389,7 @@ onMounted(fetchData)
               <th>الملف</th>
               <th>الحالة</th>
               <th>المشغل</th>
-              <th>الحجم</th>
+              <th>الحجم الكلي</th>
               <th>التاريخ</th>
               <th>بواسطة</th>
               <th></th>
@@ -369,7 +400,13 @@ onMounted(fetchData)
               <td data-label="الملف">
                 <div class="file-cell">
                   <v-icon icon="mdi-file-database" size="18" />
-                  <span class="file-name">{{ b.fileName }}</span>
+                  <div class="backup-files">
+                    <span class="file-name">{{ b.fileName }}</span>
+                    <span v-if="b.wwwrootFileName" class="secondary-file">
+                      <v-icon icon="mdi-folder-zip" size="14" />
+                      {{ b.wwwrootFileName }}
+                    </span>
+                  </div>
                 </div>
               </td>
               <td data-label="الحالة">
@@ -380,7 +417,12 @@ onMounted(fetchData)
               <td class="muted-cell" data-label="المشغل">
                 <v-chip size="x-small" variant="tonal">{{ triggerLabel(b.trigger) }}</v-chip>
               </td>
-              <td class="muted-cell" data-label="الحجم">{{ formatSize(b.sizeBytes) }}</td>
+              <td class="muted-cell" data-label="الحجم الكلي">
+                <div class="size-cell">
+                  <strong>{{ formatSize(totalBackupSize(b)) }}</strong>
+                  <span v-if="b.wwwrootFileName">قاعدة البيانات {{ formatSize(b.sizeBytes) }} · الملفات {{ formatSize(b.wwwrootSizeBytes) }}</span>
+                </div>
+              </td>
               <td class="muted-cell" data-label="التاريخ">
                 <div class="date-cell">
                   <span>{{ new Date(b.createdAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }) }}</span>
@@ -395,11 +437,24 @@ onMounted(fetchData)
                     size="small"
                     variant="tonal"
                     color="primary"
-                    aria-label="تحميل"
+                    aria-label="تنزيل قاعدة البيانات"
+                    title="تنزيل قاعدة البيانات"
                     :disabled="b.status !== 'Completed'"
                     @click="downloadBackup(b.id)"
                   >
                     <v-icon icon="mdi-download" size="16" />
+                  </v-btn>
+                  <v-btn
+                    icon
+                    size="small"
+                    variant="tonal"
+                    color="info"
+                    aria-label="تنزيل ملفات النظام"
+                    title="تنزيل ملفات النظام"
+                    :disabled="b.status !== 'Completed' || !b.wwwrootFileName"
+                    @click="downloadWwwroot(b.id)"
+                  >
+                    <v-icon icon="mdi-folder-download" size="16" />
                   </v-btn>
                   <v-btn
                     icon
@@ -722,6 +777,25 @@ onMounted(fetchData)
   overflow-wrap: anywhere;
   word-break: break-all;
 }
+
+.backup-files,
+.size-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.secondary-file,
+.size-cell span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  direction: ltr;
+}
+
+.size-cell span { direction: rtl; }
 
 .muted-cell { color: var(--color-text-muted); }
 
