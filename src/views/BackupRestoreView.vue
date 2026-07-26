@@ -63,13 +63,13 @@ async function createBackup() {
   }
 }
 
-async function openFolder() {
-  try {
-    await api.post('/DatabaseBackups/open-folder')
-  } catch (e) {
-    showError(getErrorMessage(e))
-  }
-}
+// async function openFolder() {
+//   try {
+//     await api.post('/DatabaseBackups/open-folder')
+//   } catch (e) {
+//     showError(getErrorMessage(e))
+//   }
+// }
 
 async function doRestore() {
   if (!password.value.trim()) {
@@ -204,14 +204,14 @@ onMounted(fetchData)
   <div class="backup-page">
     <PageHeader title="النسخ الاحتياطي واستعادة البيانات" subtitle="إدارة نسخ قاعدة البيانات وملفات النظام (wwwroot)">
       <template #actions>
-        <v-btn
+        <!-- <v-btn
           variant="outlined"
           color="primary"
           prepend-icon="mdi-folder-open"
           @click="openFolder"
         >
           فتح المجلد
-        </v-btn>
+        </v-btn> -->
         <v-btn
           variant="outlined"
           color="primary"
