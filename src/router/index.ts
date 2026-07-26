@@ -42,6 +42,8 @@ import AdminNotificationSendView from '../views/AdminNotificationSendView.vue'
 import AdminProblemReportsView from '../views/admin/ProblemReportsView.vue'
 import AccountDeletionView from '../views/AccountDeletionView.vue'
 import PendingAccountDeletionsView from '../views/PendingAccountDeletionsView.vue'
+import DoctorGuideView from '../views/DoctorGuideView.vue'
+import DoctorSubscriptionPackagesView from '../views/DoctorSubscriptionPackagesView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -92,6 +94,8 @@ const router = createRouter({
         { path: 'reviews', name: 'reviews', component: ReviewsView, meta: { title: 'التقييمات', roles: ['DoctorUser'] } },
         { path: 'profile', name: 'profile', component: ProfileView, meta: { title: 'الملف الشخصي', roles: ['DoctorUser'] } },
         { path: 'problem-report', name: 'problem-report', component: ProblemReportView, meta: { title: 'الإبلاغ عن مشكلة', roles: ['DoctorUser'] } },
+        { path: 'doctor-guide', name: 'doctor-guide', component: DoctorGuideView, meta: { title: 'دليل استخدام الطبيب', roles: ['DoctorUser'] } },
+        { path: 'subscription-packages', name: 'subscription-packages', component: DoctorSubscriptionPackagesView, meta: { title: 'أنواع الاشتراكات', roles: ['DoctorUser'] } },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },

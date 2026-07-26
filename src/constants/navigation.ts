@@ -140,6 +140,12 @@ const adminNavigation: NavItem[] = [
     roles: ['DoctorUser'],
   },
   {
+    label: 'دليل استخدام الطبيب',
+    to: '/doctor-guide',
+    icon: 'mdi-school',
+    roles: ['DoctorUser'],
+  },
+  {
     label: 'العيادات',
     to: '/clinics',
     icon: 'mdi-hospital-box',
@@ -149,6 +155,12 @@ const adminNavigation: NavItem[] = [
     label: 'مميزات الاشتراك',
     to: '/features',
     icon: 'mdi-star-circle',
+    roles: ['DoctorUser'],
+  },
+  {
+    label: 'أنواع الاشتراكات',
+    to: '/subscription-packages',
+    icon: 'mdi-package-variant-closed',
     roles: ['DoctorUser'],
   },
   {
