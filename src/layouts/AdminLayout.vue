@@ -70,9 +70,9 @@ watch(isPermanentSidebar, (isPermanent) => {
             <img src="../assets/godev_logo.png" alt="GoDev" class="godev-logo" />
           </div>
 
-          <a class="footer-phone" href="tel:07701234567" dir="ltr">
+          <a class="footer-phone" href="tel:07702920080" dir="ltr">
             <v-icon icon="mdi-phone" size="15" />
-            0770 123 4567
+            0770 292 0080
           </a>
         </div>
       </footer>
