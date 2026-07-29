@@ -76,6 +76,26 @@ function handleNavigation(item: NavItem): void {
   }
   emit('item-click', item)
 }
+
+function linkHref(item: NavItem): string {
+  return item.to ? router.resolve(item.to).href : '#'
+}
+
+function handleLinkClick(event: MouseEvent, item: NavItem): void {
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  ) {
+    return
+  }
+
+  event.preventDefault()
+  handleNavigation(item)
+}
 </script>
 
 <template>
@@ -125,29 +145,31 @@ function handleNavigation(item: NavItem): void {
           </button>
 
           <div v-if="isExpanded(item, index)" class="nav-children">
-            <button
+            <a
               v-for="(child, ci) in item.children"
               :key="ci"
+              :href="linkHref(child)"
               class="nav-item nav-child"
               :class="{ 'nav-active': isActive(child.to) }"
-              @click="handleNavigation(child)"
+              @click="handleLinkClick($event, child)"
             >
               <v-icon :icon="child.icon || 'mdi-circle-small'" size="18" class="nav-icon" />
               <span class="nav-text">{{ child.label }}</span>
-            </button>
+            </a>
           </div>
         </div>
 
         <!-- Regular item -->
-        <button
+        <a
           v-else
+          :href="linkHref(item)"
           class="nav-item"
           :class="{ 'nav-active': isActive(item.to) }"
-          @click="handleNavigation(item)"
+          @click="handleLinkClick($event, item)"
         >
           <v-icon :icon="item.icon || 'mdi-circle'" size="20" class="nav-icon" />
           <span class="nav-text">{{ item.label }}</span>
-        </button>
+        </a>
 
       </template>
     </div>

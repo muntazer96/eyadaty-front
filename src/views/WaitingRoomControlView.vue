@@ -478,7 +478,7 @@ async function syncControlRealtimeRoom() {
   if (joinedWaitingRoomToken) {
     await waitingRoomConnection.invoke('LeaveDoctorWaitingRoom', joinedWaitingRoomToken).catch(() => undefined)
   }
-  await waitingRoomConnection.invoke('JoinDoctorWaitingRoom', token)
+  await waitingRoomConnection.invoke('JoinDoctorWaitingRoom', token, 'control')
   joinedWaitingRoomToken = token
 }
 

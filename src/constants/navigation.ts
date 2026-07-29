@@ -85,6 +85,12 @@ const adminNavigation: NavItem[] = [
         icon: 'mdi-bell-plus',
         roles: ['SuperAdmin'],
       },
+      {
+        label: 'مراقبة شاشات الانتظار',
+        to: '/waiting-rooms',
+        icon: 'mdi-monitor-eye',
+        roles: ['SuperAdmin'],
+      },
     ],
   },
   {

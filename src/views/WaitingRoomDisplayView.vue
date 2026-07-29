@@ -210,11 +210,11 @@ async function startWaitingRoomRealtime() {
     void waitingRoomConnection?.stop()
   })
   waitingRoomConnection.onreconnected(() => {
-    void waitingRoomConnection?.invoke('JoinDoctorWaitingRoom', accessToken.value)
+    void waitingRoomConnection?.invoke('JoinDoctorWaitingRoom', accessToken.value, 'display')
   })
 
   await waitingRoomConnection.start()
-  await waitingRoomConnection.invoke('JoinDoctorWaitingRoom', accessToken.value)
+  await waitingRoomConnection.invoke('JoinDoctorWaitingRoom', accessToken.value, 'display')
 }
 
 watch(() => route.fullPath, loadDisplay)

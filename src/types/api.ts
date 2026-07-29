@@ -336,6 +336,29 @@ export interface WaitingRoomDisplay {
   clinicSchedule: QueueAvailabilityItem[]
 }
 
+export interface AdminWaitingRoomStatus {
+  doctorId: number
+  doctorName: string
+  specializationName: string
+  hasWaitingRoomLink: boolean
+  clinicId?: number
+  clinicName?: string
+  accessToken?: string
+  currentQueueNumber?: number
+  isActive: boolean
+  activeConnections: number
+  activeDisplayConnections: number
+  activeControlConnections: number
+  firstConnectedAt?: string
+  lastConnectedAt?: string
+  totalBookings: number
+  pendingBookings: number
+  confirmedBookings: number
+  completedBookings: number
+  createdAt: string
+  modifiedAt?: string
+}
+
 export interface ClinicExceptionItem {
   id: number
   clinicId: number

@@ -25,6 +25,7 @@ import ProblemReportView from '../views/ProblemReportView.vue'
 import PublicDoctorLinkView from '../views/PublicDoctorLinkView.vue'
 import WaitingRoomControlView from '../views/WaitingRoomControlView.vue'
 import WaitingRoomDisplayView from '../views/WaitingRoomDisplayView.vue'
+import WaitingRoomsAdminView from '../views/WaitingRoomsAdminView.vue'
 import KioskBookingView from '../views/KioskBookingView.vue'
 
 import ReviewsView from '../views/ReviewsView.vue'
@@ -83,6 +84,7 @@ const router = createRouter({
         { path: 'doctor-requests/:id', name: 'doctor-request-detail', component: AdminDoctorRequestDetailView, meta: { title: 'تفاصيل الطلب', roles: ['SuperAdmin'] } },
         { path: 'problem-reports', name: 'problem-reports', component: AdminProblemReportsView, meta: { title: 'بلاغات المشاكل', roles: ['SuperAdmin'] } },
         { path: 'admin-notifications/send', name: 'admin-notifications-send', component: AdminNotificationSendView, meta: { title: 'إرسال إشعار', roles: ['SuperAdmin'] } },
+        { path: 'waiting-rooms', name: 'waiting-rooms-admin', component: WaitingRoomsAdminView, meta: { title: 'مراقبة شاشات الانتظار', roles: ['SuperAdmin'] } },
         { path: 'offers', name: 'offers', component: OffersView, meta: { title: 'العروض', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'clinics', name: 'clinics', component: ClinicsView, meta: { title: 'العيادات', roles: ['SuperAdmin', 'DoctorUser'] } },
         { path: 'appointments', name: 'appointments', component: AppointmentsView, meta: { title: 'الحجوزات اليومية', roles: ['SuperAdmin', 'DoctorUser'] } },
