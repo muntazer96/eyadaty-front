@@ -96,6 +96,12 @@ export interface DoctorSubscription {
   package: SubscriptionPackage
   startDate: string
   endDate: string
+  originalPrice: number
+  paidAmount: number
+  discountAmount: number
+  discountPercent: number
+  isFree: boolean
+  priceAdjustmentReason?: string
   isActive: boolean
   status: number
   cancelledAt?: string

@@ -8,6 +8,8 @@ import EmptyState from '../components/common/Emptystate.vue'
 
 type Tab = 'statistics' | 'subscriptions' | 'packages' | 'features'
 type Confirmation = { title: string; text: string; action: () => Promise<void> }
+type PricingMode = 'original' | 'discount' | 'free'
+type PricingForm = { pricingMode: PricingMode; discountPercent: number | null; priceAdjustmentReason: string }
 
 const { success: showSuccess, error: showError } = useNotifications()
 
@@ -25,12 +27,14 @@ const totalItems    = ref(0)
 const packagePage   = ref(1)
 const packagePageSize = 6
 
-const modal                = ref<'create' | 'renew' | 'upgrade' | 'editPackage' | 'confirm'>()
+const modal                = ref<'create' | 'activate' | 'renew' | 'upgrade' | 'editPackage' | 'confirm'>()
 const selectedSubscription = ref<DoctorSubscription>()
 const confirmation         = ref<Confirmation>()
 const renewYearly          = ref(false)
 const upgradePackageId     = ref('')
 const featureDoctorId      = ref('')
+const activationPricing    = reactive<PricingForm>({ pricingMode: 'original', discountPercent: null, priceAdjustmentReason: '' })
+const renewPricing         = reactive<PricingForm>({ pricingMode: 'original', discountPercent: null, priceAdjustmentReason: '' })
 
 const today = new Date()
 const filters = reactive({
@@ -41,7 +45,7 @@ const filters = reactive({
   fromDate: toInputDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30)),
   toDate: toInputDate(today),
 })
-const createForm = reactive({ doctorId: '', packageId: '', isYearly: false, status: '0' })
+const createForm = reactive({ doctorId: '', packageId: '', isYearly: false, status: '0', pricingMode: 'original' as PricingMode, discountPercent: null as number | null, priceAdjustmentReason: '' })
 const editPackageForm = reactive({
   id: 0, name: '', normalizedName: '', price: 0, yearlyPrice: 0,
   maxClinics: 0, maxWeeklyDays: 0, maxDailyAppointments: 0,
@@ -62,6 +66,10 @@ const statsMetrics       = computed<SubscriptionMetric[]>(() => ['periodRevenue'
   .filter((item): item is SubscriptionMetric => Boolean(item)))
 const maxRevenueTrend    = computed(() => Math.max(...(statistics.value?.revenueTrend ?? []).map((point) => Number(point.value)), 1))
 const maxSubscriptionTrend = computed(() => Math.max(...(statistics.value?.subscriptionTrend ?? []).map((point) => Number(point.value)), 1))
+const selectedCreatePackage = computed(() => packages.value.find((item) => item.id === Number(createForm.packageId)))
+const createOriginalPrice = computed(() => packagePrice(selectedCreatePackage.value, createForm.isYearly))
+const activationOriginalPrice = computed(() => subscriptionOriginalPrice(selectedSubscription.value))
+const renewOriginalPrice = computed(() => packagePrice(selectedSubscription.value?.package, renewYearly.value))
 
 function statusMeta(status: number) {
   return [
@@ -78,6 +86,60 @@ function formatDate(d?: string) {
 
 function money(v: number) {
   return new Intl.NumberFormat('ar-IQ').format(v)
+}
+
+function packagePrice(pkg?: SubscriptionPackage, isYearly = false) {
+  if (!pkg) return 0
+  return isYearly ? Number(pkg.yearlyPrice) : Number(pkg.price)
+}
+
+function isYearlySubscription(sub?: DoctorSubscription) {
+  if (!sub) return false
+  const days = Math.max(1, Math.ceil((new Date(sub.endDate).getTime() - new Date(sub.startDate).getTime()) / 86400000))
+  return days >= 330
+}
+
+function subscriptionOriginalPrice(sub?: DoctorSubscription) {
+  if (!sub) return 0
+  return Number(sub.originalPrice || packagePrice(sub.package, isYearlySubscription(sub)))
+}
+
+function resetPricing(form: PricingForm) {
+  Object.assign(form, { pricingMode: 'original' as PricingMode, discountPercent: null, priceAdjustmentReason: '' })
+}
+
+function setPricingMode(form: PricingForm, mode: PricingMode) {
+  form.pricingMode = mode
+  if (mode !== 'discount') form.discountPercent = null
+  if (mode === 'original') form.priceAdjustmentReason = ''
+}
+
+function pricingModeValue(mode: PricingMode) {
+  return ({ original: 0, discount: 1, free: 2 })[mode]
+}
+
+function discountedAmount(originalPrice: number, form: PricingForm) {
+  if (form.pricingMode === 'free') return 0
+  if (form.pricingMode !== 'discount') return originalPrice
+  const percent = Number(form.discountPercent || 0)
+  return Math.round((originalPrice * (100 - percent)) / 100)
+}
+
+function pricingPayload(form: PricingForm) {
+  const reason = form.pricingMode === 'original' ? '' : form.priceAdjustmentReason.trim()
+  return {
+    pricingMode: pricingModeValue(form.pricingMode),
+    discountPercent: form.pricingMode === 'discount' ? Number(form.discountPercent || 0) : undefined,
+    priceAdjustmentReason: reason || undefined,
+  }
+}
+
+function pricingReasonLabel(mode: PricingMode) {
+  return mode === 'free' ? 'سبب المجانية' : 'سبب التخفيض'
+}
+
+function pricingReasonPlaceholder(mode: PricingMode) {
+  return mode === 'free' ? 'مثلاً تمديد مجاني أو عرض خاص' : 'مثلاً عرض خاص أو طبيب محدد'
 }
 
 function toInputDate(d: Date) { return d.toLocaleDateString('en-CA') }
@@ -202,26 +264,34 @@ async function createSubscription() {
     const r = await api.post<ApiResponse<object>>('/DoctorSubscription', {
       doctorId: Number(createForm.doctorId), packageId: Number(createForm.packageId),
       isYearly: createForm.isYearly, status: Number(createForm.status),
+      ...pricingPayload(createForm),
     })
     showSuccess(r.data.message); modal.value = undefined
-    Object.assign(createForm, { doctorId: '', packageId: '', isYearly: false, status: '0' })
+    Object.assign(createForm, { doctorId: '', packageId: '', isYearly: false, status: '0', pricingMode: 'original', discountPercent: null, priceAdjustmentReason: '' })
     await Promise.all([loadSubscriptions(), loadStatistics()])
   } catch (e) { showError(getErrorMessage(e)) }
 }
 
-async function activate(sub: DoctorSubscription) {
+function openActivate(sub: DoctorSubscription) {
+  selectedSubscription.value = sub
+  resetPricing(activationPricing)
+  modal.value = 'activate'
+}
+
+async function activate() {
+  if (!selectedSubscription.value) return
   try {
-    const r = await api.post<ApiResponse<object>>(`/DoctorSubscription/${sub.id}/activate`)
-    showSuccess(r.data.message); await Promise.all([loadSubscriptions(), loadStatistics()])
+    const r = await api.post<ApiResponse<object>>(`/DoctorSubscription/${selectedSubscription.value.id}/activate`, pricingPayload(activationPricing))
+    showSuccess(r.data.message); modal.value = undefined; await Promise.all([loadSubscriptions(), loadStatistics()])
   } catch (e) { showError(getErrorMessage(e)) }
 }
 
-function openRenew(sub: DoctorSubscription) { selectedSubscription.value = sub; renewYearly.value = false; modal.value = 'renew' }
+function openRenew(sub: DoctorSubscription) { selectedSubscription.value = sub; renewYearly.value = false; resetPricing(renewPricing); modal.value = 'renew' }
 
 async function renew() {
   if (!selectedSubscription.value) return
   try {
-    const r = await api.post<ApiResponse<object>>(`/DoctorSubscription/${selectedSubscription.value.id}/renew`, { isYearly: renewYearly.value })
+    const r = await api.post<ApiResponse<object>>(`/DoctorSubscription/${selectedSubscription.value.id}/renew`, { isYearly: renewYearly.value, ...pricingPayload(renewPricing) })
     showSuccess(r.data.message); modal.value = undefined; await Promise.all([loadSubscriptions(), loadStatistics()])
   } catch (e) { showError(getErrorMessage(e)) }
 }
@@ -560,6 +630,7 @@ onMounted(initialize)
               <tr>
                 <th>الطبيب</th>
                 <th>الباقة</th>
+                <th>القيمة</th>
                 <th>المدة</th>
                 <th>الحالة</th>
                 <th></th>
@@ -575,6 +646,11 @@ onMounted(initialize)
                   <strong>{{ sub.package.name }}</strong>
                   <p class="row-sub">{{ money(sub.package.price) }} د.ع / شهر</p>
                 </td>
+                <td data-label="القيمة">
+                  <strong>{{ sub.isFree ? 'مجاني' : `${money(sub.paidAmount)} د.ع` }}</strong>
+                  <p class="row-sub" v-if="sub.discountAmount > 0">خصم {{ sub.discountPercent }}% · {{ money(sub.discountAmount) }} د.ع من {{ money(sub.originalPrice) }}</p>
+                  <p class="row-sub" v-else>بدون خصم</p>
+                </td>
                 <td data-label="المدة">
                   <strong>{{ formatDate(sub.startDate) }}</strong>
                   <p class="row-sub">حتى {{ formatDate(sub.endDate) }}</p>
@@ -586,7 +662,7 @@ onMounted(initialize)
                 </td>
                 <td>
                   <div class="row-actions">
-                    <v-btn v-if="sub.status === 1" icon size="small" variant="tonal" color="success" aria-label="تفعيل" @click="activate(sub)">
+                    <v-btn v-if="sub.status === 1" icon size="small" variant="tonal" color="success" aria-label="تفعيل" @click="openActivate(sub)">
                       <v-icon icon="mdi-check" size="16" />
                     </v-btn>
                     <v-btn v-if="sub.status !== 3" icon size="small" variant="tonal" color="primary" aria-label="تجديد" @click="openRenew(sub)">
@@ -816,12 +892,82 @@ onMounted(initialize)
               <span class="check-box"><v-icon v-if="createForm.isYearly" icon="mdi-check" size="12" color="white" /></span>
               <span>اشتراك سنوي</span>
             </label>
+            <div class="pricing-panel" v-if="selectedCreatePackage">
+              <div class="pricing-values">
+                <div class="pricing-value">
+                  <span>سعر الباقة</span>
+                  <strong>{{ money(createOriginalPrice) }} د.ع</strong>
+                </div>
+                <div class="pricing-value pricing-value--final">
+                  <span>القيمة النهائية</span>
+                  <strong>{{ money(discountedAmount(createOriginalPrice, createForm)) }} د.ع</strong>
+                </div>
+              </div>
+              <div class="pricing-switch">
+                <button type="button" :class="{ active: createForm.pricingMode === 'original' }" @click="setPricingMode(createForm, 'original')">السعر الأصلي</button>
+                <button type="button" :class="{ active: createForm.pricingMode === 'discount' }" @click="setPricingMode(createForm, 'discount')">تخفيض</button>
+                <button type="button" :class="{ active: createForm.pricingMode === 'free' }" @click="setPricingMode(createForm, 'free')">مجاني</button>
+              </div>
+              <div v-if="createForm.pricingMode !== 'original'" class="pricing-extra">
+                <div v-if="createForm.pricingMode === 'discount'" class="form-field">
+                  <label class="form-label">نسبة التخفيض %</label>
+                  <input v-model.number="createForm.discountPercent" type="number" min="1" max="99" step="1" class="form-input" placeholder="مثلاً 25" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label">{{ pricingReasonLabel(createForm.pricingMode) }}</label>
+                  <input v-model="createForm.priceAdjustmentReason" class="form-input" :placeholder="pricingReasonPlaceholder(createForm.pricingMode)" />
+                </div>
+              </div>
+            </div>
           </div>
         </v-card-text>
         <v-divider />
         <v-card-actions class="dialog-actions">
           <v-btn variant="outlined" @click="modal = undefined">تراجع</v-btn>
           <v-btn color="primary" @click="createSubscription">إنشاء الاشتراك</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Activate Dialog -->
+    <v-dialog :model-value="modal === 'activate'" max-width="460" @update:model-value="modal = undefined">
+      <v-card>
+        <v-card-title class="dialog-title"><v-icon icon="mdi-check-decagram" color="success" size="20" />تفعيل الاشتراك</v-card-title>
+        <v-divider />
+        <v-card-text class="dialog-body">
+          <p class="dialog-desc">سيتم تفعيل اشتراك الطبيب <strong>{{ selectedSubscription?.doctor.name }}</strong> على باقة <strong>{{ selectedSubscription?.package.name }}</strong>.</p>
+          <div class="pricing-panel">
+            <div class="pricing-values">
+              <div class="pricing-value">
+                <span>سعر الباقة</span>
+                <strong>{{ money(activationOriginalPrice) }} د.ع</strong>
+              </div>
+              <div class="pricing-value pricing-value--final">
+                <span>القيمة النهائية</span>
+                <strong>{{ money(discountedAmount(activationOriginalPrice, activationPricing)) }} د.ع</strong>
+              </div>
+            </div>
+            <div class="pricing-switch">
+              <button type="button" :class="{ active: activationPricing.pricingMode === 'original' }" @click="setPricingMode(activationPricing, 'original')">السعر الأصلي</button>
+              <button type="button" :class="{ active: activationPricing.pricingMode === 'discount' }" @click="setPricingMode(activationPricing, 'discount')">تخفيض</button>
+              <button type="button" :class="{ active: activationPricing.pricingMode === 'free' }" @click="setPricingMode(activationPricing, 'free')">مجاني</button>
+            </div>
+            <div v-if="activationPricing.pricingMode !== 'original'" class="pricing-extra">
+              <div v-if="activationPricing.pricingMode === 'discount'" class="form-field">
+                <label class="form-label">نسبة التخفيض %</label>
+                <input v-model.number="activationPricing.discountPercent" type="number" min="1" max="99" step="1" class="form-input" placeholder="مثلاً 25" />
+              </div>
+              <div class="form-field">
+                <label class="form-label">{{ pricingReasonLabel(activationPricing.pricingMode) }}</label>
+                <input v-model="activationPricing.priceAdjustmentReason" class="form-input" :placeholder="pricingReasonPlaceholder(activationPricing.pricingMode)" />
+              </div>
+            </div>
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="dialog-actions">
+          <v-btn variant="outlined" @click="modal = undefined">تراجع</v-btn>
+          <v-btn color="success" @click="activate">تفعيل</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -838,6 +984,33 @@ onMounted(initialize)
             <span class="check-box"><v-icon v-if="renewYearly" icon="mdi-check" size="12" color="white" /></span>
             <span>تجديد سنوي بدلاً من شهر واحد</span>
           </label>
+          <div class="pricing-panel">
+            <div class="pricing-values">
+              <div class="pricing-value">
+                <span>سعر التجديد</span>
+                <strong>{{ money(renewOriginalPrice) }} د.ع</strong>
+              </div>
+              <div class="pricing-value pricing-value--final">
+                <span>القيمة النهائية</span>
+                <strong>{{ money(discountedAmount(renewOriginalPrice, renewPricing)) }} د.ع</strong>
+              </div>
+            </div>
+            <div class="pricing-switch">
+              <button type="button" :class="{ active: renewPricing.pricingMode === 'original' }" @click="setPricingMode(renewPricing, 'original')">السعر الأصلي</button>
+              <button type="button" :class="{ active: renewPricing.pricingMode === 'discount' }" @click="setPricingMode(renewPricing, 'discount')">تخفيض</button>
+              <button type="button" :class="{ active: renewPricing.pricingMode === 'free' }" @click="setPricingMode(renewPricing, 'free')">مجاني</button>
+            </div>
+            <div v-if="renewPricing.pricingMode !== 'original'" class="pricing-extra">
+              <div v-if="renewPricing.pricingMode === 'discount'" class="form-field">
+                <label class="form-label">نسبة التخفيض %</label>
+                <input v-model.number="renewPricing.discountPercent" type="number" min="1" max="99" step="1" class="form-input" placeholder="مثلاً 25" />
+              </div>
+              <div class="form-field">
+                <label class="form-label">{{ pricingReasonLabel(renewPricing.pricingMode) }}</label>
+                <input v-model="renewPricing.priceAdjustmentReason" class="form-input" :placeholder="pricingReasonPlaceholder(renewPricing.pricingMode)" />
+              </div>
+            </div>
+          </div>
         </v-card-text>
         <v-divider />
         <v-card-actions class="dialog-actions">
@@ -1030,6 +1203,17 @@ onMounted(initialize)
 .dialog-body { padding: var(--spacing-lg) !important; }
 .dialog-desc { margin: 0 0 var(--spacing-lg) 0; font-size: 14px; color: var(--color-text-muted); line-height: 1.6; }
 .dialog-actions { padding: var(--spacing-lg) !important; gap: var(--spacing-md); justify-content: flex-end; }
+.pricing-panel { display: flex; flex-direction: column; gap: var(--spacing-md); padding: var(--spacing-md); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); background: var(--color-background); }
+.pricing-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); }
+.pricing-value { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px 12px; border: 1px solid var(--color-border-light); border-radius: var(--radius-md); background: var(--color-surface); }
+.pricing-value span { font-size: 12px; color: var(--color-text-muted); }
+.pricing-value strong { color: var(--color-text); font-size: 16px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
+.pricing-value--final { border-color: rgba(16, 128, 117, 0.28); background: rgba(16, 128, 117, 0.06); }
+.pricing-value--final strong { color: var(--color-primary); }
+.pricing-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.pricing-switch button { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 0 8px; border: 0; border-radius: calc(var(--radius-md) - 3px); background: transparent; color: var(--color-text-muted); font-family: var(--font-family-primary); font-size: 12px; font-weight: 700; line-height: 1; text-align: center; cursor: pointer; transition: background 0.2s, color 0.2s; }
+.pricing-switch button.active { background: var(--color-primary); color: white; }
+.pricing-extra { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--spacing-md); align-items: end; }
 
 /* Form */
 .form-fields { display: flex; flex-direction: column; gap: var(--spacing-lg); }
@@ -1063,5 +1247,6 @@ onMounted(initialize)
   .filter-field, .filter-select, .filter-input { width: 100%; }
   .filter-btn { align-self: stretch; }
   .form-grid { grid-template-columns: 1fr; }
+  .pricing-values, .pricing-extra { grid-template-columns: 1fr; }
 }
 </style>
