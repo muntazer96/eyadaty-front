@@ -33,6 +33,7 @@ const route = useRoute()
 const router = useRouter()
 
 const expandedItems = ref<Set<string>>(new Set())
+const collapsedItems = ref<Set<string>>(new Set())
 
 const visibleItems = computed(() =>
   props.items.filter((item) => {
@@ -55,15 +56,18 @@ function isParentActive(item: NavItem): boolean {
 
 function toggleExpanded(item: NavItem, index: number): void {
   const key = `${index}-${item.label}`
-  if (expandedItems.value.has(key)) {
+  if (isExpanded(item, index)) {
     expandedItems.value.delete(key)
+    collapsedItems.value.add(key)
   } else {
     expandedItems.value.add(key)
+    collapsedItems.value.delete(key)
   }
 }
 
 function isExpanded(item: NavItem, index: number): boolean {
   const key = `${index}-${item.label}`
+  if (collapsedItems.value.has(key)) return false
   return expandedItems.value.has(key) || isParentActive(item)
 }
 
