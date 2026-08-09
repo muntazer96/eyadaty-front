@@ -159,6 +159,15 @@ onMounted(async () => {
 
         <!-- Download Options -->
         <div class="dl-section-center">
+          <p class="dl-prompt">تريد الحجز الآن من المتصفح؟</p>
+          <RouterLink to="/booking" class="dl-btn-primary dl-btn-block" style="text-decoration: none;">
+            <v-icon icon="mdi-calendar-check-outline" size="20" />
+            حجز موعد كزائر
+          </RouterLink>
+
+          <div class="dl-divider-line dl-divider-line--compact">
+            <span class="dl-divider-label">أو حمّل التطبيق</span>
+          </div>
           <p class="dl-prompt">اختر طريقة تحميل التطبيق:</p>
 
           <div class="dl-store-grid">
