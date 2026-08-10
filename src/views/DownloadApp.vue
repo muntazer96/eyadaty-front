@@ -162,13 +162,13 @@ onMounted(async () => {
           <p class="dl-prompt">تريد الحجز الآن من المتصفح؟</p>
           <RouterLink to="/booking" class="dl-btn-primary dl-btn-block" style="text-decoration: none;">
             <v-icon icon="mdi-calendar-check-outline" size="20" />
-            حجز موعد كزائر
+            أحجز موعد الان
           </RouterLink>
 
           <div class="dl-divider-line dl-divider-line--compact">
-            <span class="dl-divider-label">أو حمّل التطبيق</span>
+            <span class="dl-divider-label">حمّل التطبيق</span>
           </div>
-          <p class="dl-prompt">اختر طريقة تحميل التطبيق:</p>
+          <!-- <p class="dl-prompt">اختر طريقة تحميل التطبيق:</p> -->
 
           <div class="dl-store-grid">
             <button
@@ -192,7 +192,7 @@ onMounted(async () => {
             </button>
           </div>
 
-          <div class="dl-divider-line dl-divider-line--compact">
+          <!-- <div class="dl-divider-line dl-divider-line--compact">
             <span class="dl-divider-label">تحميل مباشر</span>
           </div>
 
@@ -215,7 +215,7 @@ onMounted(async () => {
               إصدار آيفون
               <span class="dl-chip-soon">قريباً</span>
             </span>
-          </button>
+          </button> -->
 
           <Transition name="ios-msg">
             <div v-if="showIosMessage" class="dl-msg-ios">
@@ -242,7 +242,7 @@ onMounted(async () => {
 
         <!-- Doctor Request CTA -->
         <div class="dl-divider-line">
-          <span class="dl-divider-label">هل أنت مريض وتريد أن تصبح طبيباً؟</span>
+          <span class="dl-divider-label">هل تريد ان تضاف معلوماتك عيادتك؟</span>
         </div>
         <div class="dl-section-center">
           <p class="dl-prompt">يمكنك الآن تقديم طلب لتحويل حسابك إلى حساب طبيب والاستفادة من خدمات عيادتي</p>
@@ -274,7 +274,7 @@ onMounted(async () => {
         </div>
 
         <!-- Screenshots Placeholder -->
-        <div class="dl-section">
+        <!-- <div class="dl-section">
           <button class="dl-trigger" @click="showScreenshots = !showScreenshots">
             <span>لقطات من التطبيق</span>
             <span class="dl-arrow" :class="{ 'dl-arrow--open': showScreenshots }">▼</span>
@@ -290,7 +290,7 @@ onMounted(async () => {
               </div>
             </div>
           </Transition>
-        </div>
+        </div> -->
 
         <!-- Footer -->
         <div class="dl-footer">
