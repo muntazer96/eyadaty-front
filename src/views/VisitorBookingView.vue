@@ -26,8 +26,12 @@ const resendSeconds = ref(0)
 let resendTimer: number | undefined
 const filters = reactive({ name: '', specialization: '', province: '' })
 const form = reactive({ name: '', phone: '', notes: '', otp: '' })
+const captchaCode = ref('')
+const captchaAnswer = ref('')
+const captchaCodeStyles = ref<Record<string, string>[]>([])
+const captchaVerified = computed(() => captchaAnswer.value.trim().toLowerCase() === captchaCode.value.toLowerCase())
 
-const canContinue = computed(() => !!selectedDoctor.value && !!selectedClinic.value && !!selectedDay.value && form.name.trim().length > 2 && /^07\d{9}$/.test(form.phone))
+const canContinue = computed(() => !!selectedDoctor.value && !!selectedClinic.value && !!selectedDay.value && form.name.trim().length > 2 && /^07\d{9}$/.test(form.phone) && captchaVerified.value)
 const filteredDoctors = computed(() => doctors.value)
 const specialtyOptions = computed(() => [{ value: '', label: 'كل الاختصاصات' }, ...specialties.value.map(item => ({ value: String(item.id), label: item.name }))])
 const provinceOptions = computed(() => [{ value: '', label: 'كل المحافظات' }, ...provinces.map(item => ({ value: String(item.value), label: item.name }))])
@@ -49,6 +53,16 @@ function onPhoneInput() {
     .replace(/\D/g, '')
     .slice(0, 11)
 }
+function resetCaptchaChallenge() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)]
+  captchaCode.value = code
+  captchaAnswer.value = ''
+  captchaCodeStyles.value = Array.from(code).map(() => ({
+    transform: `rotate(${Math.floor(Math.random() * 36) - 18}deg) translateY(${Math.floor(Math.random() * 6) - 3}px) skewX(${Math.floor(Math.random() * 20) - 10}deg)`
+  }))
+}
 
 async function loadDoctors() {
   loadingDoctors.value = true; error.value = ''
@@ -66,6 +80,7 @@ async function loadSpecialties() {
 }
 async function chooseDoctor(doctor: Doctor) {
   selectedDoctor.value = doctor; selectedClinic.value = doctor.clinics[0]; selectedDay.value = undefined; step.value = 'details'
+  resetCaptchaChallenge()
   await loadDays()
 }
 async function loadDays() {
@@ -95,7 +110,7 @@ async function confirmOtp() {
 }
 function startCooldown() { window.clearInterval(resendTimer); resendSeconds.value = 60; resendTimer = window.setInterval(() => { if (resendSeconds.value <= 1) { window.clearInterval(resendTimer); resendSeconds.value = 0 } else resendSeconds.value-- }, 1000) }
 async function resendOtp() { if (resending.value || resendSeconds.value || !booking.value?.code) return; resending.value = true; try { await api.post('/Appointment/otp/resend', { phoneNumber: form.phone, bookingCode: booking.value.code }); form.otp = ''; startCooldown() } catch (e) { error.value = getErrorMessage(e) } finally { resending.value = false } }
-function startOver() { step.value = 'doctor'; selectedDoctor.value = undefined; selectedClinic.value = undefined; selectedDay.value = undefined; booking.value = undefined; form.name = ''; form.phone = ''; form.notes = ''; form.otp = ''; loadDoctors() }
+function startOver() { step.value = 'doctor'; selectedDoctor.value = undefined; selectedClinic.value = undefined; selectedDay.value = undefined; booking.value = undefined; form.name = ''; form.phone = ''; form.notes = ''; form.otp = ''; resetCaptchaChallenge(); loadDoctors() }
 watch(() => [filters.name, filters.specialization, filters.province], () => { window.clearTimeout((loadDoctors as any)._timer); (loadDoctors as any)._timer = window.setTimeout(loadDoctors, 300) })
 onMounted(() => { loadSpecialties(); loadDoctors() })
 </script>
@@ -118,7 +133,7 @@ onMounted(() => { loadSpecialties(); loadDoctors() })
       <div v-else class="doctor-grid"><article v-for="doctor in filteredDoctors" :key="doctor.id" class="doctor-card"><div class="doctor-head"><img v-if="imageFor(doctor)" :src="imageFor(doctor)" :alt="doctor.name" /><v-icon v-else icon="mdi-account-heart" size="42" /><div><h2>{{ doctor.name }}</h2><p>{{ doctor.specializationName }}</p><small v-if="doctor.averageRating">★ {{ doctor.averageRating.toFixed(1) }} ({{ doctor.reviewCount }})</small></div></div><div class="clinic"><v-icon icon="mdi-map-marker-outline" size="18" />{{ doctor.clinics[0]?.iraqiProvinceName || '—' }} · {{ doctor.clinics[0]?.name || 'لا توجد عيادة متاحة' }}</div><v-btn block color="primary" :class="{ 'booking-unavailable': !doctor.canBookOnline || !doctor.clinics.length }" :disabled="!doctor.canBookOnline || !doctor.clinics.length" @click="chooseDoctor(doctor)">{{ doctor.canBookOnline ? 'اختيار الطبيب' : 'الحجز الإلكتروني غير متاح' }}</v-btn></article></div>
     </section>
 
-    <section v-else-if="step === 'details'" class="booking-layout content"><div class="booking-card"><button class="back" @click="backToDoctors"><v-icon icon="mdi-arrow-right" /> العودة للأطباء</button><h2>تفاصيل الحجز</h2><p class="muted">{{ selectedDoctor?.name }} · {{ selectedDoctor?.specializationName }}</p><div class="field"><label>العيادة</label><v-select v-model="selectedClinic" :items="clinicOptions" item-title="title" item-value="value" placeholder="اختر العيادة" class="filter-select" density="compact" variant="outlined" hide-details @update:model-value="loadDays" /></div><div class="field"><label>اختر اليوم المتاح</label><div v-if="loadingDays" class="mini-loading"><v-progress-circular indeterminate size="25" /></div><div v-else class="days"><button v-for="day in days" :key="day.date" :disabled="!day.isAvailable" :class="{ selected: selectedDay?.date === day.date }" @click="selectedDay = day"><b>{{ day.dayName }}</b><span>{{ dateLabel(day.date) }}</span><small v-if="day.isAvailable">{{ day.remainingAppointments }} موعد متاح</small><small v-else>{{ day.closureReason || 'غير متاح' }}</small></button></div></div></div><form class="booking-card" @submit.prevent="createBooking"><h2>بيانات المراجع</h2><div class="field"><label>الاسم الكامل</label><v-text-field v-model="form.name" placeholder="اكتب الاسم الثلاثي" class="filter-select" density="compact" variant="outlined" hide-details /></div><div class="field"><label>رقم الهاتف</label><v-text-field v-model="form.phone" type="tel" inputmode="numeric" maxlength="11" dir="ltr" placeholder="07XXXXXXXXX" class="filter-select" density="compact" variant="outlined" hide-details @update:model-value="onPhoneInput" /></div><div class="field"><label>ملاحظات للحجز <em>اختياري</em></label><v-textarea v-model="form.notes" rows="3" placeholder="أي ملاحظة تريد إضافتها" class="filter-select" density="compact" variant="outlined" hide-details /></div><div class="summary" v-if="selectedDay"><span>موعدك المختار</span><b>{{ selectedDay.dayName }}، {{ dateLabel(selectedDay.date) }} {{ time(selectedDay.startTime) ? ` · ${time(selectedDay.startTime)}` : '' }}</b></div><v-btn type="submit" block size="large" color="primary" :disabled="!canContinue" :loading="saving">متابعة وتأكيد الحجز</v-btn></form></section>
+    <section v-else-if="step === 'details'" class="booking-layout content"><div class="booking-card"><button class="back" @click="backToDoctors"><v-icon icon="mdi-arrow-right" /> العودة للأطباء</button><h2>تفاصيل الحجز</h2><p class="muted">{{ selectedDoctor?.name }} · {{ selectedDoctor?.specializationName }}</p><div class="field"><label>العيادة</label><v-select v-model="selectedClinic" :items="clinicOptions" item-title="title" item-value="value" placeholder="اختر العيادة" class="filter-select" density="compact" variant="outlined" hide-details @update:model-value="loadDays" /></div><div class="field"><label>اختر اليوم المتاح</label><div v-if="loadingDays" class="mini-loading"><v-progress-circular indeterminate size="25" /></div><div v-else class="days"><button v-for="day in days" :key="day.date" :disabled="!day.isAvailable" :class="{ selected: selectedDay?.date === day.date }" @click="selectedDay = day"><b>{{ day.dayName }}</b><span>{{ dateLabel(day.date) }}</span><small v-if="day.isAvailable">{{ day.remainingAppointments }} موعد متاح</small><small v-else>{{ day.closureReason || 'غير متاح' }}</small></button></div></div></div><form class="booking-card" @submit.prevent="createBooking"><h2>بيانات المراجع</h2><div class="field"><label>الاسم الكامل</label><v-text-field v-model="form.name" placeholder="اكتب الاسم الثلاثي" class="filter-select" density="compact" variant="outlined" hide-details /></div><div class="field"><label>رقم الهاتف</label><v-text-field v-model="form.phone" type="tel" inputmode="numeric" maxlength="11" dir="ltr" placeholder="07XXXXXXXXX" class="filter-select" density="compact" variant="outlined" hide-details @update:model-value="onPhoneInput" /></div><div class="field"><label>ملاحظات للحجز <em>اختياري</em></label><v-textarea v-model="form.notes" rows="3" placeholder="أي ملاحظة تريد إضافتها" class="filter-select" density="compact" variant="outlined" hide-details /></div><div class="summary" v-if="selectedDay"><span>موعدك المختار</span><b>{{ selectedDay.dayName }}، {{ dateLabel(selectedDay.date) }} {{ time(selectedDay.startTime) ? ` · ${time(selectedDay.startTime)}` : '' }}</b></div><div class="field"><label>التحقق السريع</label><div class="captcha-box" :class="{ valid: captchaVerified }"><v-icon :icon="captchaVerified ? 'mdi-check-circle' : 'mdi-shield-check'" size="18" /><span class="captcha-code" aria-hidden="true"><i v-for="(style, i) in captchaCodeStyles" :key="i" :style="style">{{ captchaCode[i] }}</i></span><input v-model="captchaAnswer" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="أدخل الكود" @input="captchaAnswer = captchaAnswer.trim().toUpperCase()" /><v-btn type="button" icon size="small" variant="tonal" color="primary" title="تحديث الكود" @click="resetCaptchaChallenge"><v-icon icon="mdi-refresh" size="16" /></v-btn></div></div><v-btn type="submit" block size="large" color="primary" :disabled="!canContinue" :loading="saving">متابعة وتأكيد الحجز</v-btn></form></section>
 
     <section v-else-if="step === 'otp'" class="otp-card content"><v-icon icon="mdi-message-text-lock-outline" size="58" color="primary" /><h2>أكد رقم هاتفك</h2><p>أرسلنا رمز تحقق من 6 أرقام إلى <b dir="ltr">{{ maskedPhone }}</b></p><input v-model="form.otp" class="otp-input" dir="ltr" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" @input="form.otp = form.otp.replace(/\D/g, '')" /><v-btn block size="large" color="primary" :loading="saving" :disabled="form.otp.length !== 6" @click="confirmOtp">تأكيد الرمز</v-btn><v-btn variant="text" :disabled="!!resendSeconds || resending" :loading="resending" @click="resendOtp">{{ resendSeconds ? `إعادة الإرسال بعد ${resendSeconds} ثانية` : 'إعادة إرسال الرمز' }}</v-btn></section>
 
@@ -131,4 +146,5 @@ onMounted(() => { loadSpecialties(); loadDoctors() })
 .booking-unavailable.v-btn--disabled{background:#e4e8e7!important;color:#8b9693!important;opacity:1}
 .field :deep(input.v-field__input){width:auto!important;border:0!important;border-radius:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
 .field :deep(textarea.v-field__input){width:auto!important;border:0!important;border-radius:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
+.captcha-box{display:flex;align-items:center;gap:10px;background:#f4fbf9;border:1.5px solid #d4e3df;border-radius:11px;padding:10px 14px;transition:border-color .2s,background .2s}.captcha-box:hover{border-color:#087c68}.captcha-box.valid{border-color:#087c68;background:#e8f6f1}.captcha-box .v-icon{color:#087c68;flex-shrink:0}.captcha-code{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:96px;padding:5px 10px;background:#fff;border:1px dashed #b8d3cd;border-radius:8px;user-select:none;-webkit-user-select:none}.captcha-code i{font-style:normal;font-weight:900;font-size:20px;color:#0a5a4c;letter-spacing:2px;line-height:1.2}.captcha-box input{width:110px;flex-shrink:0;text-align:center;direction:ltr;padding:8px 6px;text-transform:uppercase}
 </style>
