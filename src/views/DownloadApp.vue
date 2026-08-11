@@ -14,7 +14,6 @@ type DeviceType = 'android' | 'ios' | 'desktop'
 
 const device = ref<DeviceType>('desktop')
 const showIosMessage = ref(false)
-const showScreenshots = ref(false)
 const latestRelease = ref<AppReleaseResponse | null>(null)
 const loading = ref(true)
 const error = ref('')
@@ -41,10 +40,10 @@ const deviceIconComponent = computed(() => {
   }
 })
 
-const downloadUrl = computed(() => {
-  if (!latestRelease.value) return ''
-  return latestRelease.value.downloadUrl
-})
+// const downloadUrl = computed(() => {
+//   if (!latestRelease.value) return ''
+//   return latestRelease.value.downloadUrl
+// })
 
 function detectDevice() {
   const ua = navigator.userAgent.toLowerCase()
@@ -72,25 +71,25 @@ async function fetchLatestRelease() {
   }
 }
 
-function downloadAndroid() {
-  if (!downloadUrl.value) return
-  trackDownload('android')
-  window.location.href = downloadUrl.value
-}
+// function downloadAndroid() {
+//   if (!downloadUrl.value) return
+//   trackDownload('android')
+//   window.location.href = downloadUrl.value
+// }
 
 function openGooglePlay() {
   trackDownload('google-play')
   window.location.href = androidPlayStoreUrl
 }
 
-function downloadIos() {
-  if (iosAppStoreUrl) {
-    trackDownload('ios')
-    window.location.href = iosAppStoreUrl
-  } else {
-    showIosMessage.value = true
-  }
-}
+// function downloadIos() {
+//   if (iosAppStoreUrl) {
+//     trackDownload('ios')
+//     window.location.href = iosAppStoreUrl
+//   } else {
+//     showIosMessage.value = true
+//   }
+// }
 
 function openItunes() {
   if (iosAppStoreUrl) {
