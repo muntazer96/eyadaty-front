@@ -106,9 +106,9 @@ function imageFor(doctor: Doctor) {
     ? `${String(api.defaults.baseURL).replace(/\/api$/, "")}/api/Files/doctor-image/${encodeURIComponent(doctor.imageName)}`
     : "";
 }
-function time(value?: string) {
-  return value ? value.slice(0, 5) : "";
-}
+// function time(value?: string) {
+//   return value ? value.slice(0, 5) : "";
+// }
 function dateLabel(value: string) {
   return new Intl.DateTimeFormat("ar-IQ", {
     day: "numeric",
