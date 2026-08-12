@@ -22,7 +22,9 @@ const createDialog  = ref(false)
 const editDialog    = ref(false)
 const detailsDialog = ref(false)
 const deleteDialog  = ref(false)
+const phoneConfirmationDialog = ref(false)
 const selectedUser  = ref<UserItem>()
+const phoneConfirmationUser = ref<UserItem>()
 const detailsUser   = ref<UserItem>()
 const editUser      = ref<UserItem>()
 
@@ -113,6 +115,24 @@ async function toggleLock(user: UserItem) {
     showSuccess(r.data.message)
     await loadUsers()
   } catch (e) { showError(getErrorMessage(e)) }
+}
+
+function openPhoneConfirmation(user: UserItem) {
+  phoneConfirmationUser.value = user
+  phoneConfirmationDialog.value = true
+}
+
+async function confirmPhoneNumber() {
+  if (!phoneConfirmationUser.value) return
+  saving.value = true
+  try {
+    const r = await api.post<ApiResponse<string>>(`/User/${phoneConfirmationUser.value.id}/phone-number/confirm`)
+    showSuccess(r.data.message)
+    phoneConfirmationDialog.value = false
+    phoneConfirmationUser.value = undefined
+    await loadUsers()
+  } catch (e) { showError(getErrorMessage(e)) }
+  finally { saving.value = false }
 }
 
 async function deleteUser() {
@@ -249,6 +269,14 @@ onMounted(loadUsers)
                   </v-btn>
                   <v-btn icon size="small" variant="text" color="primary" aria-label="تعديل" :disabled="isProtected(user)" @click="openEdit(user)">
                     <v-icon icon="mdi-pencil" size="16" />
+                  </v-btn>
+                  <v-btn
+                    v-if="!user.phoneNumberConfirmed"
+                    icon size="small" variant="text" color="success"
+                    aria-label="تأكيد رقم الهاتف"
+                    @click="openPhoneConfirmation(user)"
+                  >
+                    <v-icon icon="mdi-phone-check" size="16" />
                   </v-btn>
                   <v-btn
                     icon size="small" variant="text"
@@ -439,6 +467,31 @@ onMounted(loadUsers)
         <v-divider />
         <v-card-actions class="dialog-actions">
           <v-btn variant="outlined" @click="detailsDialog = false">إغلاق</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ── Admin Phone Confirmation Dialog ── -->
+    <v-dialog v-model="phoneConfirmationDialog" max-width="440">
+      <v-card>
+        <v-card-title class="dialog-title">
+          <v-icon icon="mdi-phone-check" color="success" size="20" />
+          تأكيد رقم الهاتف
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="dialog-body">
+          <v-alert type="warning" variant="tonal" density="compact" class="mb-4" icon="mdi-alert">
+            سيُعتبر الرقم مؤكداً يدوياً من قِبل مدير النظام. تأكد من الرقم قبل المتابعة.
+          </v-alert>
+          <p>
+            تأكيد رقم <strong class="ltr">{{ phoneConfirmationUser?.phoneNumber }}</strong>
+            للمستخدم <strong>{{ phoneConfirmationUser?.name || phoneConfirmationUser?.userName }}</strong>؟
+          </p>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="dialog-actions">
+          <v-btn variant="outlined" :disabled="saving" @click="phoneConfirmationDialog = false; phoneConfirmationUser = undefined">تراجع</v-btn>
+          <v-btn color="success" :loading="saving" @click="confirmPhoneNumber">تأكيد الرقم</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

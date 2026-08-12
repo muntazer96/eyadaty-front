@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineComponent, h, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import type { PropType } from 'vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
@@ -178,6 +178,10 @@ async function loadDoctors() {
   const response = await api.get<ApiResponse<DoctorItem[]>>('/Doctor/items')
   doctors.value = response.data.data
 }
+
+watch([fromDate, toDate], ([from, to]) => {
+  if (from && to) loadAnalytics()
+})
 
 onMounted(() => Promise.all([loadDoctors(), loadAnalytics()]))
 </script>
