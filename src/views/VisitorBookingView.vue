@@ -112,7 +112,8 @@ function time(value?: string) {
 function dateLabel(value: string) {
   return new Intl.DateTimeFormat("ar-IQ", {
     day: "numeric",
-    month: "short",
+    month: "numeric",
+    year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
 }
 function onPhoneInput() {
@@ -514,14 +515,7 @@ onMounted(() => {
         </div>
         <div class="summary" v-if="selectedDay">
           <span>موعدك المختار</span
-          ><b
-            >{{ selectedDay.dayName }}، {{ dateLabel(selectedDay.date) }}
-            {{
-              time(selectedDay.startTime)
-                ? ` · ${time(selectedDay.startTime)}`
-                : ""
-            }}</b
-          >
+          ><b>{{ selectedDay.dayName }}، {{ dateLabel(selectedDay.date) }} </b>
         </div>
         <div class="field">
           <label>التحقق السريع</label>
