@@ -760,6 +760,33 @@ export interface ProblemReportPagination {
   pageSize: number
 }
 
+export interface DoctorExternalLinkItem {
+  id: number
+  type: number
+  value: string
+  displayName: string
+  displayOrder: number
+  isActive: boolean
+}
+
+export interface CreateDoctorExternalLinkRequest {
+  type: number
+  value: string
+  doctorId?: number
+}
+
+export interface UpdateDoctorExternalLinkRequest {
+  type: number
+  value: string
+  displayName?: string
+  isActive?: boolean
+  doctorId?: number
+}
+
+export interface ReorderDoctorExternalLinkRequest {
+  linkIds: number[]
+}
+
 export interface AnalyticsSummary {
   metrics: AnalyticsMetric[]
   appointmentStatus: AnalyticsLabelValue[]

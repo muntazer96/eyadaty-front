@@ -120,6 +120,12 @@ const adminNavigation: NavItem[] = [
         icon: 'mdi-alert-circle-outline',
         roles: ['DoctorUser'],
       },
+      {
+        label: 'الروابط الخارجية',
+        to: '/external-links',
+        icon: 'mdi-link-variant',
+        roles: ['DoctorUser'],
+      },
     ],
   },
   {

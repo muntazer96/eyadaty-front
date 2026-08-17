@@ -45,6 +45,7 @@ import AdminProblemReportsView from '../views/admin/ProblemReportsView.vue'
 import AccountDeletionView from '../views/AccountDeletionView.vue'
 import PendingAccountDeletionsView from '../views/PendingAccountDeletionsView.vue'
 import DoctorGuideView from '../views/DoctorGuideView.vue'
+import ExternalLinksView from '../views/ExternalLinksView.vue'
 import DoctorSubscriptionPackagesView from '../views/DoctorSubscriptionPackagesView.vue'
 
 const router = createRouter({
@@ -99,6 +100,7 @@ const router = createRouter({
         { path: 'profile', name: 'profile', component: ProfileView, meta: { title: 'الملف الشخصي', roles: ['DoctorUser'] } },
         { path: 'problem-report', name: 'problem-report', component: ProblemReportView, meta: { title: 'الإبلاغ عن مشكلة', roles: ['DoctorUser'] } },
         { path: 'doctor-guide', name: 'doctor-guide', component: DoctorGuideView, meta: { title: 'دليل استخدام الطبيب', roles: ['DoctorUser'] } },
+        { path: 'external-links', name: 'external-links', component: ExternalLinksView, meta: { title: 'الروابط الخارجية', roles: ['DoctorUser'] } },
         { path: 'subscription-packages', name: 'subscription-packages', component: DoctorSubscriptionPackagesView, meta: { title: 'أنواع الاشتراكات', roles: ['DoctorUser'] } },
       ],
     },

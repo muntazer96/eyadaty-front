@@ -6,6 +6,7 @@ import { useNotifications } from '../composables/useNotifications'
 import type { ApiResponse, ClinicItem, DoctorItem, PageResult } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
+import DoctorExternalLinks from '../components/externalLinks/DoctorExternalLinks.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -254,6 +255,9 @@ onUnmounted(cleanupDoctorImage)
           </div>
         </div>
       </div>
+
+      <!-- External Links Section -->
+      <DoctorExternalLinks :doctor-id="doctorId" />
 
     </template>
 
