@@ -32,6 +32,7 @@ import VisitorBookingView from '../views/VisitorBookingView.vue'
 import ReviewsView from '../views/ReviewsView.vue'
 import SpecializationsView from '../views/SpecializationsView.vue'
 import SubscriptionsView from '../views/SubscriptionsView.vue'
+import SupportView from '../views/SupportView.vue'
 import UsersView from '../views/UsersView.vue'
 import WhatsAppView from '../views/WhatsAppView.vue'
 import OtpiqTestView from '../views/OtpiqTestView.vue'
@@ -54,6 +55,7 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
     { path: '/password-reset', name: 'password-reset', component: PasswordResetView },
     { path: '/download', name: 'download-app', component: DownloadAppView },
+    { path: '/support', name: 'support', component: SupportView },
     { path: '/privacy-policy', name: 'privacy-policy', component: PrivacyPolicyView },
     { path: '/privacy', redirect: '/privacy-policy' },
     { path: '/account-deletion', name: 'account-deletion', component: AccountDeletionView },

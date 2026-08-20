@@ -5,12 +5,11 @@ import { useNotifications } from '../../composables/useNotifications'
 import type {
   ApiResponse,
   DoctorExternalLinkItem,
-  CreateDoctorExternalLinkRequest,
   UpdateDoctorExternalLinkRequest,
   ReorderDoctorExternalLinkRequest,
 } from '../../types/api'
 import { getErrorMessage } from '../../utils/errors'
-import { EXTERNAL_LINK_TYPES, getLinkTypeConfig, getLinkTypeIcon, getLinkTypeColor } from '../../constants/externalLinkTypes'
+import { getLinkTypeConfig, getLinkTypeIcon, getLinkTypeColor } from '../../constants/externalLinkTypes'
 import ExternalLinkFormDialog from './ExternalLinkFormDialog.vue'
 import ConfirmDialog from '../dialogs/ConfirmDialog.vue'
 
@@ -122,7 +121,7 @@ function onDragStart(index: number, event: DragEvent) {
   }
 }
 
-function onDragOver(index: number, event: DragEvent) {
+function onDragOver(event: DragEvent) {
   event.preventDefault()
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'move'
@@ -204,7 +203,7 @@ defineExpose({ loadLinks })
           :class="{ 'link-item--inactive': !link.isActive, 'link-item--dragging': dragIndex === index }"
           draggable="true"
           @dragstart="onDragStart(index, $event)"
-          @dragover="onDragOver(index, $event)"
+          @dragover="onDragOver($event)"
           @drop="onDrop(index)"
           @dragend="onDragEnd"
         >

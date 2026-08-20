@@ -3,7 +3,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import api from '../../services/api'
 import { useNotifications } from '../../composables/useNotifications'
 import type {
-  ApiResponse,
   DoctorExternalLinkItem,
   CreateDoctorExternalLinkRequest,
   UpdateDoctorExternalLinkRequest,
