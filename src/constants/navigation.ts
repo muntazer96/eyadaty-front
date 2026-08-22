@@ -174,6 +174,12 @@ const adminNavigation: NavItem[] = [
         roles: ['SuperAdmin'],
       },
       {
+        label: 'اشتراكات عيادتي كير',
+        to: '/care-subscriptions',
+        icon: 'mdi-certificate',
+        roles: ['SuperAdmin'],
+      },
+      {
         label: 'بلاغات المشاكل',
         to: '/problem-reports',
         icon: 'mdi-alert-circle',
