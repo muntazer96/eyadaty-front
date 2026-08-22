@@ -241,13 +241,13 @@ onMounted(async () => {
 
         <!-- Doctor Request CTA -->
         <div class="dl-divider-line">
-          <span class="dl-divider-label">هل تريد ان تضاف معلوماتك عيادتك؟</span>
+          <span class="dl-divider-label">تريد تضيف عيادتك؟</span>
         </div>
         <div class="dl-section-center">
-          <p class="dl-prompt">يمكنك الآن تقديم طلب لتحويل حسابك إلى حساب طبيب والاستفادة من خدمات عيادتي</p>
+          <p class="dl-prompt">سجل بياناتك وبيانات عيادتك حتى تتم مراجعتها ونشرها داخل التطبيق</p>
           <RouterLink to="/doctor-request" class="dl-btn-primary dl-btn-block" style="text-decoration: none;">
             <v-icon icon="mdi-heart-pulse" size="20" />
-            تقديم طلب التحويل إلى طبيب
+            سجل عيادتك الان
           </RouterLink>
           <RouterLink to="/doctor-request/status" class="dl-btn-outline dl-btn-block" style="text-decoration: none;">
             متابعة طلب موجود

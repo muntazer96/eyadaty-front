@@ -16,7 +16,7 @@ export async function checkPhone(phoneNumber: string, captchaToken: string) {
   return res.data
 }
 
-export async function sendOtp(userId: string, phoneNumber: string) {
+export async function sendOtp(userId: string | null | undefined, phoneNumber: string) {
   const res = await api.post<ApiResponse<null>>('/DoctorRequest/send-otp', {
     userId,
     phoneNumber,
@@ -24,7 +24,7 @@ export async function sendOtp(userId: string, phoneNumber: string) {
   return res.data
 }
 
-export async function verifyOtp(userId: string, phoneNumber: string, otpCode: string) {
+export async function verifyOtp(userId: string | null | undefined, phoneNumber: string, otpCode: string) {
   const res = await api.post<ApiResponse<VerifyOtpResponse>>('/DoctorRequest/verify-otp', {
     userId,
     phoneNumber,

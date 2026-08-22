@@ -11,28 +11,59 @@ interface ProvinceItem {
   normalizedName: string
 }
 
-const steps = ['التحقق من رقم الهاتف', 'رمز التحقق', 'معلومات الطلب', 'تم الإرسال']
+const steps = ['التحقق من رقم الهاتف', 'رمز التحقق', 'معلومات التسجيل', 'تم الإرسال']
 const currentStep = ref(0)
 const loading = ref(false)
 const errorMsg = ref('')
 
 const phoneNumber = ref('')
-const userId = ref('')
+const userId = ref<string | undefined>()
 const otpCode = ref('')
 const verificationTokenId = ref(0)
 const fullName = ref('')
 const knownName = ref('')
+const email = ref('')
+const doctorDescription = ref('')
 const selectedProvince = ref<number | null>(null)
 const birthDay = ref('')
 const selectedSpecialization = ref<number | null>(null)
 const identityFront = ref<File | null>(null)
 const identityBack = ref<File | null>(null)
+const doctorImage = ref<File | null>(null)
+const clinicLicense = ref<File | null>(null)
 const frontPreview = ref('')
 const backPreview = ref('')
+const doctorPreview = ref('')
+const clinicLicenseName = ref('')
+const licenseNumber = ref('')
+const clinicName = ref('')
+const clinicAddress = ref('')
+const clinicPhoneNumber = ref('')
+const clinicMapUrl = ref('')
+const consultationPrice = ref<number | null>(null)
+const showConsultationPrice = ref(false)
+const acceptedTerms = ref(false)
+const acceptedPrivacyPolicy = ref(false)
 const requestResult = ref<DoctorRequestResponse | null>(null)
 
 const provinces = ref<ProvinceItem[]>([])
 const specializations = ref<SpecializationItem[]>([])
+const availabilities = ref([
+  { dayId: 1, name: 'السبت', enabled: false, startTime: '16:00', endTime: '21:00', maxAppointments: 20 },
+  { dayId: 2, name: 'الأحد', enabled: false, startTime: '16:00', endTime: '21:00', maxAppointments: 20 },
+  { dayId: 3, name: 'الاثنين', enabled: false, startTime: '16:00', endTime: '21:00', maxAppointments: 20 },
+  { dayId: 4, name: 'الثلاثاء', enabled: false, startTime: '16:00', endTime: '21:00', maxAppointments: 20 },
+  { dayId: 5, name: 'الأربعاء', enabled: false, startTime: '16:00', endTime: '21:00', maxAppointments: 20 },
+  { dayId: 6, name: 'الخميس', enabled: false, startTime: '16:00', endTime: '21:00', maxAppointments: 20 },
+  { dayId: 7, name: 'الجمعة', enabled: false, startTime: '16:00', endTime: '21:00', maxAppointments: 20 },
+])
+const socialLinks = ref([
+  { type: 1, label: 'Instagram', value: '' },
+  { type: 2, label: 'Facebook', value: '' },
+  { type: 3, label: 'TikTok', value: '' },
+  { type: 4, label: 'WhatsApp', value: '' },
+  { type: 5, label: 'Website', value: '' },
+])
 
 const captchaFirstNumber = ref(0)
 const captchaSecondNumber = ref(0)
@@ -49,10 +80,19 @@ const isOtpValid = computed(() => /^\d{6}$/.test(otpCode.value))
 const isFormValid = computed(() =>
   fullName.value.trim().length >= 3 &&
   knownName.value.trim().length >= 3 &&
+  doctorDescription.value.trim().length >= 10 &&
   selectedProvince.value !== null &&
   birthDay.value !== '' &&
   selectedSpecialization.value !== null &&
-  identityFront.value !== null
+  doctorImage.value !== null &&
+  clinicLicense.value !== null &&
+  clinicName.value.trim().length >= 3 &&
+  /^07\d{9}$/.test(clinicPhoneNumber.value) &&
+  clinicAddress.value.trim().length >= 5 &&
+  availabilities.value.some(a => a.enabled) &&
+  availabilities.value.filter(a => a.enabled).every(a => a.startTime && a.endTime && a.startTime < a.endTime && a.maxAppointments > 0) &&
+  acceptedTerms.value &&
+  acceptedPrivacyPolicy.value
 )
 
 // --- إعادة إرسال الرمز مع عداد تنازلي ---
@@ -169,6 +209,22 @@ function onBackUpload(e: Event) {
   }
 }
 
+function onDoctorImageUpload(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (file) {
+    doctorImage.value = file
+    doctorPreview.value = URL.createObjectURL(file)
+  }
+}
+
+function onClinicLicenseUpload(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (file) {
+    clinicLicense.value = file
+    clinicLicenseName.value = file.name
+  }
+}
+
 async function handleSubmit() {
   errorMsg.value = ''
   loading.value = true
@@ -177,11 +233,37 @@ async function handleSubmit() {
     fd.append('verificationTokenId', verificationTokenId.value.toString())
     fd.append('fullName', fullName.value.trim())
     fd.append('knownName', knownName.value.trim())
+    if (email.value.trim()) fd.append('email', email.value.trim())
+    fd.append('doctorDescription', doctorDescription.value.trim())
     fd.append('province', selectedProvince.value!.toString())
     fd.append('birthDay', birthDay.value)
     fd.append('specializationId', selectedSpecialization.value!.toString())
-    fd.append('identityFront', identityFront.value!)
+    if (identityFront.value) fd.append('identityFront', identityFront.value)
     if (identityBack.value) fd.append('identityBack', identityBack.value)
+    fd.append('doctorImage', doctorImage.value!)
+    fd.append('clinicLicense', clinicLicense.value!)
+    if (licenseNumber.value.trim()) fd.append('licenseNumber', licenseNumber.value.trim())
+    fd.append('clinicName', clinicName.value.trim())
+    fd.append('clinicAddress', clinicAddress.value.trim())
+    fd.append('clinicPhoneNumber', clinicPhoneNumber.value.trim())
+    if (clinicMapUrl.value.trim()) fd.append('clinicMapUrl', clinicMapUrl.value.trim())
+    if (consultationPrice.value !== null) fd.append('consultationPrice', consultationPrice.value.toString())
+    fd.append('showConsultationPrice', showConsultationPrice.value.toString())
+    availabilities.value.filter(item => item.enabled).forEach((item, index) => {
+      fd.append(`availabilities[${index}].dayId`, item.dayId.toString())
+      fd.append(`availabilities[${index}].startTime`, item.startTime)
+      fd.append(`availabilities[${index}].endTime`, item.endTime)
+      fd.append(`availabilities[${index}].maxAppointments`, item.maxAppointments.toString())
+    })
+    socialLinks.value
+      .filter(item => item.value.trim())
+      .forEach((item, index) => {
+        fd.append(`externalLinks[${index}].type`, item.type.toString())
+        fd.append(`externalLinks[${index}].value`, item.value.trim())
+        fd.append(`externalLinks[${index}].displayName`, item.label)
+      })
+    fd.append('acceptedTerms', acceptedTerms.value.toString())
+    fd.append('acceptedPrivacyPolicy', acceptedPrivacyPolicy.value.toString())
     const res = await submitDoctorRequest(fd)
     requestResult.value = res.data!
     currentStep.value = 3
@@ -421,8 +503,109 @@ function goBack() {
                 </div>
               </div>
 
+              <div class="dr-field">
+                <label class="dr-label">البريد الإلكتروني <span class="dr-optional">اختياري</span></label>
+                <div class="dr-input-group">
+                  <v-icon icon="mdi-email" size="18" class="dr-input-icon" />
+                  <input v-model="email" type="email" class="dr-input" placeholder="doctor@example.com" dir="ltr" />
+                </div>
+              </div>
+
+              <div class="dr-field">
+                <label class="dr-label">رقم إجازة فتح العيادة <span class="dr-optional">اختياري</span></label>
+                <div class="dr-input-group">
+                  <v-icon icon="mdi-certificate" size="18" class="dr-input-icon" />
+                  <input v-model="licenseNumber" type="text" class="dr-input" placeholder="رقم الإجازة" />
+                </div>
+              </div>
+
               <div class="dr-field dr-field-full">
-                <label class="dr-label">صورة الهوية (الوجه الأمامي)</label>
+                <label class="dr-label">نبذة الطبيب</label>
+                <textarea
+                  v-model="doctorDescription"
+                  class="dr-input dr-textarea"
+                  rows="3"
+                  placeholder="اكتب نبذة مختصرة عن الخبرة والخدمات الطبية"
+                ></textarea>
+              </div>
+
+              <div class="dr-field dr-field-full">
+                <label class="dr-label">صورة الطبيب</label>
+                <label class="dr-upload" :class="{ 'dr-upload--filled': doctorImage }">
+                  <input type="file" accept="image/*" hidden @change="onDoctorImageUpload" />
+                  <template v-if="!doctorPreview">
+                    <v-icon icon="mdi-account-box" size="22" class="dr-upload-icon" />
+                    <span class="dr-upload-text">اضغط لاختيار صورة الطبيب</span>
+                  </template>
+                  <div v-else class="dr-upload-filled">
+                    <img :src="doctorPreview" class="dr-preview" />
+                    <span class="dr-upload-filename">
+                      <v-icon icon="mdi-image" size="14" /> {{ doctorImage?.name }}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div class="dr-field dr-field-full">
+                <label class="dr-label">إجازة فتح العيادة</label>
+                <label class="dr-upload" :class="{ 'dr-upload--filled': clinicLicense }">
+                  <input type="file" accept="image/*,.pdf" hidden @change="onClinicLicenseUpload" />
+                  <v-icon icon="mdi-file-certificate" size="22" class="dr-upload-icon" />
+                  <span class="dr-upload-text">{{ clinicLicenseName || 'اضغط لاختيار ملف الإجازة PDF أو صورة' }}</span>
+                </label>
+              </div>
+
+              <div class="dr-field">
+                <label class="dr-label">اسم العيادة</label>
+                <div class="dr-input-group">
+                  <v-icon icon="mdi-hospital-building" size="18" class="dr-input-icon" />
+                  <input v-model="clinicName" type="text" class="dr-input" placeholder="اسم العيادة" />
+                </div>
+              </div>
+
+              <div class="dr-field">
+                <label class="dr-label">رقم هاتف الحجز</label>
+                <div class="dr-input-group">
+                  <v-icon icon="mdi-phone" size="18" class="dr-input-icon" />
+                  <input v-model="clinicPhoneNumber" iraqi-phone type="tel" class="dr-input" placeholder="07XXXXXXXXX" maxlength="11" dir="ltr" />
+                </div>
+              </div>
+
+              <div class="dr-field dr-field-full">
+                <label class="dr-label">عنوان العيادة</label>
+                <div class="dr-input-group">
+                  <v-icon icon="mdi-map-marker" size="18" class="dr-input-icon" />
+                  <input v-model="clinicAddress" type="text" class="dr-input" placeholder="المحافظة، المنطقة، أقرب نقطة دالة" />
+                </div>
+              </div>
+
+              <div class="dr-field dr-field-full">
+                <label class="dr-label">رابط الخريطة <span class="dr-optional">اختياري</span></label>
+                <div class="dr-input-group">
+                  <v-icon icon="mdi-map" size="18" class="dr-input-icon" />
+                  <input v-model="clinicMapUrl" type="url" class="dr-input" placeholder="Google Maps link" dir="ltr" />
+                </div>
+              </div>
+
+              <div class="dr-field">
+                <label class="dr-label">سعر الكشف <span class="dr-optional">اختياري</span></label>
+                <div class="dr-input-group">
+                  <v-icon icon="mdi-cash" size="18" class="dr-input-icon" />
+                  <input v-model.number="consultationPrice" type="number" min="0" class="dr-input" placeholder="مثال: 25000" />
+                </div>
+              </div>
+
+              <div class="dr-field dr-checkbox-field">
+                <v-checkbox
+                  v-model="showConsultationPrice"
+                  label="إظهار سعر الكشف للمرضى"
+                  density="compact"
+                  hide-details
+                />
+              </div>
+
+              <div class="dr-field dr-field-full">
+                <label class="dr-label">صورة الهوية (الوجه الأمامي) <span class="dr-optional">اختياري</span></label>
                 <label class="dr-upload" :class="{ 'dr-upload--filled': identityFront }">
                   <input type="file" accept="image/*" hidden @change="onFrontUpload" />
                   <template v-if="!frontPreview">
@@ -453,6 +636,48 @@ function goBack() {
                     </span>
                   </div>
                 </label>
+              </div>
+
+              <div class="dr-field dr-field-full">
+                <div class="dr-section-header">
+                  <label class="dr-label">أوقات الدوام</label>
+                </div>
+                <div class="dr-hours-list">
+                  <div v-for="item in availabilities" :key="item.dayId" class="dr-hours-row" :class="{ 'dr-hours-row--off': !item.enabled }">
+                    <label class="dr-day-toggle">
+                      <input v-model="item.enabled" type="checkbox" />
+                      <span>{{ item.name }}</span>
+                    </label>
+                    <input v-model="item.startTime" type="time" class="dr-input dr-hours-time" :disabled="!item.enabled" />
+                    <input v-model="item.endTime" type="time" class="dr-input dr-hours-time" :disabled="!item.enabled" />
+                    <input v-model.number="item.maxAppointments" type="number" min="1" class="dr-input dr-hours-count" :disabled="!item.enabled" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="dr-field dr-field-full">
+                <label class="dr-label">روابط السوشل ميديا <span class="dr-optional">اختياري</span></label>
+                <div class="dr-social-grid">
+                  <div v-for="link in socialLinks" :key="link.type" class="dr-input-group">
+                    <v-icon icon="mdi-link-variant" size="18" class="dr-input-icon" />
+                    <input v-model="link.value" type="url" class="dr-input" :placeholder="link.label" dir="ltr" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="dr-field dr-field-full dr-terms">
+                <v-checkbox
+                  v-model="acceptedTerms"
+                  density="compact"
+                  hide-details
+                  label="أوافق على الشروط والأحكام الخاصة بتسجيل الأطباء"
+                />
+                <v-checkbox
+                  v-model="acceptedPrivacyPolicy"
+                  density="compact"
+                  hide-details
+                  label="أوافق على سياسة الخصوصية ومعالجة البيانات والملفات المرفوعة"
+                />
               </div>
             </div>
 
@@ -832,6 +1057,12 @@ function goBack() {
   cursor: pointer;
 }
 
+.dr-textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.7;
+}
+
 .dr-hint {
   font-size: 12.5px;
   color: var(--color-text-muted);
@@ -1003,6 +1234,93 @@ function goBack() {
   border-radius: 10px;
   background: #fff;
   border: 1px solid var(--color-border);
+}
+
+.dr-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dr-mini-btn,
+.dr-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-primary);
+  border-radius: 10px;
+  font-family: var(--font-family-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dr-mini-btn {
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+
+.dr-icon-btn {
+  width: 40px;
+  height: 40px;
+  color: #dc2626;
+}
+
+.dr-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dr-hours-list,
+.dr-social-grid,
+.dr-terms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dr-hours-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 105px 105px 92px;
+  gap: 8px;
+  align-items: center;
+}
+
+.dr-hours-row--off {
+  opacity: 0.72;
+}
+
+.dr-day-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 13px;
+  background: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.dr-day-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.dr-hours-day,
+.dr-hours-time,
+.dr-hours-count {
+  padding: 10px 12px;
+}
+
+.dr-checkbox-field {
+  justify-content: end;
 }
 
 /* Buttons */
@@ -1208,6 +1526,12 @@ function goBack() {
   .dr-captcha-answer { width: 100%; }
   .dr-btn-row { flex-direction: column; }
   .dr-btn-row-center { flex-direction: row; }
+  .dr-hours-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dr-day-toggle {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 380px) {

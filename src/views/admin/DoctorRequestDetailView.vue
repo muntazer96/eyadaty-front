@@ -23,6 +23,8 @@ const dialogImageUrl = ref('')
 const dialogImageLabel = ref('')
 const frontImageUrl = ref('')
 const backImageUrl = ref('')
+const doctorImageUrl = ref('')
+const clinicLicenseUrl = ref('')
 const blobUrls: string[] = []
 
 async function loadIdentityImage(path: string): Promise<string> {
@@ -36,6 +38,27 @@ async function loadIdentityImage(path: string): Promise<string> {
   })()
   try {
     const res = await api.get(`/Files/identity-image/${encodeURIComponent(normalizedFileName)}`, {
+      responseType: 'blob',
+    })
+    const url = URL.createObjectURL(res.data)
+    blobUrls.push(url)
+    return url
+  } catch {
+    return ''
+  }
+}
+
+async function loadRequestFile(path: string): Promise<string> {
+  const fileName = path.replace('/DoctorRequestFiles/', '')
+  const normalizedFileName = (() => {
+    try {
+      return decodeURIComponent(fileName)
+    } catch {
+      return fileName
+    }
+  })()
+  try {
+    const res = await api.get(`/Files/doctor-request-file/${encodeURIComponent(normalizedFileName)}`, {
       responseType: 'blob',
     })
     const url = URL.createObjectURL(res.data)
@@ -79,10 +102,12 @@ async function fetchData() {
     const res = await getRequestById(id)
     request.value = res.data!
     const r = res.data!
-    frontImageUrl.value = await loadIdentityImage(r.identityFront)
+    frontImageUrl.value = r.identityFront ? await loadIdentityImage(r.identityFront) : ''
     if (r.identityBack) {
       backImageUrl.value = await loadIdentityImage(r.identityBack)
     }
+    doctorImageUrl.value = r.doctorImage ? await loadRequestFile(r.doctorImage) : ''
+    clinicLicenseUrl.value = r.clinicLicense ? await loadRequestFile(r.clinicLicense) : ''
   } catch (e) {
     showError(getErrorMessage(e))
     router.push('/doctor-requests')
@@ -205,6 +230,10 @@ onMounted(fetchData)
               <span class="info-label">رقم الهاتف</span>
               <span class="info-value" dir="ltr">{{ request.phoneNumber }}</span>
             </div>
+            <div v-if="request.email" class="info-row">
+              <span class="info-label">البريد الإلكتروني</span>
+              <span class="info-value" dir="ltr">{{ request.email }}</span>
+            </div>
             <div class="info-row">
               <span class="info-label">تاريخ الميلاد</span>
               <span class="info-value">{{ request.birthDay }}</span>
@@ -227,6 +256,10 @@ onMounted(fetchData)
               <span class="info-label">المحافظة</span>
               <span class="info-value">{{ request.province }}</span>
             </div>
+            <div class="info-row info-row-column">
+              <span class="info-label">نبذة الطبيب</span>
+              <span class="info-value">{{ request.doctorDescription }}</span>
+            </div>
             <div class="info-row">
               <span class="info-label">كود المتابعة</span>
               <span class="info-value code-value" dir="ltr">{{ request.code }}</span>
@@ -238,6 +271,66 @@ onMounted(fetchData)
           </div>
         </v-card>
       </div>
+
+      <div class="info-grid">
+        <v-card elevation="0" class="info-card">
+          <div class="card-header">
+            <v-icon icon="mdi-hospital-building" color="primary" size="20" />
+            <h3>معلومات العيادة</h3>
+          </div>
+          <v-divider />
+          <div class="card-body">
+            <div class="info-row">
+              <span class="info-label">اسم العيادة</span>
+              <span class="info-value">{{ request.clinicName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">العنوان</span>
+              <span class="info-value">{{ request.clinicAddress }}</span>
+            </div>
+            <div v-if="request.clinicPhoneNumber" class="info-row">
+              <span class="info-label">رقم العيادة</span>
+              <span class="info-value" dir="ltr">{{ request.clinicPhoneNumber }}</span>
+            </div>
+            <div v-if="request.clinicMapUrl" class="info-row">
+              <span class="info-label">الخريطة</span>
+              <a class="info-value code-value" :href="request.clinicMapUrl" target="_blank" rel="noopener">فتح الرابط</a>
+            </div>
+            <div v-if="request.consultationPrice" class="info-row">
+              <span class="info-label">سعر الكشف</span>
+              <span class="info-value">{{ request.consultationPrice.toLocaleString('ar-IQ') }}</span>
+            </div>
+          </div>
+        </v-card>
+
+        <v-card elevation="0" class="info-card">
+          <div class="card-header">
+            <v-icon icon="mdi-calendar-clock" color="primary" size="20" />
+            <h3>أوقات الدوام</h3>
+          </div>
+          <v-divider />
+          <div class="card-body">
+            <div v-for="item in request.availabilities" :key="item.id" class="info-row">
+              <span class="info-label">{{ item.dayName }}</span>
+              <span class="info-value" dir="ltr">{{ item.startTime }} - {{ item.endTime }} / {{ item.maxAppointments }}</span>
+            </div>
+          </div>
+        </v-card>
+      </div>
+
+      <v-card v-if="request.externalLinks.length" elevation="0" class="info-card">
+        <div class="card-header">
+          <v-icon icon="mdi-link-variant" color="primary" size="20" />
+          <h3>روابط السوشل ميديا</h3>
+        </div>
+        <v-divider />
+        <div class="card-body">
+          <div v-for="link in request.externalLinks" :key="link.id" class="info-row">
+            <span class="info-label">{{ link.displayName || link.typeName }}</span>
+            <a class="info-value code-value" :href="link.value" target="_blank" rel="noopener" dir="ltr">{{ link.value }}</a>
+          </div>
+        </div>
+      </v-card>
 
       <!-- Identity Attachments -->
       <v-card elevation="0" class="images-card">
@@ -266,7 +359,27 @@ onMounted(fetchData)
             عرض الهوية (خلفي)
           </v-btn>
           <v-btn
-            v-if="!frontImageUrl && !backImageUrl"
+            v-if="doctorImageUrl"
+            variant="outlined"
+            color="primary"
+            prepend-icon="mdi-account-box"
+            @click="dialogImageUrl = doctorImageUrl; dialogImageLabel = 'صورة الطبيب'; imageDialog = true"
+          >
+            عرض صورة الطبيب
+          </v-btn>
+          <v-btn
+            v-if="clinicLicenseUrl"
+            :href="clinicLicenseUrl"
+            target="_blank"
+            rel="noopener"
+            variant="outlined"
+            color="primary"
+            prepend-icon="mdi-file-certificate"
+          >
+            عرض إجازة العيادة
+          </v-btn>
+          <v-btn
+            v-if="!frontImageUrl && !backImageUrl && !doctorImageUrl && !clinicLicenseUrl"
             disabled
             variant="outlined"
             prepend-icon="mdi-file-image"
@@ -463,6 +576,12 @@ onMounted(fetchData)
   border-bottom: none;
 }
 
+.info-row-column {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .info-label {
   font-size: 13px;
   color: var(--color-text-muted);
@@ -472,6 +591,7 @@ onMounted(fetchData)
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .info-value--error {

@@ -653,24 +653,24 @@ export interface CreateDatabaseRestoreRequest {
 }
 
 export interface CheckPhoneResponse {
-  userId: string
+  userId?: string
   phoneNumber: string
 }
 
 export interface SendOtpRequest {
-  userId: string
+  userId?: string
   phoneNumber: string
 }
 
 export interface VerifyOtpRequest {
-  userId: string
+  userId?: string
   phoneNumber: string
   otpCode: string
 }
 
 export interface VerifyOtpResponse {
   verificationTokenId: number
-  userId: string
+  userId?: string
   phoneNumber: string
 }
 
@@ -678,11 +678,37 @@ export interface CreateDoctorRequestForm {
   verificationTokenId: number
   fullName: string
   knownName: string
+  email?: string
+  doctorDescription: string
   province: number
   birthDay: string
   specializationId: number
-  identityFront: File
+  identityFront?: File
   identityBack?: File
+  doctorImage: File
+  clinicLicense: File
+  licenseNumber?: string
+  clinicName: string
+  clinicAddress: string
+  clinicPhoneNumber?: string
+  clinicMapUrl?: string
+  clinicLatitude?: number
+  clinicLongitude?: number
+  consultationPrice?: number
+  showConsultationPrice: boolean
+  availabilities: Array<{
+    dayId: number
+    startTime: string
+    endTime: string
+    maxAppointments: number
+  }>
+  externalLinks: Array<{
+    type: number
+    value: string
+    displayName?: string
+  }>
+  acceptedTerms: boolean
+  acceptedPrivacyPolicy: boolean
 }
 
 export interface DoctorRequestResponse {
@@ -713,16 +739,51 @@ export interface DoctorRequestDetails {
   phoneNumber: string
   fullName: string
   knownName: string
+  email?: string
+  doctorDescription: string
   province: string
   birthDay: string
   specializationId: number
   specializationName: string
   identityFront: string
   identityBack?: string
+  doctorImage: string
+  clinicLicense: string
+  licenseNumber?: string
+  clinicName: string
+  clinicAddress: string
+  clinicPhoneNumber?: string
+  clinicMapUrl?: string
+  clinicLatitude?: number
+  clinicLongitude?: number
+  consultationPrice?: number
+  showConsultationPrice: boolean
+  acceptedTerms: boolean
+  acceptedPrivacyPolicy: boolean
+  acceptedDoctorId?: number
+  acceptedClinicId?: number
+  availabilities: Array<{
+    id: number
+    dayId: number
+    dayName: string
+    startTime: string
+    endTime: string
+    maxAppointments: number
+  }>
+  externalLinks: Array<{
+    id: number
+    type: number
+    typeName: string
+    value: string
+    displayName?: string
+    displayOrder: number
+  }>
   status: string
   rejectedReason?: string
+  adminNotes?: string
   createdAt: string
   modifiedAt?: string
+  reviewedAt?: string
 }
 
 export interface DoctorRequestPagination {
