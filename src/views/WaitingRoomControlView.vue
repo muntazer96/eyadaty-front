@@ -59,7 +59,7 @@ const selectedQueueNumber = computed(() => {
 
 const displayUrl = computed(() => {
   if (!display.value?.accessToken) return ''
-  return new URL(`/waiting-room/${display.value.accessToken}`, window.location.origin).toString()
+  return new URL(`/w/${display.value.accessToken}`, window.location.origin).toString()
 })
 const kioskUrl = computed(() => kioskLink.value?.accessToken
   ? new URL(`/clinic-kiosk/${kioskLink.value.accessToken}`, window.location.origin).toString() : '')

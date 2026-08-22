@@ -57,8 +57,8 @@ function formatDateTime(value?: string) {
 function openWaitingRoom(room: AdminWaitingRoomStatus) {
   if (!room.isActive || !room.accessToken) return
   const path = room.clinicId
-    ? `/waiting-room/${room.accessToken}?clinicId=${encodeURIComponent(String(room.clinicId))}`
-    : `/waiting-room/${room.accessToken}`
+    ? `/w/${room.accessToken}?clinicId=${encodeURIComponent(String(room.clinicId))}`
+    : `/w/${room.accessToken}`
   window.open(path, '_blank', 'noopener,noreferrer')
 }
 

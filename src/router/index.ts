@@ -61,6 +61,7 @@ const router = createRouter({
     { path: '/account-deletion', name: 'account-deletion', component: AccountDeletionView },
     { path: '/d/:doctorId', name: 'public-doctor-deep-link', component: PublicDoctorLinkView },
     { path: '/waiting-room/:accessToken', name: 'waiting-room-display', component: WaitingRoomDisplayView },
+    { path: '/w/:accessToken', name: 'waiting-room-display-short', component: WaitingRoomDisplayView },
     { path: '/clinic-kiosk/:accessToken', name: 'clinic-kiosk', component: KioskBookingView },
     { path: '/booking', name: 'visitor-booking', component: VisitorBookingView },
     { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView },

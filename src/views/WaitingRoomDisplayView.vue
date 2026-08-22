@@ -12,6 +12,8 @@ const loading = ref(false)
 const error = ref('')
 const audioWarning = ref('')
 const display = ref<WaitingRoomDisplay | null>(null)
+const queueDrawer = ref(false)
+const selectedQueueNumber = ref<number | undefined>()
 const now = ref(new Date())
 let clockTimer: number | undefined
 let waitingRoomConnection: signalR.HubConnection | null = null
@@ -39,6 +41,22 @@ const currentTransitionKey = computed(() => `${currentDisplayNumber.value ?? 'id
 const flashSerial = ref(0)
 const clinicUnavailable = computed(() => display.value?.isClinicAvailableToday === false)
 const clinicSchedule = computed(() => display.value?.clinicSchedule ?? [])
+const orderedQueue = computed(() =>
+  [...(display.value?.todayQueue ?? [])]
+    .filter((appointment) => Boolean(appointment.queueNumber))
+    .sort((left, right) => (left.queueNumber ?? Number.MAX_SAFE_INTEGER) - (right.queueNumber ?? Number.MAX_SAFE_INTEGER)),
+)
+const queueSequence = computed(() => {
+  const activeAppointments = orderedQueue.value.filter((appointment) => appointment.status === 1)
+  const currentAppointment = orderedQueue.value.find((appointment) => isCurrentQueue(appointment))
+
+  if (!currentAppointment?.queueNumber) return activeAppointments
+
+  return [
+    currentAppointment,
+    ...activeAppointments.filter((appointment) => (appointment.queueNumber ?? 0) > currentAppointment.queueNumber!),
+  ]
+})
 
 const dateLabel = computed(() =>
   new Intl.DateTimeFormat('ar-IQ', { weekday: 'long', day: 'numeric', month: 'long' }).format(now.value),
@@ -64,6 +82,23 @@ function queueLabel(appointment?: WaitingRoomAppointment) {
 
 function numberLabel(value?: number) {
   return value ? String(value).padStart(2, '0') : '--'
+}
+
+function isCurrentQueue(appointment: WaitingRoomAppointment) {
+  return Boolean(appointment.queueNumber && appointment.queueNumber === currentDisplayNumber.value)
+}
+
+function queueStatusLabel(appointment: WaitingRoomAppointment) {
+  if (isCurrentQueue(appointment)) return 'تم الاستدعاء الآن'
+  if (appointment.status === 3) return 'مكتمل'
+  if (appointment.status === 1) return 'بانتظار النداء'
+  if (appointment.status === 0) return 'بانتظار التأكيد'
+  return 'ملغي'
+}
+
+function selectQueue(appointment: WaitingRoomAppointment, closeDrawer = false) {
+  selectedQueueNumber.value = appointment.queueNumber
+  if (closeDrawer) queueDrawer.value = false
 }
 
 function patientNameFor(appointment?: WaitingRoomAppointment, queueNumber?: number) {
@@ -204,6 +239,7 @@ async function startWaitingRoomRealtime() {
     .build()
 
   waitingRoomConnection.on('WaitingRoomUpdated', handleDisplayUpdate)
+  waitingRoomConnection.on('WaitingRoomQueueChanged', () => void loadDisplay())
   waitingRoomConnection.on('WaitingRoomAccessRevoked', () => {
     error.value = 'تم تعطيل رابط شاشة الانتظار. اطلب الرابط الجديد من الطبيب.'
     display.value = null
@@ -211,6 +247,7 @@ async function startWaitingRoomRealtime() {
   })
   waitingRoomConnection.onreconnected(() => {
     void waitingRoomConnection?.invoke('JoinDoctorWaitingRoom', accessToken.value, 'display')
+    void loadDisplay()
   })
 
   await waitingRoomConnection.start()
@@ -263,12 +300,53 @@ onUnmounted(() => {
           <h1>{{ display.doctorName }}</h1>
           <p>{{ display.specializationName }}</p>
         </div>
-        <div class="clock-panel">
-          <strong>{{ timeLabel }}</strong>
-          <span>{{ dateLabel }}</span>
+        <div class="display-header-actions">
+          <button class="queue-drawer-trigger" type="button" aria-label="فتح قائمة الدور" @click="queueDrawer = true">
+            <v-icon icon="mdi-format-list-numbered" size="22" />
+          </button>
+          <div class="clock-panel">
+            <strong>{{ timeLabel }}</strong>
+            <span>{{ dateLabel }}</span>
+          </div>
         </div>
       </header>
 
+      <div class="display-body-layout">
+        <aside
+          class="queue-sidebar"
+          aria-label="تسلسل المراجعين"
+          :style="{ '--queue-item-count': Math.max(queueSequence.length, 1) }"
+        >
+          <div class="queue-sidebar-header">
+            <div>
+              <v-icon icon="mdi-format-list-numbered" size="20" />
+              <strong>تسلسل الدور</strong>
+            </div>
+            <span>{{ queueSequence.length }}</span>
+          </div>
+          <div v-if="queueSequence.length" class="queue-sidebar-list queue-sequence-list">
+            <button
+              v-for="appointment in queueSequence"
+              :key="appointment.id"
+              type="button"
+              class="queue-sidebar-item"
+              :class="{
+                current: isCurrentQueue(appointment),
+                selected: appointment.queueNumber === selectedQueueNumber,
+                completed: appointment.status === 3,
+              }"
+              :aria-current="isCurrentQueue(appointment) ? 'true' : undefined"
+              @click="selectQueue(appointment)"
+            >
+              <strong>#{{ appointment.queueNumber }}</strong>
+              <b v-if="shouldShowPatientNames">{{ appointment.patientName || 'بدون اسم' }}</b>
+              <span>{{ queueStatusLabel(appointment) }}</span>
+            </button>
+          </div>
+          <div v-else class="queue-sidebar-empty">لا توجد حجوزات اليوم</div>
+        </aside>
+
+        <div class="display-main-area">
       <section v-if="clinicUnavailable" class="unavailable-layout">
         <div class="unavailable-message">
           <v-icon icon="mdi-calendar-remove" size="46" />
@@ -380,6 +458,8 @@ onUnmounted(() => {
           <div v-else class="schedule-empty">لم تُحدد أوقات دوام لهذه العيادة.</div>
         </div>
       </section>
+        </div>
+      </div>
 
       <div class="stats-row">
         <div class="stat-box">
@@ -423,7 +503,43 @@ onUnmounted(() => {
           </div>
         </div>
       </footer>
+
     </section>
+
+    <Teleport to="body">
+      <Transition name="queue-drawer-slide">
+        <div v-if="queueDrawer" class="queue-drawer-backdrop" @click.self="queueDrawer = false">
+          <aside class="queue-drawer" aria-label="تسلسل المراجعين">
+            <div class="queue-drawer-header">
+              <strong>تسلسل الدور</strong>
+              <button class="queue-drawer-close" type="button" aria-label="إغلاق قائمة الدور" @click="queueDrawer = false">
+                <v-icon icon="mdi-close" size="22" />
+              </button>
+            </div>
+            <div class="queue-sidebar-list queue-drawer-list">
+              <div v-if="!queueSequence.length" class="queue-sidebar-empty">لا توجد حجوزات اليوم</div>
+              <button
+                v-for="appointment in queueSequence"
+                :key="appointment.id"
+                type="button"
+                class="queue-sidebar-item"
+                :class="{
+                  current: isCurrentQueue(appointment),
+                  selected: appointment.queueNumber === selectedQueueNumber,
+                  completed: appointment.status === 3,
+                }"
+                :aria-current="isCurrentQueue(appointment) ? 'true' : undefined"
+                @click="selectQueue(appointment, true)"
+              >
+                <strong>#{{ appointment.queueNumber }}</strong>
+                <b v-if="shouldShowPatientNames">{{ appointment.patientName || 'بدون اسم' }}</b>
+                <span>{{ queueStatusLabel(appointment) }}</span>
+              </button>
+            </div>
+          </aside>
+        </div>
+      </Transition>
+    </Teleport>
   </main>
 </template>
 
@@ -523,6 +639,17 @@ onUnmounted(() => {
   gap: 18px;
 }
 
+.display-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.queue-drawer-trigger,
+.queue-drawer {
+  display: none;
+}
+
 .eyebrow,
 .display-header p,
 .panel-kicker,
@@ -559,6 +686,218 @@ onUnmounted(() => {
 .clock-panel span {
   color: #55706b;
   font-weight: 700;
+}
+
+.display-body-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 10px;
+  overflow: hidden;
+  direction: ltr;
+}
+
+.display-main-area {
+  grid-column: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  direction: rtl;
+}
+
+.queue-sidebar {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #d8e7e4;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  direction: rtl;
+}
+
+.queue-sidebar-header,
+.queue-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 12px;
+  border-bottom: 1px solid #d8e7e4;
+  color: #13796b;
+}
+
+.queue-sidebar-header > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.queue-sidebar-header strong,
+.queue-drawer-header strong {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.queue-sidebar-header > span {
+  min-width: 26px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(19, 121, 107, 0.1);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.queue-sidebar-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.queue-sequence-list {
+  display: grid;
+  grid-template-rows: repeat(var(--queue-item-count), minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.queue-sidebar-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1px 8px;
+  width: 100%;
+  min-height: 0;
+  padding: 4px 8px;
+  border: 1px solid #d8e7e4;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #102421;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: right;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.queue-sidebar-item:hover,
+.queue-sidebar-item.selected {
+  border-color: #13796b;
+  background: rgba(19, 121, 107, 0.07);
+}
+
+.queue-sidebar-item.current {
+  border-color: #13796b;
+  background: #13796b;
+  color: #ffffff;
+  box-shadow: 0 5px 16px rgba(19, 121, 107, 0.24);
+}
+
+.queue-sidebar-item.completed {
+  opacity: .55;
+}
+
+.queue-sidebar-item strong {
+  grid-row: span 2;
+  align-self: center;
+  color: #13796b;
+  direction: ltr;
+  font-size: clamp(16px, 1.55vw, 23px);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.queue-sidebar-item.current strong,
+.queue-sidebar-item.current span {
+  color: #ffffff;
+}
+
+.queue-sidebar-item b {
+  overflow: hidden;
+  font-size: clamp(10px, 0.9vw, 13px);
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-sidebar-item span {
+  color: #55706b;
+  font-size: clamp(9px, 0.78vw, 11px);
+  font-weight: 800;
+}
+
+.queue-sidebar-empty {
+  display: grid;
+  flex: 1;
+  min-height: 100px;
+  place-items: center;
+  padding: 20px;
+  color: #55706b;
+  font-weight: 800;
+  text-align: center;
+}
+
+.queue-drawer-list {
+  height: calc(100% - 58px);
+}
+
+.queue-drawer-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  justify-content: flex-start;
+  background: rgba(15, 23, 42, 0.36);
+  direction: rtl;
+}
+
+.queue-drawer {
+  width: min(310px, 86vw);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: -16px 0 40px rgba(15, 23, 42, 0.2);
+}
+
+.queue-drawer-close {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #13796b;
+  cursor: pointer;
+}
+
+.queue-drawer-slide-enter-active,
+.queue-drawer-slide-leave-active {
+  transition: opacity .2s ease;
+}
+
+.queue-drawer-slide-enter-active .queue-drawer,
+.queue-drawer-slide-leave-active .queue-drawer {
+  transition: transform .2s ease;
+}
+
+.queue-drawer-slide-enter-from,
+.queue-drawer-slide-leave-to {
+  opacity: 0;
+}
+
+.queue-drawer-slide-enter-from .queue-drawer,
+.queue-drawer-slide-leave-to .queue-drawer {
+  transform: translateX(100%);
 }
 
 .queue-row {
@@ -1008,9 +1347,44 @@ onUnmounted(() => {
   }
 }
 
+@media (max-width: 1200px) {
+  .display-body-layout {
+    display: block;
+    overflow: visible;
+  }
+
+  .display-main-area {
+    height: 100%;
+  }
+
+  .queue-sidebar {
+    display: none;
+  }
+
+  .queue-drawer-trigger {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    border: 1px solid #d8e7e4;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #13796b;
+    cursor: pointer;
+  }
+}
+
 @media (max-width: 900px) {
   .waiting-display {
-    padding: 16px;
+    height: 100%;
+    min-height: 100vh;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .display-shell {
+    height: auto;
+    min-height: calc(100vh - 24px);
   }
 
   .display-header {
@@ -1018,13 +1392,47 @@ onUnmounted(() => {
     align-items: stretch;
   }
 
+  .display-header-actions {
+    justify-content: space-between;
+  }
+
+  .display-body-layout {
+    display: block;
+    overflow: visible;
+  }
+
+  .display-main-area {
+    height: auto;
+  }
+
   .queue-row,
-  .stats-row {
+  .idle-layout {
     grid-template-columns: 1fr;
   }
 
-  .idle-layout {
+  .unavailable-layout {
     grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .schedule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .queue-row {
+    gap: 10px;
+  }
+
+  .current-panel {
+    min-height: 380px;
+  }
+
+  .side-card {
+    min-height: 170px;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .idle-brand {
@@ -1038,6 +1446,68 @@ onUnmounted(() => {
   .booking-qr-panel {
     flex-direction: column;
     text-align: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .waiting-display {
+    padding: 8px;
+  }
+
+  .display-shell {
+    min-height: calc(100vh - 16px);
+    gap: 8px;
+  }
+
+  .display-header h1 {
+    font-size: 25px;
+  }
+
+  .clock-panel {
+    min-width: 0;
+    flex: 1;
+    padding: 8px 10px;
+  }
+
+  .clock-panel strong {
+    font-size: 25px;
+  }
+
+  .current-panel {
+    min-height: 300px;
+    padding: 12px;
+  }
+
+  .current-number {
+    font-size: min(42vw, 170px);
+  }
+
+  .side-card {
+    min-height: 125px;
+  }
+
+  .side-card strong {
+    font-size: 64px;
+  }
+
+  .stats-row {
+    gap: 6px;
+  }
+
+  .stat-box {
+    padding: 8px;
+  }
+
+  .booking-qr-panel img {
+    width: 104px;
+  }
+
+  .schedule-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .display-footer {
+    min-height: 46px;
   }
 }
 </style>
