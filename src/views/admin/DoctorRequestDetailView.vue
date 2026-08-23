@@ -156,7 +156,7 @@ onMounted(fetchData)
   <div class="dr-detail-page">
     <PageHeader
       :title="request ? `طلب #${request.code}` : 'تفاصيل الطلب'"
-      subtitle="تفاصيل طلب التحويل إلى حساب طبيب"
+      subtitle="تفاصيل طلب تسجيل الطبيب والعيادة"
     >
       <template #actions>
         <v-btn

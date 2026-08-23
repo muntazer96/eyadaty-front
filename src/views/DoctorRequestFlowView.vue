@@ -45,6 +45,8 @@ const showConsultationPrice = ref(false)
 const acceptedTerms = ref(false)
 const acceptedPrivacyPolicy = ref(false)
 const requestResult = ref<DoctorRequestResponse | null>(null)
+const pageTitle = 'تقديم طلب تسجيل في عيادتي'
+const maxBirthDate = new Date().toISOString().slice(0, 10)
 
 const provinces = ref<ProvinceItem[]>([])
 const specializations = ref<SpecializationItem[]>([])
@@ -77,12 +79,16 @@ const captchaVerified = computed(() =>
 
 const isPhoneValid = computed(() => /^07\d{9}$/.test(phoneNumber.value) && captchaVerified.value)
 const isOtpValid = computed(() => /^\d{6}$/.test(otpCode.value))
+const isEmailValid = computed(() =>
+  email.value.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())
+)
 const isFormValid = computed(() =>
   fullName.value.trim().length >= 3 &&
   knownName.value.trim().length >= 3 &&
   doctorDescription.value.trim().length >= 10 &&
   selectedProvince.value !== null &&
-  birthDay.value !== '' &&
+  birthDay.value !== '' && birthDay.value <= maxBirthDate &&
+  isEmailValid.value &&
   selectedSpecialization.value !== null &&
   doctorImage.value !== null &&
   clinicLicense.value !== null &&
@@ -90,7 +96,8 @@ const isFormValid = computed(() =>
   /^07\d{9}$/.test(clinicPhoneNumber.value) &&
   clinicAddress.value.trim().length >= 5 &&
   availabilities.value.some(a => a.enabled) &&
-  availabilities.value.filter(a => a.enabled).every(a => a.startTime && a.endTime && a.startTime < a.endTime && a.maxAppointments > 0) &&
+  availabilities.value.filter(a => a.enabled).every(a => a.startTime && a.endTime && a.startTime < a.endTime && a.maxAppointments > 0 && a.maxAppointments <= 500) &&
+  (consultationPrice.value === null || consultationPrice.value >= 0) &&
   acceptedTerms.value &&
   acceptedPrivacyPolicy.value
 )
@@ -113,9 +120,13 @@ function startResendCooldown() {
 
 onUnmounted(() => {
   if (resendTimer) clearInterval(resendTimer)
+  ;[frontPreview.value, backPreview.value, doctorPreview.value]
+    .filter(Boolean)
+    .forEach(url => URL.revokeObjectURL(url))
 })
 
 onMounted(async () => {
+  document.title = `${pageTitle} | عيادتي`
   try {
     const [pRes, sRes] = await Promise.all([
       api.get<ApiResponse<ProvinceItem[]>>('/IraqiProvince'),
@@ -145,6 +156,7 @@ function getCaptchaToken(): string {
 }
 
 async function handleCheckPhone() {
+  if (!isPhoneValid.value || loading.value) return
   errorMsg.value = ''
   loading.value = true
   try {
@@ -180,6 +192,7 @@ async function handleSendOtp() {
 }
 
 async function handleVerifyOtp() {
+  if (!isOtpValid.value || loading.value) return
   errorMsg.value = ''
   loading.value = true
   try {
@@ -193,39 +206,51 @@ async function handleVerifyOtp() {
   }
 }
 
-function onFrontUpload(e: Event) {
+function setImageFile(e: Event, target: typeof identityFront, preview: typeof frontPreview, label: string) {
   const file = (e.target as HTMLInputElement).files?.[0]
-  if (file) {
-    identityFront.value = file
-    frontPreview.value = URL.createObjectURL(file)
+  if (!file) return
+  if (!/\.(jpe?g|png|webp)$/i.test(file.name) || file.size > 5 * 1024 * 1024) {
+    errorMsg.value = `${label} يجب أن تكون بصيغة JPG أو PNG أو WebP وبحجم لا يتجاوز 5 ميجابايت.`
+    ;(e.target as HTMLInputElement).value = ''
+    return
   }
+  if (preview.value) URL.revokeObjectURL(preview.value)
+  errorMsg.value = ''
+  target.value = file
+  preview.value = URL.createObjectURL(file)
+}
+
+function onFrontUpload(e: Event) {
+  setImageFile(e, identityFront, frontPreview, 'صورة الوجه الأمامي للهوية')
 }
 
 function onBackUpload(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (file) {
-    identityBack.value = file
-    backPreview.value = URL.createObjectURL(file)
-  }
+  setImageFile(e, identityBack, backPreview, 'صورة الوجه الخلفي للهوية')
 }
 
 function onDoctorImageUpload(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (file) {
-    doctorImage.value = file
-    doctorPreview.value = URL.createObjectURL(file)
-  }
+  setImageFile(e, doctorImage, doctorPreview, 'صورة الطبيب')
 }
 
 function onClinicLicenseUpload(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (file) {
+    const isPdf = /\.pdf$/i.test(file.name)
+    const isImage = /\.(jpe?g|png|webp)$/i.test(file.name)
+    const maxSize = isPdf ? 10 : 5
+    if ((!isPdf && !isImage) || file.size > maxSize * 1024 * 1024) {
+      errorMsg.value = `إجازة فتح العيادة يجب أن تكون PDF أو صورة مدعومة وبحجم لا يتجاوز ${maxSize} ميجابايت.`
+      ;(e.target as HTMLInputElement).value = ''
+      return
+    }
+    errorMsg.value = ''
     clinicLicense.value = file
     clinicLicenseName.value = file.name
   }
 }
 
 async function handleSubmit() {
+  if (!isFormValid.value || loading.value) return
   errorMsg.value = ''
   loading.value = true
   try {
@@ -294,8 +319,8 @@ function goBack() {
           <div class="dr-logo">
             <img src="/app-logo.png" alt="Eyadaty" class="dr-logo-img" />
           </div>
-          <h1 class="dr-title">تقديم طلب التحويل إلى طبيب</h1>
-          <p class="dr-subtitle">قم بتعبئة البيانات التالية لتحويل حسابك إلى حساب طبيب معتمد</p>
+          <h1 class="dr-title">تقديم طلب تسجيل في عيادتي</h1>
+          <p class="dr-subtitle">قم بتعبئة البيانات لغرض تسجيل عيادتك</p>
         </div>
 
         <div class="dr-body">
@@ -328,7 +353,7 @@ function goBack() {
 
           <!-- Error -->
           <Transition name="dr-fade">
-            <div v-if="errorMsg" class="dr-error">
+            <div v-if="errorMsg" class="dr-error" role="alert" aria-live="polite">
               <span class="dr-error-dot"></span>
               {{ errorMsg }}
             </div>
@@ -348,10 +373,12 @@ function goBack() {
                   class="dr-input"
                   placeholder="07XXXXXXXXX"
                   maxlength="11"
+                  inputmode="numeric"
+                  autocomplete="tel"
                   dir="ltr"
                 />
               </div>
-              <div class="dr-hint">أدخل رقم هاتفك المسجل في التطبيق</div>
+              <div class="dr-hint">أدخل رقم هاتف متاح على واتساب لاستلام رمز التحقق</div>
             </div>
 
             <div class="dr-captcha">
@@ -400,6 +427,9 @@ function goBack() {
                   class="dr-input dr-otp"
                   placeholder="000000"
                   maxlength="6"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  autocomplete="one-time-code"
                   dir="ltr"
                   @keyup.enter="handleVerifyOtp"
                 />
@@ -451,7 +481,7 @@ function goBack() {
                 <label class="dr-label">الاسم الكامل</label>
                 <div class="dr-input-group">
                   <v-icon icon="mdi-account" size="18" class="dr-input-icon" />
-                  <input v-model="fullName" type="text" class="dr-input" placeholder="الاسم الرباعي" />
+                  <input v-model="fullName" type="text" class="dr-input" placeholder="الاسم الرباعي" autocomplete="name" />
                 </div>
               </div>
               <div class="dr-field">
@@ -499,7 +529,7 @@ function goBack() {
                 <label class="dr-label">تاريخ الميلاد</label>
                 <div class="dr-input-group">
                   <v-icon icon="mdi-cake-variant" size="18" class="dr-input-icon" />
-                  <input v-model="birthDay" type="date" class="dr-input" />
+                  <input v-model="birthDay" type="date" class="dr-input" :max="maxBirthDate" />
                 </div>
               </div>
 
@@ -507,8 +537,9 @@ function goBack() {
                 <label class="dr-label">البريد الإلكتروني <span class="dr-optional">اختياري</span></label>
                 <div class="dr-input-group">
                   <v-icon icon="mdi-email" size="18" class="dr-input-icon" />
-                  <input v-model="email" type="email" class="dr-input" placeholder="doctor@example.com" dir="ltr" />
+                  <input v-model="email" type="email" class="dr-input" placeholder="doctor@example.com" autocomplete="email" dir="ltr" />
                 </div>
+                <div v-if="!isEmailValid" class="dr-field-error">يرجى إدخال بريد إلكتروني صحيح</div>
               </div>
 
               <div class="dr-field">
@@ -567,7 +598,7 @@ function goBack() {
                 <label class="dr-label">رقم هاتف الحجز</label>
                 <div class="dr-input-group">
                   <v-icon icon="mdi-phone" size="18" class="dr-input-icon" />
-                  <input v-model="clinicPhoneNumber" iraqi-phone type="tel" class="dr-input" placeholder="07XXXXXXXXX" maxlength="11" dir="ltr" />
+                  <input v-model="clinicPhoneNumber" iraqi-phone type="tel" class="dr-input" placeholder="07XXXXXXXXX" maxlength="11" inputmode="numeric" autocomplete="tel" dir="ltr" />
                 </div>
               </div>
 
@@ -591,7 +622,7 @@ function goBack() {
                 <label class="dr-label">سعر الكشف <span class="dr-optional">اختياري</span></label>
                 <div class="dr-input-group">
                   <v-icon icon="mdi-cash" size="18" class="dr-input-icon" />
-                  <input v-model.number="consultationPrice" type="number" min="0" class="dr-input" placeholder="مثال: 25000" />
+                  <input v-model.number="consultationPrice" type="number" min="0" inputmode="decimal" class="dr-input" placeholder="مثال: 25000" />
                 </div>
               </div>
 
@@ -648,9 +679,9 @@ function goBack() {
                       <input v-model="item.enabled" type="checkbox" />
                       <span>{{ item.name }}</span>
                     </label>
-                    <input v-model="item.startTime" type="time" class="dr-input dr-hours-time" :disabled="!item.enabled" />
-                    <input v-model="item.endTime" type="time" class="dr-input dr-hours-time" :disabled="!item.enabled" />
-                    <input v-model.number="item.maxAppointments" type="number" min="1" class="dr-input dr-hours-count" :disabled="!item.enabled" />
+                    <label class="dr-hours-control"><span>من</span><input v-model="item.startTime" type="time" class="dr-input dr-hours-time" :disabled="!item.enabled" /></label>
+                    <label class="dr-hours-control"><span>إلى</span><input v-model="item.endTime" type="time" class="dr-input dr-hours-time" :disabled="!item.enabled" /></label>
+                    <label class="dr-hours-control"><span>الحجوزات</span><input v-model.number="item.maxAppointments" type="number" min="1" max="500" inputmode="numeric" class="dr-input dr-hours-count" :disabled="!item.enabled" /></label>
                   </div>
                 </div>
               </div>
@@ -987,6 +1018,11 @@ function goBack() {
   gap: 7px;
 }
 
+.dr-field-error {
+  color: #dc2626;
+  font-size: 12px;
+}
+
 .dr-field-full {
   grid-column: 1 / -1;
 }
@@ -1289,6 +1325,16 @@ function goBack() {
   align-items: center;
 }
 
+.dr-hours-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .dr-hours-row--off {
   opacity: 0.72;
 }
@@ -1518,20 +1564,39 @@ function goBack() {
 }
 
 @media (max-width: 600px) {
-  .dr-page { padding: 24px 12px; }
-  .dr-header { padding: 28px 22px 22px; }
-  .dr-body { padding: 22px 20px 26px; }
+  .dr-page {
+    min-height: 100dvh;
+    padding: max(12px, env(safe-area-inset-top)) 10px max(20px, env(safe-area-inset-bottom));
+  }
+  .dr-card { border-radius: 22px; }
+  .dr-header { padding: 24px 18px 20px; }
+  .dr-logo { width: 52px; height: 52px; margin-bottom: 12px; }
+  .dr-logo-img { width: 38px; height: 38px; }
+  .dr-title { font-size: 19px; line-height: 1.45; }
+  .dr-body { padding: 20px 16px 24px; }
+  .dr-stepper { margin-bottom: 22px; }
   .dr-form-grid { grid-template-columns: 1fr; }
+  .dr-input, .dr-select { min-height: 48px; font-size: 16px; }
+  .dr-textarea { min-height: 112px; }
+  .dr-upload { min-height: 92px; padding: 18px 12px; }
+  .dr-btn { min-height: 48px; }
   .dr-captcha { flex-direction: column; align-items: stretch; }
   .dr-captcha-answer { width: 100%; }
   .dr-btn-row { flex-direction: column; }
+  .dr-btn-row .dr-btn { width: 100%; min-height: 48px; }
   .dr-btn-row-center { flex-direction: row; }
   .dr-hours-row {
     grid-template-columns: 1fr 1fr;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.7);
   }
   .dr-day-toggle {
     grid-column: 1 / -1;
   }
+  .dr-hours-control:last-child { grid-column: 1 / -1; }
+  .dr-checkbox-field { align-items: flex-start; }
 }
 
 @media (max-width: 380px) {

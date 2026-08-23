@@ -144,7 +144,7 @@ const adminNavigation: NavItem[] = [
         roles: ['SuperAdmin'],
       },
       {
-        label: 'طلبات التحويل',
+        label: 'طلبات تسجيل الأطباء',
         to: '/doctor-requests',
         icon: 'mdi-file-document-edit',
         roles: ['SuperAdmin'],

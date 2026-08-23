@@ -89,7 +89,7 @@ onMounted(fetchData)
 
 <template>
   <div class="dr-list-page">
-    <PageHeader title="طلبات التحويل إلى طبيب" subtitle="إدارة طلبات تحويل حسابات المرضى إلى أطباء" />
+    <PageHeader title="طلبات تسجيل الأطباء" subtitle="إدارة طلبات تسجيل الأطباء وعياداتهم في عيادتي" />
 
     <!-- Filters -->
     <v-card elevation="0" class="filters-card">
@@ -144,7 +144,7 @@ onMounted(fetchData)
         v-else-if="!items.length"
         icon="mdi-file-document-outline"
         title="لا توجد طلبات"
-        description="لم يتم تقديم أي طلبات تحويل بعد"
+        description="لم يتم تقديم أي طلبات تسجيل بعد"
       />
 
       <div v-else class="table-scroll">

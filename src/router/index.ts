@@ -64,7 +64,7 @@ const router = createRouter({
     { path: '/w/:accessToken', name: 'waiting-room-display-short', component: WaitingRoomDisplayView },
     { path: '/clinic-kiosk/:accessToken', name: 'clinic-kiosk', component: KioskBookingView },
     { path: '/booking', name: 'visitor-booking', component: VisitorBookingView },
-    { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView },
+    { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView, meta: { title: 'تقديم طلب تسجيل في عيادتي' } },
     { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView },
 
     {
@@ -86,7 +86,7 @@ const router = createRouter({
         { path: 'whatsapp', name: 'whatsapp', component: WhatsAppView, meta: { title: 'WhatsApp OTP', roles: ['SuperAdmin'] } },
         { path: 'otpiq-test', name: 'otpiq-test', component: OtpiqTestView, meta: { title: 'اختبار واتساب', roles: ['SuperAdmin'] } },
         { path: 'backup-restore', name: 'backup-restore', component: BackupRestoreView, meta: { title: 'النسخ الاحتياطي', roles: ['SuperAdmin'] } },
-        { path: 'doctor-requests', name: 'doctor-requests', component: AdminDoctorRequestListView, meta: { title: 'طلبات التحويل', roles: ['SuperAdmin'] } },
+        { path: 'doctor-requests', name: 'doctor-requests', component: AdminDoctorRequestListView, meta: { title: 'طلبات تسجيل الأطباء', roles: ['SuperAdmin'] } },
         { path: 'doctor-requests/:id', name: 'doctor-request-detail', component: AdminDoctorRequestDetailView, meta: { title: 'تفاصيل الطلب', roles: ['SuperAdmin'] } },
         { path: 'problem-reports', name: 'problem-reports', component: AdminProblemReportsView, meta: { title: 'بلاغات المشاكل', roles: ['SuperAdmin'] } },
         { path: 'admin-notifications/send', name: 'admin-notifications-send', component: AdminNotificationSendView, meta: { title: 'إرسال إشعار', roles: ['SuperAdmin'] } },

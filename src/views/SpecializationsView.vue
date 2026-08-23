@@ -186,7 +186,7 @@ onMounted(loadSpecializations)
       v-else-if="!specializations.length"
       icon="mdi-stethoscope"
       title="لا توجد اختصاصات"
-      description="أضف اختصاصاً جديداً ليظهر في القوائم الخاصة بالأطباء وطلبات التحويل."
+      description="أضف اختصاصاً جديداً ليظهر في القوائم الخاصة بالأطباء وطلبات التسجيل."
     />
 
     <template v-else>
