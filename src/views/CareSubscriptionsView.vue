@@ -15,10 +15,11 @@ import {
   type CareSubscriptionDetail,
   type CareSubscriptionListItem,
   type CreateCareSubscriptionResult,
+  type UpsertCarePlanPayload,
 } from '../types/care'
 
-type Tab = 'subscriptions' | 'installations' | 'events'
-type Modal = 'create' | 'created' | 'detail' | 'renew' | 'reasonAction' | 'replaceLicense' | undefined
+type Tab = 'subscriptions' | 'plans' | 'installations' | 'events'
+type Modal = 'create' | 'created' | 'detail' | 'renew' | 'reasonAction' | 'replaceLicense' | 'planForm' | undefined
 
 const { success: showSuccess, error: showError } = useNotifications()
 
@@ -73,6 +74,20 @@ const evTotalPages = ref(1)
 const evTotalItems = ref(0)
 const evFilters = reactive({ eventType: '', onlySuspicious: '', subscriptionId: '' })
 
+// ─────────────────────── Plans ───────────────────────
+const planSaving = ref(false)
+const planEditingId = ref<number>()
+const planForm = reactive<UpsertCarePlanPayload>({
+  name: '',
+  code: '',
+  description: '',
+  maxInstallations: 1,
+  offlineValidityDays: 7,
+  gracePeriodDays: 3,
+  features: 'patient_management,visits,prescriptions,reports,attachments',
+  isActive: true,
+})
+
 const doctorOptions = computed(() =>
   doctors.value.map((d) => ({ value: String(d.id), label: d.name ?? `طبيب #${d.id}` })),
 )
@@ -114,6 +129,80 @@ async function loadLookups() {
   ])
   plans.value = planRes.data.data ?? []
   doctors.value = docRes.data.data ?? []
+}
+
+// ─────────────────────── Plans management ───────────────────────
+async function loadPlans() {
+  loading.value = true
+  try {
+    const r = await api.get<ApiResponse<CarePlan[]>>('/CareSubscriptions/plans')
+    plans.value = r.data.data ?? []
+  } catch (e: any) {
+    if (e.response?.status === 404) plans.value = []
+    else showError(getErrorMessage(e))
+  } finally { loading.value = false }
+}
+
+function resetPlanForm() {
+  planEditingId.value = undefined
+  Object.assign(planForm, {
+    name: '',
+    code: '',
+    description: '',
+    maxInstallations: 1,
+    offlineValidityDays: 7,
+    gracePeriodDays: 3,
+    features: 'patient_management,visits,prescriptions,reports,attachments',
+    isActive: true,
+  })
+}
+
+function openPlanCreate() {
+  resetPlanForm()
+  modal.value = 'planForm'
+}
+
+function openPlanEdit(plan: CarePlan) {
+  planEditingId.value = plan.id
+  Object.assign(planForm, {
+    name: plan.name,
+    code: plan.code,
+    description: plan.description ?? '',
+    maxInstallations: plan.maxInstallations,
+    offlineValidityDays: plan.offlineValidityDays,
+    gracePeriodDays: plan.gracePeriodDays,
+    features: plan.features,
+    isActive: plan.isActive,
+  })
+  modal.value = 'planForm'
+}
+
+async function savePlan() {
+  if (!planForm.name.trim() || !planForm.code.trim()) {
+    showError('الرجاء إدخال اسم الباقة وكودها')
+    return
+  }
+  planSaving.value = true
+  try {
+    const payload: UpsertCarePlanPayload = {
+      name: planForm.name,
+      code: planForm.code,
+      description: planForm.description || undefined,
+      maxInstallations: Math.max(1, Number(planForm.maxInstallations) || 1),
+      offlineValidityDays: Math.max(0, Number(planForm.offlineValidityDays) || 0),
+      gracePeriodDays: Math.max(0, Number(planForm.gracePeriodDays) || 0),
+      features: planForm.features,
+      isActive: planForm.isActive,
+    }
+    const r = planEditingId.value
+      ? await api.put<ApiResponse<CarePlan>>(`/CareSubscriptions/plans/${planEditingId.value}`, payload)
+      : await api.post<ApiResponse<CarePlan>>('/CareSubscriptions/plans', payload)
+    showSuccess(r.data.message || 'تم الحفظ')
+    modal.value = undefined
+    await loadPlans()
+  } catch (e) {
+    showError(getErrorMessage(e))
+  } finally { planSaving.value = false }
 }
 
 async function loadSubscriptions() {
@@ -181,6 +270,7 @@ async function loadEvents() {
 function selectTab(tab: Tab) {
   activeTab.value = tab
   if (tab === 'subscriptions') { subPage.value = 1; loadSubscriptions() }
+  if (tab === 'plans') loadPlans()
   if (tab === 'installations') { instPage.value = 1; loadInstallations() }
   if (tab === 'events') { evPage.value = 1; loadEvents() }
 }
@@ -385,6 +475,9 @@ async function replaceLicense() {
       <button type="button" :class="['tab-btn', { 'tab-active': activeTab === 'events' }]" @click="selectTab('events')">
         <v-icon icon="mdi-shield-alert" size="18" /> الأحداث الأمنية
       </button>
+      <button type="button" :class="['tab-btn', { 'tab-active': activeTab === 'plans' }]" @click="selectTab('plans')">
+        <v-icon icon="mdi-package-variant-closed" size="18" /> الباقات
+      </button>
     </div>
 
     <!-- ─────────────── Subscriptions Tab ─────────────── -->
@@ -550,7 +643,7 @@ async function replaceLicense() {
     </template>
 
     <!-- ─────────────── Events Tab ─────────────── -->
-    <template v-else>
+    <template v-else-if="activeTab === 'events'">
       <div class="filters-bar">
         <div class="filter-field">
           <label class="filter-label">نوع الحدث</label>
@@ -611,6 +704,61 @@ async function replaceLicense() {
       </v-card>
     </template>
 
+    <!-- ─────────────── Plans Tab ─────────────── -->
+    <template v-else-if="activeTab === 'plans'">
+      <v-card elevation="0" class="table-card">
+        <div class="table-toolbar">
+          <strong>الباقات ({{ plans.length }})</strong>
+          <v-btn color="primary" size="small" prepend-icon="mdi-plus" @click="openPlanCreate">باقة جديدة</v-btn>
+        </div>
+        <v-progress-linear v-if="loading" indeterminate color="primary" />
+        <div class="table-scroll">
+          <table v-if="plans.length" class="data-table">
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>الكود</th>
+                <th>الأجهزة</th>
+                <th>الصلاحية دون اتصال</th>
+                <th>فترة السماح</th>
+                <th>المميزات</th>
+                <th>الحالة</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="plan in plans" :key="plan.id">
+                <td>
+                  <strong>{{ plan.name }}</strong>
+                  <p v-if="plan.description" class="row-sub">{{ truncate(plan.description, 60) }}</p>
+                </td>
+                <td><code>{{ plan.code }}</code></td>
+                <td>{{ plan.maxInstallations }}</td>
+                <td>{{ plan.offlineValidityDays }} يوماً</td>
+                <td>{{ plan.gracePeriodDays }} يوماً</td>
+                <td><span :title="plan.features" class="muted-cell">{{ truncate(plan.features, 40) }}</span></td>
+                <td>
+                  <v-chip :color="plan.isActive ? 'success' : 'default'" size="small" label>
+                    {{ plan.isActive ? 'مفعّلة' : 'معطّلة' }}
+                  </v-chip>
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <v-tooltip text="تعديل">
+                      <template #activator="{ props }">
+                        <v-btn v-bind="props" icon="mdi-pencil" size="small" variant="text" @click="openPlanEdit(plan)" />
+                      </template>
+                    </v-tooltip>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <EmptyState v-else-if="!loading" icon="mdi-package-variant-closed-remove" title="لا توجد باقات بعد" />
+        </div>
+      </v-card>
+    </template>
+
     <!-- ─────────────── Create Dialog ─────────────── -->
     <v-dialog :model-value="modal === 'create'" max-width="620" @update:model-value="modal = undefined">
       <v-card>
@@ -662,6 +810,60 @@ async function replaceLicense() {
         <v-card-actions class="dialog-actions">
           <v-btn variant="outlined" @click="modal = undefined">إلغاء</v-btn>
           <v-btn color="primary" @click="createSubscription">إنشاء وإصدار ترخيص</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ─────────────── Plan Form Dialog ─────────────── -->
+    <v-dialog :model-value="modal === 'planForm'" max-width="620" @update:model-value="modal = undefined">
+      <v-card>
+        <v-card-title class="dialog-title">
+          <v-icon :icon="planEditingId ? 'mdi-pencil' : 'mdi-package-variant-closed-plus'" color="primary" size="20" />
+          {{ planEditingId ? `تعديل الباقة #${planEditingId}` : 'باقة جديدة' }}
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="dialog-body">
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="form-label">اسم الباقة <span class="required">*</span></label>
+              <input v-model="planForm.name" class="form-input" placeholder="مثال: الباقة الأساسية" required />
+            </div>
+            <div class="form-field">
+              <label class="form-label">الكود <span class="required">*</span></label>
+              <input v-model="planForm.code" class="form-input" placeholder="BASIC" dir="ltr" required />
+            </div>
+            <div class="form-field">
+              <label class="form-label">عدد الأجهزة</label>
+              <input v-model.number="planForm.maxInstallations" type="number" min="1" max="100" class="form-input" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">الصلاحية دون اتصال (يوم)</label>
+              <input v-model.number="planForm.offlineValidityDays" type="number" min="1" max="365" class="form-input" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">فترة السماح بعد الانتهاء (يوم)</label>
+              <input v-model.number="planForm.gracePeriodDays" type="number" min="0" max="90" class="form-input" />
+            </div>
+            <div class="form-field form-field--full">
+              <label class="form-label">المميزات (مفصولة بفاصلة)</label>
+              <input v-model="planForm.features" class="form-input" dir="ltr" placeholder="patient_management,visits,prescriptions,reports,attachments" />
+            </div>
+            <div class="form-field form-field--full">
+              <label class="form-label">الوصف</label>
+              <input v-model="planForm.description" class="form-input" placeholder="اختياري" />
+            </div>
+            <div class="form-field form-field--full">
+              <label class="checkbox-label">
+                <input v-model="planForm.isActive" type="checkbox" />
+                باقة مفعّلة (متاحة للاشتراكات الجديدة)
+              </label>
+            </div>
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="dialog-actions">
+          <v-btn variant="outlined" @click="modal = undefined">إلغاء</v-btn>
+          <v-btn color="primary" :loading="planSaving" @click="savePlan">حفظ</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -908,6 +1110,8 @@ async function replaceLicense() {
 .form-field--full { grid-column: 1 / -1; }
 .form-label { font-size: 13px; font-weight: 600; color: var(--color-text); }
 .required { color: var(--color-error); }
+.checkbox-label { display: flex; align-items: center; gap: var(--spacing-sm); font-size: 14px; color: var(--color-text); cursor: pointer; }
+.checkbox-label input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--color-primary); cursor: pointer; }
 .form-input, .form-select { padding: 10px 12px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font-family: var(--font-family-primary); font-size: 14px; outline: none; width: 100%; transition: border-color 0.2s; }
 .form-input:focus { border-color: var(--color-primary); }
 .reason-input { resize: vertical; }
