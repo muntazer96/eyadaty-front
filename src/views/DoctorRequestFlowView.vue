@@ -45,6 +45,7 @@ const showConsultationPrice = ref(false)
 const acceptedTerms = ref(false)
 const acceptedPrivacyPolicy = ref(false)
 const requestResult = ref<DoctorRequestResponse | null>(null)
+const codeCopied = ref(false)
 const pageTitle = 'تقديم طلب تسجيل في عيادتي'
 const maxBirthDate = new Date().toISOString().slice(0, 10)
 
@@ -105,6 +106,7 @@ const isFormValid = computed(() =>
 // --- إعادة إرسال الرمز مع عداد تنازلي ---
 const resendCooldown = ref(0)
 let resendTimer: ReturnType<typeof setInterval> | null = null
+let copyTimer: ReturnType<typeof setTimeout> | null = null
 
 function startResendCooldown() {
   resendCooldown.value = 60
@@ -120,6 +122,7 @@ function startResendCooldown() {
 
 onUnmounted(() => {
   if (resendTimer) clearInterval(resendTimer)
+  if (copyTimer) clearTimeout(copyTimer)
   ;[frontPreview.value, backPreview.value, doctorPreview.value]
     .filter(Boolean)
     .forEach(url => URL.revokeObjectURL(url))
@@ -218,6 +221,42 @@ function setImageFile(e: Event, target: typeof identityFront, preview: typeof fr
   errorMsg.value = ''
   target.value = file
   preview.value = URL.createObjectURL(file)
+}
+
+async function copyRequestCode() {
+  const code = requestResult.value?.code
+  if (!code) return
+
+  try {
+    let copied = false
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(code)
+        copied = true
+      } catch { }
+    }
+
+    if (!copied) {
+      const input = document.createElement('textarea')
+      input.value = code
+      input.style.position = 'fixed'
+      input.style.opacity = '0'
+      document.body.appendChild(input)
+      input.select()
+      copied = document.execCommand('copy')
+      input.remove()
+    }
+    if (!copied) throw new Error('Copy failed')
+
+    codeCopied.value = true
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => {
+      codeCopied.value = false
+      copyTimer = null
+    }, 2000)
+  } catch {
+    errorMsg.value = 'تعذر نسخ الكود تلقائياً. اضغط مطولاً على الكود لنسخه.'
+  }
 }
 
 function onFrontUpload(e: Event) {
@@ -493,7 +532,7 @@ function goBack() {
               </div>
               <div class="dr-field">
                 <label class="dr-label">المحافظة</label>
-                <div class="dr-input-group">
+                <div class="dr-input-group dr-select-group">
                   <v-icon icon="mdi-map-marker" size="18" class="dr-input-icon" />
                   <v-autocomplete
                     v-model="selectedProvince"
@@ -510,7 +549,7 @@ function goBack() {
               </div>
               <div class="dr-field">
                 <label class="dr-label">التخصص</label>
-                <div class="dr-input-group">
+                <div class="dr-input-group dr-select-group">
                   <v-icon icon="mdi-stethoscope" size="18" class="dr-input-icon" />
                   <v-autocomplete
                     v-model="selectedSpecialization"
@@ -737,10 +776,14 @@ function goBack() {
               <v-icon icon="mdi-check-circle" size="44" />
             </div>
             <h2 class="dr-success-title">تم إرسال الطلب بنجاح</h2>
-            <p class="dr-success-code">
-              كود متابعة الطلب
+            <div class="dr-success-code">
+              <span>كود متابعة الطلب</span>
               <strong>{{ requestResult.code }}</strong>
-            </p>
+              <button type="button" class="dr-copy-code" :class="{ 'dr-copy-code--done': codeCopied }" @click="copyRequestCode">
+                <v-icon :icon="codeCopied ? 'mdi-check' : 'mdi-content-copy'" size="16" />
+                {{ codeCopied ? 'تم النسخ' : 'نسخ' }}
+              </button>
+            </div>
             <div class="dr-success-info">
               <p>يمكنك متابعة حالة الطلب باستخدام الكود أعلاه</p>
               <p>سيتم مراجعة طلبك من قبل الإدارة والتواصل معك عبر واتساب</p>
@@ -1046,6 +1089,23 @@ function goBack() {
   min-width: 0;
 }
 
+.dr-select-group {
+  border: 1.5px solid #9fcfc3;
+  border-radius: 13px;
+  background: var(--color-surface);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.dr-select-group:hover {
+  border-color: #65bba7;
+}
+
+.dr-select-group:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--color-primary-soft);
+  background: #fff;
+}
+
 .dr-input-icon {
   position: absolute;
   right: 13px;
@@ -1089,8 +1149,28 @@ function goBack() {
 }
 
 .dr-select {
-  appearance: auto;
+  min-width: 0;
+  padding: 0 34px 0 4px;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
   cursor: pointer;
+}
+
+.dr-select:hover,
+.dr-select:focus {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+:deep(.dr-select .v-field) {
+  min-height: 46px;
+}
+
+:deep(.dr-select .v-field__input) {
+  min-height: 46px;
+  padding-block: 10px;
 }
 
 .dr-textarea {
@@ -1498,6 +1578,32 @@ function goBack() {
   font-weight: 800;
   direction: ltr;
   letter-spacing: 1px;
+  user-select: all;
+}
+
+.dr-copy-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid rgba(16, 159, 132, 0.25);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--color-primary-dark);
+  font-family: var(--font-family-primary);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.dr-copy-code:hover,
+.dr-copy-code--done {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
 }
 
 .dr-success-info {
@@ -1580,6 +1686,9 @@ function goBack() {
   .dr-textarea { min-height: 112px; }
   .dr-upload { min-height: 92px; padding: 18px 12px; }
   .dr-btn { min-height: 48px; }
+  .dr-select-group { min-height: 48px; }
+  .dr-success-code { width: 100%; flex-wrap: wrap; justify-content: center; }
+  .dr-copy-code { min-height: 44px; padding-inline: 14px; }
   .dr-captcha { flex-direction: column; align-items: stretch; }
   .dr-captcha-answer { width: 100%; }
   .dr-btn-row { flex-direction: column; }
