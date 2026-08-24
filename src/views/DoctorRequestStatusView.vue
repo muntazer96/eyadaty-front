@@ -1,61 +1,72 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { getRequestStatus } from '../services/doctorRequestService'
-import { getErrorMessage } from '../utils/errors'
-import type { DoctorRequestDetails } from '../types/api'
+import { ref } from "vue";
+import { getRequestStatus } from "../services/doctorRequestService";
+import { getErrorMessage } from "../utils/errors";
+import type { DoctorRequestDetails } from "../types/api";
 
-const phone = ref('')
-const code = ref('')
-const result = ref<DoctorRequestDetails | null>(null)
-const loading = ref(false)
-const errorMsg = ref('')
+const phone = ref("");
+const code = ref("");
+const result = ref<DoctorRequestDetails | null>(null);
+const loading = ref(false);
+const errorMsg = ref("");
 
-const statusConfig: Record<string, { label: string; icon: string; color: string }> = {
-  Waiting: { label: 'قيد الانتظار', icon: 'mdi-clock-outline', color: 'warning' },
-  Accepted: { label: 'تم القبول', icon: 'mdi-check-circle', color: 'success' },
-  Rejected: { label: 'مرفوض', icon: 'mdi-close-circle', color: 'error' },
-}
+const statusConfig: Record<
+  string,
+  { label: string; icon: string; color: string }
+> = {
+  Waiting: {
+    label: "قيد الانتظار",
+    icon: "mdi-clock-outline",
+    color: "warning",
+  },
+  Accepted: { label: "تم القبول", icon: "mdi-check-circle", color: "success" },
+  Rejected: { label: "مرفوض", icon: "mdi-close-circle", color: "error" },
+};
 
 function statusLabel(s: string) {
-  return statusConfig[s]?.label ?? s
+  return statusConfig[s]?.label ?? s;
 }
 
 function statusIcon(s: string) {
-  return statusConfig[s]?.icon ?? 'mdi-help'
+  return statusConfig[s]?.icon ?? "mdi-help";
 }
 
 function statusColor(s: string) {
-  return statusConfig[s]?.color ?? 'default'
+  return statusConfig[s]?.color ?? "default";
 }
 
 function validatePhone(val: string) {
-  return /^07\d{9}$/.test(val.replace(/\s/g, ''))
+  return /^07\d{9}$/.test(val.replace(/\s/g, ""));
 }
 
 async function handleSearch() {
-  errorMsg.value = ''
-  result.value = null
-  const p = phone.value.trim()
+  errorMsg.value = "";
+  result.value = null;
+  const p = phone.value.trim();
   if (!p) {
-    errorMsg.value = 'يرجى إدخال رقم الهاتف.'
-    return
+    errorMsg.value = "يرجى إدخال رقم الهاتف.";
+    return;
   }
   if (!validatePhone(p)) {
-    errorMsg.value = 'رقم الهاتف غير صحيح. يجب أن يبدأ بـ 07 ويتكون من 11 رقمًا.'
-    return
+    errorMsg.value =
+      "رقم الهاتف غير صحيح. يجب أن يبدأ بـ 07 ويتكون من 11 رقمًا.";
+    return;
   }
   if (!/^DR-[A-Z0-9]{6}$/i.test(code.value.trim())) {
-    errorMsg.value = 'صيغة الكود غير صحيحة. مثال: DR-XXXXXX'
-    return
+    errorMsg.value = "صيغة الكود غير صحيحة. مثال: DR-XXXXXX";
+    return;
   }
-  loading.value = true
+  loading.value = true;
   try {
-    const res = await getRequestStatus(code.value.trim().toUpperCase(), p)
-    result.value = res.data!
+    const res = await getRequestStatus(code.value.trim().toUpperCase(), p);
+    result.value = res.data!;
   } catch (e) {
-    errorMsg.value = getErrorMessage(e, 'لم يتم العثور على طلب بهذا الكود ورقم الهاتف.')
+    errorMsg.value = getErrorMessage(
+      e,
+      "لم يتم العثور على طلب بهذا الكود ورقم الهاتف.",
+    );
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 </script>
@@ -73,7 +84,9 @@ async function handleSearch() {
             <img src="/app-logo.png" alt="Eyadaty" class="sr-logo-img" />
           </div>
           <h1 class="sr-title">متابعة حالة الطلب</h1>
-          <p class="sr-subtitle">أدخل رقم الهاتف وكود المتابعة لعرض حالة طلبك</p>
+          <p class="sr-subtitle">
+            أدخل رقم الهاتف وكود المتابعة لعرض حالة طلبك
+          </p>
         </div>
 
         <div class="sr-body">
@@ -138,45 +151,68 @@ async function handleSearch() {
 
           <!-- Result -->
           <Transition name="sr-fade">
-          <div v-if="result && !loading" class="sr-result">
-            <div class="sr-status-badge" :class="`sr-status--${statusColor(result.status)}`">
-              <v-icon :icon="statusIcon(result.status)" size="26" />
-              <span>{{ statusLabel(result.status) }}</span>
-            </div>
+            <div v-if="result && !loading" class="sr-result">
+              <div
+                class="sr-status-badge"
+                :class="`sr-status--${statusColor(result.status)}`"
+              >
+                <v-icon :icon="statusIcon(result.status)" size="26" />
+                <span>{{ statusLabel(result.status) }}</span>
+              </div>
 
-            <div class="sr-details">
-              <div class="sr-row">
-                <span class="sr-row-label"><v-icon icon="mdi-account" size="15" /> الاسم الكامل</span>
-                <span class="sr-value">{{ result.fullName }}</span>
-              </div>
-              <div class="sr-row">
-                <span class="sr-row-label"><v-icon icon="mdi-phone" size="15" /> رقم الهاتف</span>
-                <span class="sr-value" dir="ltr">{{ result.phoneNumber }}</span>
-              </div>
-              <div class="sr-row">
-                <span class="sr-row-label"><v-icon icon="mdi-stethoscope" size="15" /> التخصص</span>
-                <span class="sr-value">{{ result.specializationName }}</span>
-              </div>
-              <div class="sr-row">
-                <span class="sr-row-label"><v-icon icon="mdi-map-marker" size="15" /> المحافظة</span>
-                <span class="sr-value">{{ result.province }}</span>
-              </div>
-              <div class="sr-row">
-                <span class="sr-row-label"><v-icon icon="mdi-calendar" size="15" /> تاريخ الإرسال</span>
-                <span class="sr-value">{{ new Date(result.createdAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }) }}</span>
-              </div>
-              <div v-if="result.rejectedReason" class="sr-row sr-row--alert">
-                <span class="sr-row-label">سبب الرفض</span>
-                <span class="sr-value sr-value--error">{{ result.rejectedReason }}</span>
+              <div class="sr-details">
+                <div class="sr-row">
+                  <span class="sr-row-label"
+                    ><v-icon icon="mdi-account" size="15" /> الاسم الكامل</span
+                  >
+                  <span class="sr-value">{{ result.fullName }}</span>
+                </div>
+                <div class="sr-row">
+                  <span class="sr-row-label"
+                    ><v-icon icon="mdi-phone" size="15" /> رقم الهاتف</span
+                  >
+                  <span class="sr-value" dir="ltr">{{
+                    result.phoneNumber
+                  }}</span>
+                </div>
+                <div class="sr-row">
+                  <span class="sr-row-label"
+                    ><v-icon icon="mdi-stethoscope" size="15" /> التخصص</span
+                  >
+                  <span class="sr-value">{{ result.specializationName }}</span>
+                </div>
+                <div class="sr-row">
+                  <span class="sr-row-label"
+                    ><v-icon icon="mdi-map-marker" size="15" /> المحافظة</span
+                  >
+                  <span class="sr-value">{{ result.province }}</span>
+                </div>
+                <div class="sr-row">
+                  <span class="sr-row-label"
+                    ><v-icon icon="mdi-calendar" size="15" /> تاريخ
+                    الإرسال</span
+                  >
+                  <span class="sr-value">{{
+                    new Date(result.createdAt).toLocaleDateString("en-UK", {
+                      year: "numeric",
+                      month: "numeric",
+                      day: "numeric",
+                    })
+                  }}</span>
+                </div>
+                <div v-if="result.rejectedReason" class="sr-row sr-row--alert">
+                  <span class="sr-row-label">سبب الرفض</span>
+                  <span class="sr-value sr-value--error">{{
+                    result.rejectedReason
+                  }}</span>
+                </div>
               </div>
             </div>
-          </div>
           </Transition>
 
           <RouterLink to="/doctor-request" class="sr-back-link">
             <v-icon icon="mdi-arrow-right" size="16" /> تقديم طلب جديد
           </RouterLink>
-          
         </div>
       </div>
     </div>
@@ -235,7 +271,9 @@ async function handleSearch() {
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 28px;
-  box-shadow: 0 20px 60px -12px rgba(15, 80, 65, 0.18), 0 4px 16px rgba(15, 80, 65, 0.08);
+  box-shadow:
+    0 20px 60px -12px rgba(15, 80, 65, 0.18),
+    0 4px 16px rgba(15, 80, 65, 0.08);
   overflow: hidden;
   animation: fadeInUp 0.5s ease both;
 }
@@ -251,11 +289,20 @@ async function handleSearch() {
 }
 
 .sr-header::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15) 0, transparent 40%),
-                     radial-gradient(circle at 85% 75%, rgba(255,255,255,0.12) 0, transparent 45%);
+  background-image:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 255, 255, 0.15) 0,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 85% 75%,
+      rgba(255, 255, 255, 0.12) 0,
+      transparent 45%
+    );
 }
 
 .sr-logo {
@@ -270,7 +317,7 @@ async function handleSearch() {
   border: 1px solid rgba(255, 255, 255, 0.35);
   color: #fff;
   margin-bottom: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .sr-logo-img {
@@ -356,7 +403,10 @@ async function handleSearch() {
   font-weight: 700;
   letter-spacing: 1px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
   direction: ltr;
   text-align: center;
 }
@@ -387,7 +437,9 @@ async function handleSearch() {
   border-radius: 13px;
   cursor: pointer;
   box-shadow: 0 8px 20px -6px rgba(16, 159, 132, 0.55);
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 
 .sr-btn:hover:not(:disabled) {
@@ -559,7 +611,9 @@ async function handleSearch() {
 /* Transitions */
 .sr-fade-enter-active,
 .sr-fade-leave-active {
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
 }
 
 .sr-fade-enter-from {
@@ -573,29 +627,59 @@ async function handleSearch() {
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 600px) {
-  .sr-page { padding: 24px 12px; }
-  .sr-header { padding: 28px 22px 22px; }
-  .sr-body { padding: 22px 20px 26px; }
+  .sr-page {
+    padding: 24px 12px;
+  }
+  .sr-header {
+    padding: 28px 22px 22px;
+  }
+  .sr-body {
+    padding: 22px 20px 26px;
+  }
 }
 
 @media (max-width: 380px) {
-  .sr-page { padding: 14px 8px; }
-  .sr-container { margin-top: 8px; }
-  .sr-card { border-radius: 20px; }
-  .sr-header { padding: 22px 16px 18px; }
-  .sr-body { padding: 18px 14px 22px; }
-  .sr-title { font-size: 18px; }
-  .sr-subtitle { font-size: 12.5px; }
-  .sr-input-row { flex-direction: column; }
+  .sr-page {
+    padding: 14px 8px;
+  }
+  .sr-container {
+    margin-top: 8px;
+  }
+  .sr-card {
+    border-radius: 20px;
+  }
+  .sr-header {
+    padding: 22px 16px 18px;
+  }
+  .sr-body {
+    padding: 18px 14px 22px;
+  }
+  .sr-title {
+    font-size: 18px;
+  }
+  .sr-subtitle {
+    font-size: 12.5px;
+  }
+  .sr-input-row {
+    flex-direction: column;
+  }
   .sr-btn {
     width: 100%;
     min-height: 44px;
@@ -604,6 +688,8 @@ async function handleSearch() {
     flex-direction: column;
     align-items: flex-start;
   }
-  .sr-value { text-align: right; }
+  .sr-value {
+    text-align: right;
+  }
 }
 </style>
