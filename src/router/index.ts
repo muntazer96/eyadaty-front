@@ -49,6 +49,7 @@ import PendingAccountDeletionsView from '../views/PendingAccountDeletionsView.vu
 import DoctorGuideView from '../views/DoctorGuideView.vue'
 import ExternalLinksView from '../views/ExternalLinksView.vue'
 import DoctorSubscriptionPackagesView from '../views/DoctorSubscriptionPackagesView.vue'
+import CareIntegrationView from '../views/CareIntegrationView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -107,6 +108,7 @@ const router = createRouter({
         { path: 'doctor-guide', name: 'doctor-guide', component: DoctorGuideView, meta: { title: 'دليل استخدام الطبيب', roles: ['DoctorUser'] } },
         { path: 'external-links', name: 'external-links', component: ExternalLinksView, meta: { title: 'الروابط الخارجية', roles: ['DoctorUser'] } },
         { path: 'subscription-packages', name: 'subscription-packages', component: DoctorSubscriptionPackagesView, meta: { title: 'أنواع الاشتراكات', roles: ['DoctorUser'] } },
+        { path: 'care-integration', name: 'care-integration', component: CareIntegrationView, meta: { title: 'ربط عيادتي كير', roles: ['DoctorUser'] } },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
