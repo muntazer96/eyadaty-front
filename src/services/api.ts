@@ -8,7 +8,10 @@ const api = axios.create({
 
     //baseURL: import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7136/api',
 
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:81/api',
+    //baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:81/api',
+
+    baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082/api',
+
 
     //baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://192.174.0.120:81/api',
 
