@@ -58,16 +58,24 @@ function formatDateTime(value?: string | null) {
   return value ? new Intl.DateTimeFormat('ar-IQ', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '-'
 }
 
-function statusColor(status: string) {
-  if (status === 'Active') return 'success'
-  if (status === 'Revoked') return 'error'
+function statusColor(status: CareApiCredentialListItem['status']) {
+  if (isActiveCredentialStatus(status)) return 'success'
+  if (isRevokedCredentialStatus(status)) return 'error'
   return 'warning'
 }
 
-function statusLabel(status: string) {
-  if (status === 'Active') return 'نشط'
-  if (status === 'Revoked') return 'ملغى'
+function statusLabel(status: CareApiCredentialListItem['status']) {
+  if (isActiveCredentialStatus(status)) return 'نشط'
+  if (isRevokedCredentialStatus(status)) return 'ملغى'
   return 'مستبدل'
+}
+
+function isActiveCredentialStatus(status: CareApiCredentialListItem['status']) {
+  return status === 'Active' || status === 0
+}
+
+function isRevokedCredentialStatus(status: CareApiCredentialListItem['status']) {
+  return status === 'Revoked' || status === 1
 }
 
 function scopeLabel(scope: string) {
@@ -152,7 +160,7 @@ async function openDetail(id: number) {
 
 function openRevoke(cred: CareApiCredentialListItem) {
   revokeTarget.value = cred
-  revokeConfirmAll.value = false
+  revokeConfirmAll.value = true
   modal.value = 'revoke'
 }
 
@@ -160,7 +168,8 @@ async function confirmRevoke() {
   if (!revokeTarget.value) return
   try {
     const r = await api.post<ApiResponse<object>>(`/CareIntegration/${revokeTarget.value.id}/revoke`, {
-      revokeAllConnections: revokeConfirmAll.value,
+      revokeAllIntegrations: revokeConfirmAll.value,
+      reason: 'Revoked by doctor',
     })
     showSuccess(r.data.message)
     modal.value = undefined
@@ -223,6 +232,16 @@ onMounted(() => loadCredentials())
               <td class="muted-cell">{{ formatDateTime(cred.lastUsedAt) }}</td>
               <td>
                 <div class="row-actions">
+                  <v-btn
+                    v-if="isActiveCredentialStatus(cred.status)"
+                    size="small"
+                    variant="tonal"
+                    color="error"
+                    prepend-icon="mdi-cancel"
+                    @click="openRevoke(cred)"
+                  >
+                    إلغاء
+                  </v-btn>
                   <v-menu>
                     <template #activator="{ props }">
                       <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" />
@@ -232,7 +251,7 @@ onMounted(() => loadCredentials())
                         <v-list-item-title>عرض التفاصيل</v-list-item-title>
                       </v-list-item>
                       <v-list-item
-                        v-if="cred.status === 'Active'"
+                        v-if="isActiveCredentialStatus(cred.status)"
                         prepend-icon="mdi-cancel"
                         class="action-danger"
                         @click="openRevoke(cred)"
@@ -438,7 +457,7 @@ onMounted(() => loadCredentials())
             </template>
 
             <!-- Revoke button -->
-            <div v-if="detail.status === 'Active'" class="detail-footer">
+            <div v-if="isActiveCredentialStatus(detail.status)" class="detail-footer">
               <v-btn variant="tonal" color="error" prepend-icon="mdi-cancel" @click="openRevoke(detail)">
                 إلغاء مفتاح الربط
               </v-btn>
@@ -464,7 +483,7 @@ onMounted(() => loadCredentials())
         <v-card-text class="dialog-body">
           <v-alert type="error" variant="tonal" icon="mdi-alert-circle" density="compact" class="mb-4">
             أنت على وشك إلغاء مفتاح الربط <strong>{{ revokeTarget?.name }}</strong>.<br />
-            سيتوقف هذا المفتاح عن العمل فوراً ولن يتمكن عيادتي كير من الوصول إلى حجوزاتك.<br />
+            سيتوقف هذا المفتاح عن العمل فوراً، وإذا أبقيت الخيار مفعلاً سيتم قطع اتصال عيادتي كير المرتبط به.<br />
             هذا الإجراء لا يمكن التراجع عنه.
           </v-alert>
           <label class="check-label">
@@ -472,7 +491,7 @@ onMounted(() => loadCredentials())
             <span class="check-box">
               <v-icon v-if="revokeConfirmAll" icon="mdi-check" size="12" color="white" />
             </span>
-            <span>إلغاء جميع اتصالات عيادتي كير</span>
+            <span>قطع اتصال عيادتي كير المرتبط بهذا المفتاح</span>
           </label>
         </v-card-text>
         <v-divider />

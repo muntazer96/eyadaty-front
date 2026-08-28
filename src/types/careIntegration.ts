@@ -2,7 +2,7 @@ export interface CareApiCredentialListItem {
   id: number
   name: string
   maskedSecret: string
-  status: 'Active' | 'Revoked' | 'Replaced'
+  status: 'Active' | 'Revoked' | 'Replaced' | 0 | 1 | 2
   createdAt: string
   expiresAt: string | null
   lastUsedAt: string | null
