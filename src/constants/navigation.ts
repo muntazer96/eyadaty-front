@@ -126,6 +126,12 @@ const adminNavigation: NavItem[] = [
         icon: 'mdi-link-variant',
         roles: ['DoctorUser'],
       },
+      {
+        label: 'ربط عيادتي كير',
+        to: '/care-integration',
+        icon: 'mdi-connection',
+        roles: ['DoctorUser'],
+      },
     ],
   },
   {
@@ -171,6 +177,12 @@ const adminNavigation: NavItem[] = [
         label: 'الاشتراكات',
         to: '/subscriptions',
         icon: 'mdi-receipt',
+        roles: ['SuperAdmin'],
+      },
+      {
+        label: 'اشتراكات عيادتي كير',
+        to: '/care-subscriptions',
+        icon: 'mdi-certificate',
         roles: ['SuperAdmin'],
       },
       {

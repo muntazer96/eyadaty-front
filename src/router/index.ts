@@ -37,6 +37,7 @@ import UsersView from '../views/UsersView.vue'
 import WhatsAppView from '../views/WhatsAppView.vue'
 import OtpiqTestView from '../views/OtpiqTestView.vue'
 import BackupRestoreView from '../views/BackupRestoreView.vue'
+import CareSubscriptionsView from '../views/CareSubscriptionsView.vue'
 import DoctorRequestFlowView from '../views/DoctorRequestFlowView.vue'
 import DoctorRequestStatusView from '../views/DoctorRequestStatusView.vue'
 import AdminDoctorRequestListView from '../views/admin/DoctorRequestListView.vue'
@@ -48,6 +49,7 @@ import PendingAccountDeletionsView from '../views/PendingAccountDeletionsView.vu
 import DoctorGuideView from '../views/DoctorGuideView.vue'
 import ExternalLinksView from '../views/ExternalLinksView.vue'
 import DoctorSubscriptionPackagesView from '../views/DoctorSubscriptionPackagesView.vue'
+import CareIntegrationView from '../views/CareIntegrationView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -81,6 +83,7 @@ const router = createRouter({
         { path: 'doctors/create-with-clinic', name: 'doctor-create-with-clinic', component: DoctorCreateWithClinicView, meta: { title: 'إضافة طبيب مع عيادة', roles: ['SuperAdmin'] } },
         { path: 'doctors/:doctorId', name: 'doctor-details', component: DoctorDetailsView, meta: { title: 'تفاصيل الطبيب', roles: ['SuperAdmin'] } },
         { path: 'subscriptions', name: 'subscriptions', component: SubscriptionsView, meta: { title: 'الاشتراكات والباقات', roles: ['SuperAdmin'] } },
+        { path: 'care-subscriptions', name: 'care-subscriptions', component: CareSubscriptionsView, meta: { title: 'اشتراكات عيادتي كير', roles: ['SuperAdmin'] } },
         { path: 'app-versions', name: 'app-versions', component: AppVersionsView, meta: { title: 'سياسات التحديث', roles: ['SuperAdmin'] } },
         { path: 'app-releases', name: 'app-releases', component: AppVersionManagementView, meta: { title: 'إصدارات APK', roles: ['SuperAdmin'] } },
         { path: 'whatsapp', name: 'whatsapp', component: WhatsAppView, meta: { title: 'WhatsApp OTP', roles: ['SuperAdmin'] } },
@@ -105,6 +108,7 @@ const router = createRouter({
         { path: 'doctor-guide', name: 'doctor-guide', component: DoctorGuideView, meta: { title: 'دليل استخدام الطبيب', roles: ['DoctorUser'] } },
         { path: 'external-links', name: 'external-links', component: ExternalLinksView, meta: { title: 'الروابط الخارجية', roles: ['DoctorUser'] } },
         { path: 'subscription-packages', name: 'subscription-packages', component: DoctorSubscriptionPackagesView, meta: { title: 'أنواع الاشتراكات', roles: ['DoctorUser'] } },
+        { path: 'care-integration', name: 'care-integration', component: CareIntegrationView, meta: { title: 'ربط عيادتي كير', roles: ['DoctorUser'] } },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
