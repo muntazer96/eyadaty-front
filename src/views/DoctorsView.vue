@@ -111,7 +111,6 @@ function clearImagePreview() {
 }
 
 async function saveDoctor() {
-  if (!isEditing.value && !form.imageName) { showError('صورة الطبيب مطلوبة عند إنشاء السجل.'); return }
   saving.value = true
   try {
     const data = new FormData()
@@ -471,17 +470,17 @@ onBeforeUnmount(clearImagePreview)
             <div class="form-field form-field--full">
               <label class="form-label">
                 صورة الطبيب
-                <span v-if="isEditing" class="optional">(اختيارية عند التعديل)</span>
-                <span v-else class="required">*</span>
+                <span class="optional">(اختيارية)</span>
               </label>
               <div class="file-zone" @click="fileInput?.click()">
-                <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" class="file-hidden" :required="!isEditing" @change="setImage" />
+                <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" class="file-hidden" @change="setImage" />
                 <v-icon :icon="form.imageName ? 'mdi-image-check' : 'mdi-image-plus'" :color="form.imageName ? 'success' : 'primary'" size="28" />
                 <div>
                   <strong>{{ form.imageName ? form.imageName.name : 'اضغط لاختيار صورة' }}</strong>
                   <span>JPG أو PNG أو WEBP، بحد أقصى 5MB</span>
                 </div>
               </div>
+              <p v-if="!isEditing" class="form-hint">إذا لم ترفع صورة، ستُستخدم الصورة الافتراضية.</p>
               <img v-if="imagePreview" :src="imagePreview" alt="معاينة" class="image-preview" />
             </div>
           </div>

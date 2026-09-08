@@ -88,7 +88,6 @@ function clearImagePreview() {
 }
 
 function validateForm() {
-  if (!form.imageName) return 'صورة الطبيب مطلوبة.'
   if (!form.name.trim()) return 'اسم الطبيب مطلوب.'
   if (!form.normalizedName.trim()) return 'اسم البحث مطلوب.'
   if (!form.specializationId) return 'الاختصاص مطلوب.'
@@ -214,7 +213,7 @@ onBeforeUnmount(clearImagePreview)
           <textarea v-model="form.description" rows="4" class="form-textarea" />
         </div>
         <div class="form-field form-field--full">
-          <label class="form-label">صورة الطبيب <span class="required">*</span></label>
+          <label class="form-label">صورة الطبيب <span class="optional">(اختيارية)</span></label>
           <div class="file-zone" @click="fileInput?.click()">
             <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" class="file-hidden" @change="setImage" />
             <v-icon :icon="form.imageName ? 'mdi-image-check' : 'mdi-image-plus'" :color="form.imageName ? 'success' : 'primary'" size="28" />
@@ -223,6 +222,7 @@ onBeforeUnmount(clearImagePreview)
               <span>JPG أو PNG أو WEBP، بحد أقصى 5MB</span>
             </div>
           </div>
+          <p class="form-hint">إذا لم ترفع صورة، ستُستخدم الصورة الافتراضية.</p>
           <img v-if="imagePreview" :src="imagePreview" alt="معاينة" class="image-preview" />
         </div>
       </div>
