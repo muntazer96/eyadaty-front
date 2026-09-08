@@ -293,7 +293,10 @@ onMounted(async () => {
 
         <!-- Footer -->
         <div class="dl-footer">
-          <RouterLink to="/privacy-policy" class="dl-footer-link">سياسة الخصوصية</RouterLink>
+          <div class="dl-footer-links">
+            <RouterLink to="/privacy-policy" class="dl-footer-link">سياسة الخصوصية</RouterLink>
+            <RouterLink to="/support" class="dl-footer-link">الدعم</RouterLink>
+          </div>
           <p>جميع الحقوق محفوظة &copy; {{ new Date().getFullYear() }} — {{ appName }}</p>
         </div>
       </div>
@@ -783,12 +786,19 @@ onMounted(async () => {
   text-align: center;
 }
 
+.dl-footer-links {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
 .dl-footer-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 34px;
-  margin-bottom: 8px;
   padding: 0 12px;
   border-radius: 10px;
   color: var(--color-primary);

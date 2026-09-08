@@ -51,23 +51,73 @@ import ExternalLinksView from '../views/ExternalLinksView.vue'
 import DoctorSubscriptionPackagesView from '../views/DoctorSubscriptionPackagesView.vue'
 import CareIntegrationView from '../views/CareIntegrationView.vue'
 
+const defaultPageTitle = 'تحميل تطبيق عيادتي'
+const defaultPageDescription =
+  'حمّل تطبيق عيادتي لحجز المواعيد الطبية، متابعة الملفات الطبية، والتواصل مع الأطباء بسهولة وأمان.'
+
+function setMetaContent(selector: string, content: string) {
+  let element = document.querySelector<HTMLMetaElement>(selector)
+  if (!element) {
+    element = document.createElement('meta')
+    if (selector.includes('property=')) {
+      element.setAttribute('property', selector.match(/property="([^"]+)"/)?.[1] ?? '')
+    } else {
+      element.name = selector.match(/name="([^"]+)"/)?.[1] ?? ''
+    }
+    document.head.appendChild(element)
+  }
+  element.content = content
+}
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
-    { path: '/password-reset', name: 'password-reset', component: PasswordResetView },
-    { path: '/download', name: 'download-app', component: DownloadAppView },
-    { path: '/support', name: 'support', component: SupportView },
-    { path: '/privacy-policy', name: 'privacy-policy', component: PrivacyPolicyView },
+    { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true, title: 'تسجيل الدخول' } },
+    { path: '/password-reset', name: 'password-reset', component: PasswordResetView, meta: { title: 'استعادة كلمة المرور' } },
+    {
+      path: '/download',
+      name: 'download-app',
+      component: DownloadAppView,
+      meta: {
+        title: 'تحميل تطبيق عيادتي',
+        description: defaultPageDescription,
+      },
+    },
+    {
+      path: '/support',
+      name: 'support',
+      component: SupportView,
+      meta: {
+        title: 'دعم عيادتي',
+        description: 'صفحة دعم مستخدمي تطبيق عيادتي لمشاكل الحساب والحجوزات والرسائل والخصوصية.',
+      },
+    },
+    {
+      path: '/privacy-policy',
+      name: 'privacy-policy',
+      component: PrivacyPolicyView,
+      meta: {
+        title: 'سياسة الخصوصية | عيادتي',
+        description: 'سياسة الخصوصية لتطبيق عيادتي، وتشمل طريقة جمع البيانات واستخدامها وحمايتها وحقوق المستخدمين.',
+      },
+    },
     { path: '/privacy', redirect: '/privacy-policy' },
-    { path: '/account-deletion', name: 'account-deletion', component: AccountDeletionView },
-    { path: '/d/:doctorId', name: 'public-doctor-deep-link', component: PublicDoctorLinkView },
-    { path: '/waiting-room/:accessToken', name: 'waiting-room-display', component: WaitingRoomDisplayView },
-    { path: '/w/:accessToken', name: 'waiting-room-display-short', component: WaitingRoomDisplayView },
-    { path: '/clinic-kiosk/:accessToken', name: 'clinic-kiosk', component: KioskBookingView },
-    { path: '/booking', name: 'visitor-booking', component: VisitorBookingView },
-    { path: '/doctor-request', name: 'doctor-request', component: DoctorRequestFlowView, meta: { title: 'تقديم طلب تسجيل في عيادتي' } },
-    { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView },
+    { path: '/account-deletion', name: 'account-deletion', component: AccountDeletionView, meta: { title: 'حذف حساب عيادتي' } },
+    { path: '/d/:doctorId', name: 'public-doctor-deep-link', component: PublicDoctorLinkView, meta: { title: 'ملف طبيب في عيادتي' } },
+    { path: '/waiting-room/:accessToken', name: 'waiting-room-display', component: WaitingRoomDisplayView, meta: { title: 'شاشة انتظار الطبيب' } },
+    { path: '/w/:accessToken', name: 'waiting-room-display-short', component: WaitingRoomDisplayView, meta: { title: 'شاشة انتظار الطبيب' } },
+    { path: '/clinic-kiosk/:accessToken', name: 'clinic-kiosk', component: KioskBookingView, meta: { title: 'حجز موعد في العيادة' } },
+    { path: '/booking', name: 'visitor-booking', component: VisitorBookingView, meta: { title: 'حجز موعد في عيادتي' } },
+    {
+      path: '/doctor-request',
+      name: 'doctor-request',
+      component: DoctorRequestFlowView,
+      meta: {
+        title: 'تقديم طلب تسجيل في عيادتي',
+        description: 'سجل بياناتك وبيانات عيادتك حتى تتم مراجعتها ونشرها داخل تطبيق عيادتي.',
+      },
+    },
+    { path: '/doctor-request/status', name: 'doctor-request-status', component: DoctorRequestStatusView, meta: { title: 'متابعة طلب تسجيل عيادة' } },
 
     {
       path: '/',
@@ -127,6 +177,20 @@ router.beforeEach(async (to) => {
 
   const roles = (to.meta.roles as string[] | undefined) ?? []
   if (roles.length && !auth.hasAnyRole(roles)) return { name: 'dashboard' }
+})
+
+router.afterEach((to) => {
+  const title = (to.meta.title as string | undefined) ?? defaultPageTitle
+  const description = (to.meta.description as string | undefined) ?? defaultPageDescription
+  const canonicalUrl = new URL(to.fullPath, 'https://eyadaty.techumbrella.net').toString()
+
+  document.title = title.includes('عيادتي') ? title : `${title} | عيادتي`
+  setMetaContent('meta[name="description"]', description)
+  setMetaContent('meta[property="og:title"]', document.title)
+  setMetaContent('meta[property="og:description"]', description)
+  setMetaContent('meta[property="og:url"]', canonicalUrl)
+  setMetaContent('meta[name="twitter:title"]', document.title)
+  setMetaContent('meta[name="twitter:description"]', description)
 })
 
 export default router
