@@ -79,6 +79,8 @@ const router = createRouter({
         { path: 'users', name: 'users', component: UsersView, meta: { title: 'إدارة المستخدمين', roles: ['SuperAdmin'] } },
         { path: 'pending-account-deletions', name: 'pending-account-deletions', component: PendingAccountDeletionsView, meta: { title: 'طلبات حذف الحساب', roles: ['SuperAdmin'] } },
         { path: 'doctors', name: 'doctors', component: DoctorsView, meta: { title: 'إدارة الأطباء', roles: ['SuperAdmin'] } },
+        { path: 'doctors/announcement', name: 'doctor-announcement', component: () => import('../views/DoctorAnnouncementView.vue'), meta: { title: 'صورة انضمام طبيب', roles: ['SuperAdmin'] } },
+        { path: 'doctors/:doctorId/announcement', name: 'doctor-announcement-prefilled', component: () => import('../views/DoctorAnnouncementView.vue'), meta: { title: 'صورة انضمام طبيب', roles: ['SuperAdmin'] } },
         { path: 'specializations', name: 'specializations', component: SpecializationsView, meta: { title: 'إدارة الاختصاصات', roles: ['SuperAdmin'] } },
         { path: 'doctors/create-with-clinic', name: 'doctor-create-with-clinic', component: DoctorCreateWithClinicView, meta: { title: 'إضافة طبيب مع عيادة', roles: ['SuperAdmin'] } },
         { path: 'doctors/:doctorId', name: 'doctor-details', component: DoctorDetailsView, meta: { title: 'تفاصيل الطبيب', roles: ['SuperAdmin'] } },

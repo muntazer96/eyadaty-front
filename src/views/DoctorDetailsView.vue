@@ -77,6 +77,7 @@ onUnmounted(cleanupDoctorImage)
 
     <!-- Back Button -->
     <div class="page-top">
+      <v-btn v-if="doctor" color="primary" prepend-icon="mdi-image-edit-outline" :to="`/doctors/${doctorId}/announcement`">إنشاء صورة ترحيبية</v-btn>
       <v-btn
         variant="outlined"
         color="primary"

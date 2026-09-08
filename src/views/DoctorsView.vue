@@ -226,6 +226,7 @@ onBeforeUnmount(clearImagePreview)
         <h1 class="page-title">الأطباء</h1>
       </div>
       <div class="page-actions">
+        <v-btn variant="outlined" color="primary" prepend-icon="mdi-image-edit-outline" to="/doctors/announcement">صورة ترحيبية</v-btn>
         <v-btn variant="outlined" color="primary" prepend-icon="mdi-hospital-building" @click="router.push('/doctors/create-with-clinic')">إضافة طبيب مع عيادة</v-btn>
         <v-btn variant="outlined" color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="loadDoctors">تحديث</v-btn>
         <v-btn color="primary" prepend-icon="mdi-plus" @click="resetForm()">إضافة طبيب</v-btn>
