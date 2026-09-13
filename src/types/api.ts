@@ -821,6 +821,36 @@ export interface ProblemReportPagination {
   pageSize: number
 }
 
+export interface ContentReportItem {
+  id: number
+  contentType: string
+  reviewId?: number
+  messageId?: number
+  reason: string
+  status: string
+  details?: string
+  adminNotes?: string
+  reporterUserId: string
+  reporterName: string
+  reporterPhone?: string
+  reportedUserId: string
+  reportedUserName: string
+  reportedUserPhone?: string
+  contentPreview: string
+  hasImage: boolean
+  createdAt: string
+  modifiedAt?: string
+  resolvedAt?: string
+}
+
+export interface ContentReportPagination {
+  items: ContentReportItem[]
+  totalItems: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+}
+
 export interface DoctorExternalLinkItem {
   id: number
   type: number

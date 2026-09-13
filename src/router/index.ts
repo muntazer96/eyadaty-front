@@ -43,6 +43,7 @@ import DoctorRequestStatusView from '../views/DoctorRequestStatusView.vue'
 import AdminDoctorRequestListView from '../views/admin/DoctorRequestListView.vue'
 import AdminDoctorRequestDetailView from '../views/admin/DoctorRequestDetailView.vue'
 import AdminNotificationSendView from '../views/AdminNotificationSendView.vue'
+import AdminContentReportsView from '../views/admin/ContentReportsView.vue'
 import AdminProblemReportsView from '../views/admin/ProblemReportsView.vue'
 import AccountDeletionView from '../views/AccountDeletionView.vue'
 import PendingAccountDeletionsView from '../views/PendingAccountDeletionsView.vue'
@@ -143,6 +144,7 @@ const router = createRouter({
         { path: 'backup-restore', name: 'backup-restore', component: BackupRestoreView, meta: { title: 'النسخ الاحتياطي', roles: ['SuperAdmin'] } },
         { path: 'doctor-requests', name: 'doctor-requests', component: AdminDoctorRequestListView, meta: { title: 'طلبات تسجيل الأطباء', roles: ['SuperAdmin'] } },
         { path: 'doctor-requests/:id', name: 'doctor-request-detail', component: AdminDoctorRequestDetailView, meta: { title: 'تفاصيل الطلب', roles: ['SuperAdmin'] } },
+        { path: 'content-reports', name: 'content-reports', component: AdminContentReportsView, meta: { title: 'بلاغات المحتوى', roles: ['SuperAdmin'] } },
         { path: 'problem-reports', name: 'problem-reports', component: AdminProblemReportsView, meta: { title: 'بلاغات المشاكل', roles: ['SuperAdmin'] } },
         { path: 'admin-notifications/send', name: 'admin-notifications-send', component: AdminNotificationSendView, meta: { title: 'إرسال إشعار', roles: ['SuperAdmin'] } },
         { path: 'waiting-rooms', name: 'waiting-rooms-admin', component: WaitingRoomsAdminView, meta: { title: 'مراقبة شاشات الانتظار', roles: ['SuperAdmin'] } },

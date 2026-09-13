@@ -186,6 +186,12 @@ const adminNavigation: NavItem[] = [
         roles: ['SuperAdmin'],
       },
       {
+        label: 'بلاغات المحتوى',
+        to: '/content-reports',
+        icon: 'mdi-flag',
+        roles: ['SuperAdmin'],
+      },
+      {
         label: 'بلاغات المشاكل',
         to: '/problem-reports',
         icon: 'mdi-alert-circle',
