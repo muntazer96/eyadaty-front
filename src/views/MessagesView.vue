@@ -11,6 +11,12 @@ import {
   sendImageMessage,
   sendMessage,
 } from '../services/messageService'
+import {
+  blockUser,
+  contentReportReasons,
+  reportMessage,
+  type ContentReportReason,
+} from '../services/contentModerationService'
 import { getErrorMessage } from '../utils/errors'
 import type { ConversationItem, MessageItem } from '../types/api'
 import EmptyState from '../components/common/Emptystate.vue'
@@ -18,7 +24,7 @@ import PageHeader from '../components/common/Pageheader.vue'
 
 const auth = useAuthStore()
 const messagesStore = useMessagesStore()
-const { error: showError } = useNotifications()
+const { error: showError, success: showSuccess } = useNotifications()
 
 const conversations = ref<ConversationItem[]>([])
 const messages = ref<MessageItem[]>([])
@@ -41,6 +47,12 @@ const messageImageUrls = ref<Record<string, string>>({})
 const userImageUrls = ref<Record<string, string>>({})
 const typingTimer = ref<number>()
 const isMobileMessages = ref(false)
+const reportDialog = ref(false)
+const reporting = ref(false)
+const blocking = ref(false)
+const selectedReportMessage = ref<MessageItem>()
+const reportReason = ref<ContentReportReason>('OffensiveContent')
+const reportDetails = ref('')
 let mobileMediaQuery: MediaQueryList | undefined
 const conversationPageSize = 10
 
@@ -264,6 +276,44 @@ function openImageDialog(url: string) {
 function closeImageDialog() {
   imageDialog.value = false
   dialogImageUrl.value = ''
+}
+
+function openMessageReport(message: MessageItem) {
+  selectedReportMessage.value = message
+  reportReason.value = 'OffensiveContent'
+  reportDetails.value = ''
+  reportDialog.value = true
+}
+
+async function submitMessageReport() {
+  if (!selectedReportMessage.value || reporting.value) return
+  reporting.value = true
+  try {
+    const response = await reportMessage(selectedReportMessage.value.id, reportReason.value, reportDetails.value)
+    showSuccess(response.message || 'تم إرسال البلاغ. سيتم مراجعته خلال 24 ساعة.')
+    reportDialog.value = false
+  } catch (e) {
+    showError(getErrorMessage(e))
+  } finally {
+    reporting.value = false
+  }
+}
+
+async function blockSelectedUser() {
+  if (!selectedConversation.value || blocking.value) return
+  blocking.value = true
+  try {
+    const response = await blockUser(selectedConversation.value.otherUserId)
+    showSuccess(response.message || 'تم حظر المستخدم.')
+    messages.value = []
+    conversations.value = conversations.value.filter((item) => item.otherUserId !== selectedConversation.value?.otherUserId)
+    selectedConversation.value = undefined
+    await messagesStore.refreshUnreadCount()
+  } catch (e) {
+    showError(getErrorMessage(e))
+  } finally {
+    blocking.value = false
+  }
 }
 
 async function submit() {
@@ -493,6 +543,25 @@ onUnmounted(() => {
                 <span>{{ selectedTyping ? 'يكتب الآن...' : 'محادثة مراجع' }}</span>
               </div>
             </div>
+
+            <v-menu location="bottom end">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-dots-vertical"
+                  variant="text"
+                  aria-label="خيارات المحادثة"
+                />
+              </template>
+              <v-list density="compact">
+                <v-list-item
+                  prepend-icon="mdi-block-helper"
+                  title="حظر المستخدم"
+                  :disabled="blocking"
+                  @click="blockSelectedUser"
+                />
+              </v-list>
+            </v-menu>
           </header>
 
           <div ref="threadBody" class="thread-body" @scroll="handleThreadScroll">
@@ -540,6 +609,15 @@ onUnmounted(() => {
                       v-if="isMine(message)"
                       :icon="message.isRead ? 'mdi-check-all' : 'mdi-check'"
                       size="14"
+                    />
+                    <v-btn
+                      v-else
+                      icon="mdi-flag-outline"
+                      variant="text"
+                      size="x-small"
+                      density="compact"
+                      aria-label="الإبلاغ عن الرسالة"
+                      @click.stop="openMessageReport(message)"
                     />
                   </div>
                 </div>
@@ -620,6 +698,39 @@ onUnmounted(() => {
         <div class="image-dialog-body">
           <img v-if="dialogImageUrl" :src="dialogImageUrl" alt="معاينة الصورة" />
         </div>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="reportDialog" max-width="520">
+      <v-card>
+        <v-card-title class="font-weight-bold">الإبلاغ عن رسالة</v-card-title>
+        <v-card-text>
+          <v-select
+            v-model="reportReason"
+            :items="contentReportReasons"
+            item-title="label"
+            item-value="value"
+            label="سبب البلاغ"
+            variant="outlined"
+            density="comfortable"
+          />
+          <v-textarea
+            v-model="reportDetails"
+            label="تفاصيل إضافية، اختياري"
+            variant="outlined"
+            rows="3"
+            maxlength="1000"
+            counter
+          />
+          <v-alert type="info" variant="tonal" density="compact">
+            سيتم مراجعة البلاغ خلال 24 ساعة واتخاذ الإجراء المناسب.
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="reportDialog = false">إلغاء</v-btn>
+          <v-btn color="primary" :loading="reporting" @click="submitMessageReport">إرسال البلاغ</v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </div>

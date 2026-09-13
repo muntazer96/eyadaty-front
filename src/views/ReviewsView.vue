@@ -5,13 +5,25 @@ import { useNotifications } from '../composables/useNotifications'
 import type { ApiResponse, DoctorReviewsPageResult, ReviewItem } from '../types/api'
 import { getErrorMessage } from '../utils/errors'
 import EmptyState from '../components/common/Emptystate.vue'
+import {
+  contentReportReasons,
+  reportReview,
+  blockUser,
+  type ContentReportReason,
+} from '../services/contentModerationService'
 
-const { error: showError } = useNotifications()
+const { error: showError, success: showSuccess } = useNotifications()
 
 const loading     = ref(false)
 const data        = ref<DoctorReviewsPageResult>()
 const page        = ref(1)
 const pageSize    = 10
+const reportDialog = ref(false)
+const reporting = ref(false)
+const selectedReview = ref<ReviewItem>()
+const reportReason = ref<ContentReportReason>('OffensiveContent')
+const reportDetails = ref('')
+const blockingUserId = ref('')
 
 const reviews = computed<ReviewItem[]>(() => data.value?.items ?? data.value?.reviews ?? [])
 
@@ -44,6 +56,40 @@ async function loadReviews() {
     data.value = r.data.data
   } catch (e) { showError(getErrorMessage(e)) }
   finally { loading.value = false }
+}
+
+function openReportDialog(review: ReviewItem) {
+  selectedReview.value = review
+  reportReason.value = 'OffensiveContent'
+  reportDetails.value = ''
+  reportDialog.value = true
+}
+
+async function submitReport() {
+  if (!selectedReview.value || reporting.value) return
+  reporting.value = true
+  try {
+    const response = await reportReview(selectedReview.value.id, reportReason.value, reportDetails.value)
+    showSuccess(response.message || 'تم إرسال البلاغ. سيتم مراجعته خلال 24 ساعة.')
+    reportDialog.value = false
+  } catch (e) {
+    showError(getErrorMessage(e))
+  } finally {
+    reporting.value = false
+  }
+}
+
+async function blockReviewer(review: ReviewItem) {
+  if (!review.user?.id || blockingUserId.value) return
+  blockingUserId.value = review.user.id
+  try {
+    const response = await blockUser(review.user.id)
+    showSuccess(response.message || 'تم حظر صاحب التقييم.')
+  } catch (e) {
+    showError(getErrorMessage(e))
+  } finally {
+    blockingUserId.value = ''
+  }
 }
 
 watch(page, () => {
@@ -164,6 +210,28 @@ onMounted(loadReviews)
               />
               <span class="rating-number">{{ review.rating }}/5</span>
             </div>
+
+            <v-menu location="bottom end">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-dots-vertical"
+                  variant="text"
+                  size="small"
+                  aria-label="خيارات التقييم"
+                />
+              </template>
+              <v-list density="compact">
+                <v-list-item prepend-icon="mdi-flag-outline" title="الإبلاغ عن التقييم" @click="openReportDialog(review)" />
+                <v-list-item
+                  v-if="review.user?.id"
+                  prepend-icon="mdi-block-helper"
+                  title="حظر صاحب التقييم"
+                  :disabled="blockingUserId === review.user.id"
+                  @click="blockReviewer(review)"
+                />
+              </v-list>
+            </v-menu>
           </div>
 
           <!-- Comment -->
@@ -183,6 +251,39 @@ onMounted(loadReviews)
           color="primary"
         />
       </div>
+
+      <v-dialog v-model="reportDialog" max-width="520">
+        <v-card>
+          <v-card-title class="font-weight-bold">الإبلاغ عن التقييم</v-card-title>
+          <v-card-text>
+            <v-select
+              v-model="reportReason"
+              :items="contentReportReasons"
+              item-title="label"
+              item-value="value"
+              label="سبب البلاغ"
+              variant="outlined"
+              density="comfortable"
+            />
+            <v-textarea
+              v-model="reportDetails"
+              label="تفاصيل إضافية، اختياري"
+              variant="outlined"
+              rows="3"
+              maxlength="1000"
+              counter
+            />
+            <v-alert type="info" variant="tonal" density="compact">
+              سيتم مراجعة البلاغ خلال 24 ساعة وإزالة المحتوى المخالف عند الحاجة.
+            </v-alert>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="reportDialog = false">إلغاء</v-btn>
+            <v-btn color="primary" :loading="reporting" @click="submitReport">إرسال البلاغ</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
     </template>
 
