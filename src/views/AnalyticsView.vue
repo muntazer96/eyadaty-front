@@ -77,8 +77,8 @@ const hasEvents  = computed(() => (summary.value?.recentEvents.length ?? 0) > 0)
 
 const kpiKeys = computed(() =>
   isAdmin.value && !selectedDoctorId.value
-    ? ['appointmentsInRange', 'searches', 'profileViews', 'bookingClicks', 'createdBookingsFromEvents', 'usersInRange']
-    : ['searchAppearances', 'profileViews', 'bookingClicks', 'createdBookingsFromEvents', 'todayBookings', 'averageRating']
+    ? ['appointmentsInRange', 'searches', 'profileViews', 'callClicks', 'mapClicks', 'bookingClicks']
+    : ['searchAppearances', 'profileViews', 'callClicks', 'mapClicks', 'bookingClicks', 'averageRating']
 )
 
 const kpis = computed(() =>
@@ -90,8 +90,22 @@ const funnelRows = computed<AnalyticsLabelValue[]>(() => {
   return [
     { label: 'بحث/ظهور',   value: searches },
     { label: 'فتح بروفايل', value: findMetric('profileViews')?.value ?? 0 },
+    { label: 'ضغط اتصال',   value: findMetric('callClicks')?.value ?? 0 },
+    { label: 'ضغط خريطة',   value: findMetric('mapClicks')?.value ?? 0 },
     { label: 'ضغط حجز',    value: findMetric('bookingClicks')?.value ?? 0 },
     { label: 'حجز مسجل',   value: findMetric('createdBookingsFromEvents')?.value ?? 0 },
+  ]
+})
+
+const engagementRows = computed<AnalyticsLabelValue[]>(() => {
+  const engagement = summary.value?.doctorEngagement
+  return [
+    { label: 'زيارات البروفايل - التطبيق', value: engagement?.appProfileViews ?? 0 },
+    { label: 'زيارات البروفايل - الموقع', value: engagement?.websiteProfileViews ?? 0 },
+    { label: 'ضغطات الاتصال - التطبيق', value: engagement?.appCallClicks ?? 0 },
+    { label: 'ضغطات الاتصال - الموقع', value: engagement?.websiteCallClicks ?? 0 },
+    { label: 'ضغطات الخريطة - التطبيق', value: engagement?.appMapClicks ?? 0 },
+    { label: 'ضغطات الخريطة - الموقع', value: engagement?.websiteMapClicks ?? 0 },
   ]
 })
 
@@ -422,6 +436,13 @@ onMounted(() => Promise.all([loadDoctors(), loadAnalytics()]))
             <h3>الصفحات الأكثر فتحاً</h3>
           </div>
           <BarList :rows="summary?.topPages ?? []" :format-fn="formatNumber" />
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <v-icon icon="mdi-phone-in-talk" color="primary" size="20" />
+            <h3>تفاعل البروفايل حسب المصدر</h3>
+          </div>
+          <BarList :rows="engagementRows" :format-fn="formatNumber" />
         </div>
       </div>
     </template>

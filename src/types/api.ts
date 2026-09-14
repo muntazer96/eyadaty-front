@@ -617,6 +617,18 @@ export interface ConversionAnalytics {
   profileToBookingRate: number
 }
 
+export interface DoctorEngagementAnalytics {
+  profileViews: number
+  appProfileViews: number
+  websiteProfileViews: number
+  callClicks: number
+  appCallClicks: number
+  websiteCallClicks: number
+  mapClicks: number
+  appMapClicks: number
+  websiteMapClicks: number
+}
+
 export interface DatabaseBackupResponse {
   id: string
   fileName: string
@@ -898,4 +910,5 @@ export interface AnalyticsSummary {
   offers: OfferAnalytics
   subscriptions: SubscriptionAnalytics
   conversions: ConversionAnalytics
+  doctorEngagement: DoctorEngagementAnalytics
 }
