@@ -26,10 +26,10 @@ const toDate = toInputDate(today)
 const statCards = computed(() => {
   if (isAdmin.value) {
     return [
+      { key: 'websiteVisits',       icon: 'mdi-web',            color: 'primary' },
       { key: 'appointmentsInRange', icon: 'mdi-calendar-month', color: 'success' },
       { key: 'profileViews',        icon: 'mdi-eye',            color: 'info'    },
       { key: 'bookingClicks',       icon: 'mdi-cursor-default-click', color: 'warning' },
-      { key: 'usersInRange',        icon: 'mdi-account-group',  color: 'primary' },
     ]
   }
   return [

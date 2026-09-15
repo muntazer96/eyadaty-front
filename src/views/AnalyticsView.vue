@@ -77,7 +77,7 @@ const hasEvents  = computed(() => (summary.value?.recentEvents.length ?? 0) > 0)
 
 const kpiKeys = computed(() =>
   isAdmin.value && !selectedDoctorId.value
-    ? ['appointmentsInRange', 'searches', 'profileViews', 'callClicks', 'mapClicks', 'bookingClicks']
+    ? ['websiteVisits', 'appointmentsInRange', 'searches', 'profileViews', 'bookingClicks', 'usersInRange']
     : ['searchAppearances', 'profileViews', 'callClicks', 'mapClicks', 'bookingClicks', 'averageRating']
 )
 
